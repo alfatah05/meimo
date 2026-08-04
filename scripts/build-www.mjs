@@ -33,8 +33,6 @@ const COPY_ENTRIES = [
   "font-manager.html",
   "card-style.html",
   "about.html",
-  "manifest.json",
-  "service-worker.js",
   "src",
   "assets",
 ];
@@ -76,7 +74,7 @@ async function main() {
     bundle: true,
     format: "iife",
     target: ["es2019"],
-    outfile: path.join(WWW, "vendor", "capacitor-filesystem.js"),
+    outfile: path.join(WWW, "vendor", "capacitor-plugins.js"),
   });
 
   console.log("[build-www] www/ siap — lanjut `npx cap sync android`.");

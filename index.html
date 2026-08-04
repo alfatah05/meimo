@@ -6,9 +6,8 @@
 <title>Catatan — Home</title>
 <meta name="description" content="Meimo — aplikasi catatan pribadi offline-first dengan editor kaya format.">
 
-<!-- ============ PWA: Manifest, Theme Color, App Icon, Splash Screen ============ -->
-<link rel="manifest" href="/manifest.json">
-<script src="/vendor/capacitor-filesystem.js"></script>
+<!-- ============ Vendor plugin Capacitor & Theme Color ============ -->
+<script src="/vendor/capacitor-plugins.js"></script>
 <meta name="theme-color" content="#1E1E1E">
 <script>
   // Terapkan tema tersimpan SEBELUM stylesheet dirender, supaya tidak ada
@@ -61,7 +60,7 @@
   <header class="home-header">
     <div class="home-greeting-row">
       <div class="home-greeting">Catatan Saya</div>
-      <a href="/about" class="home-about-btn" aria-label="Tentang aplikasi">
+      <a href="/about.html" class="home-about-btn" aria-label="Tentang aplikasi">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="9"></circle>
           <line x1="12" y1="11" x2="12" y2="16.5"></line>
@@ -220,7 +219,7 @@
     <div class="fab-menu__actions" data-fab-actions hidden>
       <div class="fab-action-item">
         <span class="fab-action__label" aria-hidden="true">Cadangkan &amp; Impor</span>
-        <a href="/cadangkan" class="fab-action" data-fab-action="backup" aria-label="Buka halaman Cadangkan &amp; Impor">
+        <a href="/cadangkan.html" class="fab-action" data-fab-action="backup" aria-label="Buka halaman Cadangkan &amp; Impor">
           <span class="fab-action__icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 3v12"></path>
@@ -233,7 +232,7 @@
 
       <div class="fab-action-item">
         <span class="fab-action__label" aria-hidden="true">Sampah</span>
-        <a href="/trash" class="fab-action" data-fab-action="trash" aria-label="Buka Sampah">
+        <a href="/trash.html" class="fab-action" data-fab-action="trash" aria-label="Buka Sampah">
           <span class="fab-action__icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="3 6 5 6 21 6"></polyline>
@@ -258,23 +257,9 @@
         </button>
       </div>
 
-      <div class="fab-action-item" hidden>
-        <span class="fab-action__label" aria-hidden="true">Instal Aplikasi</span>
-        <button type="button" class="fab-action" data-fab-action="install" aria-label="Instal Meimo ke perangkat">
-          <span class="fab-action__icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="5" y="2" width="14" height="20" rx="2"></rect>
-              <path d="M12 8v6"></path>
-              <path d="M9 11l3 3 3-3"></path>
-              <line x1="10" y1="19" x2="14" y2="19"></line>
-            </svg>
-          </span>
-        </button>
-      </div>
-
       <div class="fab-action-item">
         <span class="fab-action__label" aria-hidden="true">Font Library</span>
-        <a href="/font-manager" class="fab-action" data-fab-action="font-library" aria-label="Buka Font Library">
+        <a href="/font-manager.html" class="fab-action" data-fab-action="font-library" aria-label="Buka Font Library">
           <span class="fab-action__icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="4 7 4 4 20 4 20 7"></polyline>
@@ -321,10 +306,8 @@
 <script type="module" src="/src/js/notes/notes-list.js"></script>
 <script type="module" src="/src/components/floating-button.js"></script>
 
-<!-- ============ PWA: Service Worker (mode offline) ============ -->
-<script type="module" src="/src/js/pwa/sw-register.js"></script>
-<script type="module" src="/src/js/pwa/install-prompt.js"></script>
 <script type="module" src="/src/js/utils/native-feel.js"></script>
+<script type="module" src="/src/js/utils/native-back.js"></script>
 
 </body>
 </html>

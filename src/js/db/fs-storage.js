@@ -10,7 +10,7 @@
  * (Lihat README_APK.md untuk detail & cara ganti ke folder Documents publik
  * kalau nanti mau data tetap ada setelah uninstall.)
  *
- * `window.CapacitorFilesystem` disuntik oleh vendor/capacitor-filesystem.js
+ * `window.CapacitorFilesystem` disuntik oleh vendor/capacitor-plugins.js
  * (dibundle dari @capacitor/filesystem lewat scripts/build-www.mjs) —
  * lihat tag <script> di setiap halaman HTML sebelum script module utama.
  *

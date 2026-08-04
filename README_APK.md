@@ -64,7 +64,25 @@ saat diminta).
 - Setiap kali kamu push perubahan kode, workflow build ulang otomatis —
   artifact lama tetap ada per-run, tinggal ambil yang terbaru.
 
-## Kalau mau develop/build lokal (opsional, butuh Android Studio)
+## Update: fix back button & haptic (getar)
+
+- **Back button/gesture Android**: ditambah `@capacitor/app` +
+  `src/js/utils/native-back.js` (didaftarkan di tiap halaman HTML). Tanpa
+  ini, tombol back Android default-nya tidak mundur ke halaman
+  sebelumnya di Capacitor 8.
+- **Haptic/getar**: ditambah `@capacitor/haptics`, dipakai di
+  `src/components/toast.js` (dulu cuma `navigator.vibrate()`, yang di
+  WebView Capacitor sering tidak reliabel). Fallback ke `navigator.vibrate()`
+  tetap ada kalau plugin tidak tersedia (mis. dibuka di browser biasa).
+- File vendor gabungan berubah nama dari `vendor/capacitor-filesystem.js`
+  jadi **`vendor/capacitor-plugins.js`** (sekarang isinya Filesystem + App +
+  Haptics) — semua tag `<script>` di HTML sudah ikut disesuaikan.
+
+Cukup replace semua file di repo GitHub kamu dengan isi zip yang baru
+(atau `git pull` kalau kerja dari commit sebelumnya), commit, push — CI
+otomatis build ulang, tidak ada langkah tambahan.
+
+
 
 ```bash
 npm install

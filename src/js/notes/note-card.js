@@ -50,16 +50,18 @@ const TRASH_ICON_SVG =
   '<path d="M10 11v6"></path><path d="M14 11v6"></path>' +
   '<path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>';
 
-// URL cantik /editor/<id> — lihat .htaccess di root project & app.js
-// (getNoteIdFromUrl) untuk cara id ini dibaca balik di halaman editor.
+// id note dikirim lewat query string (?id=<id>) — TIDAK pakai bentuk
+// "cantik" /editor/<id> lagi, karena app ini sekarang APK (Capacitor
+// WebView tidak punya rewrite engine seperti .htaccess Apache dulu).
+// Lihat getNoteIdFromUrl() di app.js untuk cara id ini dibaca balik.
 function noteHref(note) {
-  return `/editor/${encodeURIComponent(note.id)}`;
+  return `/editor.html?id=${encodeURIComponent(note.id)}`;
 }
 
-// URL cantik /card-style/<id> — lihat .htaccess & getNoteIdFromUrl di
-// src/js/notes/card-style.js untuk cara id ini dibaca balik di halaman itu.
+// Sama seperti noteHref() di atas — lihat getNoteIdFromUrl() di
+// src/js/notes/card-style.js.
 function cardStyleHref(note) {
-  return `/card-style/${encodeURIComponent(note.id)}`;
+  return `/card-style.html?id=${encodeURIComponent(note.id)}`;
 }
 
 /** Terapkan cardStyle tersimpan (kalau ada) ke elemen kartu & judulnya,

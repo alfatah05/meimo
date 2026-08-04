@@ -71,7 +71,7 @@ export function initFontFamilyDropdown(button, editor) {
     panel.appendChild(
       createEl("a", {
         className: "toolbar-panel__item toolbar-panel__item--manage-fonts",
-        attrs: { href: "/font-manager" },
+        attrs: { href: "/font-manager.html" },
         text: "+ Kelola Font…",
       })
     );

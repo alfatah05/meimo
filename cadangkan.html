@@ -5,9 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Cadangkan &amp; Impor — Catatan</title>
 
-<!-- ============ PWA: Manifest, Theme Color, App Icon, Splash Screen ============ -->
-<link rel="manifest" href="/manifest.json">
-<script src="/vendor/capacitor-filesystem.js"></script>
+<!-- ============ Vendor plugin Capacitor & Theme Color ============ -->
+<script src="/vendor/capacitor-plugins.js"></script>
 <meta name="theme-color" content="#1E1E1E">
 <script>
   // Terapkan tema tersimpan SEBELUM stylesheet dirender, supaya tidak ada
@@ -59,7 +58,7 @@
   <!-- ============ HEADER (Cadangkan & Impor) ============ -->
   <header class="home-header">
     <div style="display:flex; align-items:center; gap: var(--space-sm);">
-      <a href="/library" class="note-back-btn" aria-label="Kembali">
+      <a href="/index.html" class="note-back-btn" aria-label="Kembali">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <line x1="19" y1="12" x2="5" y2="12"></line>
           <polyline points="12 19 5 12 12 5"></polyline>
@@ -149,10 +148,8 @@
 
 <script type="module" src="/src/js/notes/backup-import.js"></script>
 
-<!-- ============ PWA: Service Worker (mode offline) ============ -->
-<script type="module" src="/src/js/pwa/sw-register.js"></script>
-<script type="module" src="/src/js/pwa/install-prompt.js"></script>
 <script type="module" src="/src/js/utils/native-feel.js"></script>
+<script type="module" src="/src/js/utils/native-back.js"></script>
 
 </body>
 </html>

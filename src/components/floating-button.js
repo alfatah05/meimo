@@ -9,7 +9,6 @@
 import { qs, qsa, openPanel, closeAllPanels } from "../js/utils/dom.js";
 import { THEMES, getTheme, setTheme } from "../js/themes/theme-manager.js";
 import { showToast } from "./toast.js";
-import { initInstallAvailability, triggerInstall } from "../js/pwa/install-prompt.js";
 
 /** Bangun panel kecil berisi 5 pilihan tema (dibuka lewat openPanel dom.js). */
 function buildThemePanel(onPick) {
@@ -84,16 +83,6 @@ export function mountFloatingMenu(root = document) {
     if (e.key === "Escape" && isOpen) setOpen(false);
   });
 
-  // Item "Instal Aplikasi" disembunyikan lewat markup (`hidden`) sampai
-  // browser benar-benar menawarkan instalasi (lihat install-prompt.js).
-  // App yang sudah terpasang / browser tanpa dukungan install prompt ->
-  // item ini tetap tersembunyi selamanya, tidak mengganggu 4 aksi lain.
-  const installItem = qs('[data-fab-action="install"]', actionsList)?.closest(".fab-action-item");
-  window.addEventListener("meimo:install-availability", (e) => {
-    if (installItem) installItem.hidden = !e.detail.available;
-  });
-  initInstallAvailability();
-
   qsa("[data-fab-action]", actionsList).forEach((el) => {
     const action = el.getAttribute("data-fab-action");
 
@@ -123,19 +112,6 @@ export function mountFloatingMenu(root = document) {
         });
         openPanel(el, panel, { align: "center" });
         return;
-      }
-
-      if (action === "install") {
-        e.preventDefault();
-        setOpen(false);
-        const outcome = await triggerInstall();
-        if (outcome === "accepted") {
-          showToast("Meimo sedang dipasang…");
-        } else if (outcome === "dismissed") {
-          showToast("Instalasi dibatalkan.");
-        }
-        // "unavailable" (prompt sudah dipakai/hilang) -> diam saja, tombol
-        // sudah ikut tersembunyi lewat event meimo:install-availability.
       }
     });
   });

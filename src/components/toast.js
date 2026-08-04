@@ -32,13 +32,22 @@ export function showToast(message, opts = {}) {
   const { actionLabel, onAction, duration = 3200, tone = "default" } = opts;
   const container = ensureContainer();
 
-  // Haptic feedback singkat setiap toast muncul. Dibungkus try/catch karena
-  // Vibration API tidak didukung semua browser (mis. Safari/iOS) — kalau
-  // tidak ada/gagal, toast tetap tampil normal tanpa getaran.
-  try {
-    if (navigator.vibrate) navigator.vibrate(50);
-  } catch (_) {
-    // diamkan — getaran cuma "bonus", bukan hal kritis.
+  // Haptic feedback singkat setiap toast muncul. Prioritas: plugin
+  // @capacitor/haptics (window.CapacitorHaptics — getar lewat Android
+  // Vibrator API asli, jauh lebih reliabel di dalam WebView Capacitor
+  // daripada Vibration API web biasa). Kalau app ini dibuka di browser/PWA
+  // biasa (plugin tidak ada), fallback ke navigator.vibrate(). Dibungkus
+  // try/catch karena getaran cuma "bonus", bukan hal kritis — gagal diam
+  // saja, toast tetap tampil normal.
+  const CapacitorHaptics = window.CapacitorHaptics;
+  if (CapacitorHaptics?.Haptics) {
+    CapacitorHaptics.Haptics.impact({ style: CapacitorHaptics.ImpactStyle.Light }).catch(() => {});
+  } else {
+    try {
+      if (navigator.vibrate) navigator.vibrate(50);
+    } catch (_) {
+      // diamkan — getaran cuma "bonus", bukan hal kritis.
+    }
   }
 
   if (currentToast) {

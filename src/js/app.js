@@ -29,29 +29,25 @@ import { debounce } from "./utils/debounce.js";
 const AUTOSAVE_DELAY_MS = 600;
 
 /**
- * Ambil `id` note dari URL.
- * Mendukung dua bentuk:
- *   - URL cantik: /editor/<id>            (lihat .htaccess di root project)
- *   - URL lama:   editor.html?id=<id>     (fallback — dipakai kalau file
- *     dibuka langsung tanpa rewrite, mis. saat development lokal)
+ * Ambil `id` note dari URL: `editor.html?id=<id>`.
  *
- * PENTING soal .htaccess: rewrite Apache di sini sifatnya INTERNAL (bukan
- * redirect), jadi begitu browser menampilkan /editor/<id>, `window.location`
- * di JS TIDAK PERNAH melihat query string ?id=... sama sekali — makanya id
- * di sini wajib diambil dari pathname, bukan cuma dari URLSearchParams.
+ * Dulu app ini (versi web, di-hosting lewat Apache) juga mendukung bentuk
+ * "cantik" /editor/<id> lewat rewrite di .htaccess. Sejak app ini jadi APK
+ * (dibungkus Capacitor), .htaccess itu tidak relevan lagi — WebView
+ * Capacitor cuma menyajikan file statis apa adanya, tidak ada rewrite
+ * engine sama sekali — jadi query string biasa ini sekarang satu-satunya
+ * cara & selalu bekerja di kedua konteks (APK maupun dibuka langsung lewat
+ * browser).
  */
 function getNoteIdFromUrl() {
-  const pathMatch = window.location.pathname.match(/\/editor\/([^/]+)\/?$/i);
-  if (pathMatch) return decodeURIComponent(pathMatch[1]);
   return new URLSearchParams(window.location.search).get("id");
 }
 
-/** Tulis `id` note baru ke URL (bentuk cantik /editor/<id>) tanpa reload,
- * supaya refresh tetap membuka note yang sama. */
+/** Tulis `id` note baru ke URL (`?id=<id>`) tanpa reload, supaya refresh
+ * tetap membuka note yang sama. */
 function setNoteIdInUrl(id) {
   const url = new URL(window.location.href);
-  url.pathname = `/editor/${encodeURIComponent(id)}`;
-  url.search = "";
+  url.search = `?id=${encodeURIComponent(id)}`;
   window.history.replaceState({}, "", url);
 }
 
