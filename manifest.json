@@ -1,0 +1,58 @@
+{
+  "id": "/library",
+  "version": "1.7.1",
+  "name": "Meimo — Catatan Pribadi",
+  "short_name": "Meimo",
+  "description": "Aplikasi catatan pribadi offline-first dengan editor kaya format. Semua catatan tersimpan di perangkatmu sendiri.",
+  "start_url": "/library",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "background_color": "#1E1E1E",
+  "theme_color": "#1E1E1E",
+  "lang": "id",
+  "dir": "ltr",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/icons/icon-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/assets/icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Catatan Baru",
+      "short_name": "Baru",
+      "description": "Langsung buat catatan baru",
+      "url": "/editor",
+      "icons": [{ "src": "/assets/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "/cadangkan",
+      "accept": { "application/x-meimo+zip": [".meimo"] }
+    }
+  ]
+}

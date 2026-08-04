@@ -1,0 +1,363 @@
+/* ==========================================================================
+   skeleton.css
+   Skeleton loading — dipakai selagi data async (IndexedDB via Document
+   Service, font kustom) belum siap dirender. Dua bentuk berbeda sesuai
+   konten halaman masing-masing:
+     - .home-skeleton   → mirip layout Pinned strip + grid Notes (index.html)
+     - .editor-skeleton → mirip layout judul + paragraf isi (editor.html)
+   Kedua elemen skeleton disembunyikan begitu data asli sudah dirender
+   (lihat notes-list.js & app.js).
+   ========================================================================== */
+
+/* ---- Skeleton sebagai OVERLAY penuh ----
+   BUGFIX v1.3.12 -> v1.3.13: sebelumnya tiap skeleton (.home-skeleton,
+   .list-skeleton, .editor-skeleton) cuma elemen BIASA di alur dokumen
+   (in-flow) — jadi kalau ada bagian HTML LAIN di halaman yang sama yang
+   sudah selesai dimuat/dirender lebih dulu (mis. section "Font Bawaan" di
+   font-manager.html yang datanya sinkron/hardcoded jadi tidak pernah
+   nunggu skeleton sama sekali, atau tombol Cadangkan/Impor statis di
+   cadangkan.html), elemen itu ikut kepakai ruang di ATAS skeleton —
+   skeleton-nya sendiri jadi "kedorong" turun alih-alih menutup dari
+   paling atas area konten, dan bagian yang sudah kel-load itu sempat
+   kelihatan padahal halaman belum lengkap.
+   Sekarang skeleton jadi overlay position:absolute (inset:0) yang
+   menutup SELURUH area kontainer konten-nya (.home-content untuk
+   index/trash/font-manager/cadangkan, .note-content untuk editor) —
+   TERMASUK bagian yang sudah lebih dulu selesai dirender — karena
+   containing block-nya diambil dari ancestor terdekat yang
+   position:relative (.home-content / .note-content, lihat layout.css),
+   BUKAN dari parent langsungnya di DOM. Ancestor itu juga sudah dijamin
+   minimal setinggi viewport yang tersisa di bawah header/topbar (flex:1
+   / min-height:100%), jadi overlay tetap menutup penuh sampai ke bawah
+   layar walau kontennya sendiri masih pendek/kosong. `padding: inherit`
+   menyalin padding milik ancestor itu supaya isi skeleton tetap
+   sejajar/senada dengan konten asli yang bakal muncul setelahnya (bukan
+   nempel ke tepi layar). Elemen tetap disembunyikan lewat attribute
+   `hidden` seperti biasa (lihat [hidden] di base.css) — overlay ini
+   cuma soal POSISI & LAPISANnya, bukan mekanisme show/hide-nya. */
+.skeleton-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-skeleton);
+  background-color: var(--color-bg);
+  padding: inherit;
+  overflow: hidden;
+}
+
+.skeleton-bar {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-xs);
+  background: linear-gradient(90deg, var(--color-border) 25%, var(--color-surface) 37%, var(--color-border) 63%);
+  background-size: 400% 100%;
+  animation: skeletonShimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes skeletonShimmer {
+  0%   { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ---- Home skeleton (index.html) ---- */
+
+.home-skeleton__pinned {
+  display: flex;
+  gap: var(--space-sm);
+  overflow: hidden;
+  margin-bottom: var(--space-lg);
+}
+
+.home-skeleton__pinned-card {
+  flex: 0 0 auto;
+  width: 160px;
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  background-color: var(--color-surface);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+/* Meniru .pinned-card__header (title-wrap + tombol menu titik-tiga di
+   kanan, lihat createPinnedCard() di note-card.js) — sebelumnya cuma 2
+   skeleton-bar polos (:first-child/:last-child) tanpa representasi tombol
+   menu, jadi lebar judulnya "nabrak" area yang di kartu asli ditempati
+   tombol tersebut. */
+.home-skeleton__pinned-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2xs);
+}
+
+.home-skeleton__pinned-card-title { width: 70%; height: 12px; }
+
+/* Ukuran & posisi sama persis dengan .pinned-card__menu-btn (notes-list.css). */
+.home-skeleton__pinned-card-menu {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  margin: -2px -4px 0 0;
+  border-radius: var(--radius-full);
+}
+
+.home-skeleton__pinned-card-snippet { width: 95%; height: 10px; }
+
+.home-skeleton__section-title {
+  width: 90px;
+  height: 12px;
+  margin-bottom: var(--space-sm);
+}
+
+.home-skeleton__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-md);
+}
+
+@media (min-width: 640px) {
+  .home-skeleton__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (min-width: 1024px) {
+  .home-skeleton__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+.home-skeleton__card {
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  background-color: var(--color-surface);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+/* Meniru .note-card__header (title-wrap + tombol menu titik-tiga di
+   kanan, SELALU dirender karena notes-list.js selalu memberi
+   onTrash/onTogglePin ke createNoteCard(), lihat note-card.js) —
+   sebelumnya judul skeleton polos memanjang sampai ke tepi kartu, padahal
+   di kartu asli ada tombol bulat 28px yang "memakan" ruang di kanan. */
+.home-skeleton__card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.home-skeleton__card-title { height: 16px; width: 65%; }
+
+/* Ukuran sama persis dengan .note-card__menu-btn (components.css). */
+.home-skeleton__card-menu {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+}
+
+.home-skeleton__card-line { height: 11px; }
+.home-skeleton__card-line--w1 { width: 100%; }
+.home-skeleton__card-line--w2 { width: 88%; }
+.home-skeleton__card-line--w3 { width: 45%; margin-bottom: var(--space-2xs); }
+
+/* .note-card__footer aslinya cuma berisi SATU <span> (tanggal "Diubah
+   ..."), rata kiri — sebelumnya skeleton ini punya 2 bar dengan
+   justify-content:space-between, seolah-olah ada 2 potong info sejajar
+   kiri-kanan di footer, padahal tidak. */
+.home-skeleton__card-footer {
+  display: flex;
+  margin-top: var(--space-2xs);
+}
+
+.home-skeleton__card-footer .skeleton-bar { width: 88px; height: 9px; }
+
+/* Stagger halus, senada dengan .notes-grid > .note-card di animations.css */
+.home-skeleton__card:nth-child(1),
+.home-skeleton__pinned-card:nth-child(1) { animation-delay: 0ms; }
+.home-skeleton__card:nth-child(2),
+.home-skeleton__pinned-card:nth-child(2) { animation-delay: 30ms; }
+.home-skeleton__card:nth-child(3),
+.home-skeleton__pinned-card:nth-child(3) { animation-delay: 60ms; }
+.home-skeleton__card:nth-child(4) { animation-delay: 90ms; }
+.home-skeleton__card:nth-child(5) { animation-delay: 120ms; }
+.home-skeleton__card:nth-child(6) { animation-delay: 150ms; }
+
+/* ---- Editor skeleton (editor.html) ---- */
+
+.editor-skeleton {
+  display: none;
+  flex-direction: column;
+  /* BUGFIX v1.3.19: `.skeleton-overlay` (di atas) punya `padding: inherit`
+     generik — itu menyalin padding CSS milik PARENT DI DOM elemen ini
+     (`.note-content`), bukan padding milik containing block posisinya.
+     `.note-content` sendiri tidak punya padding (0), yang sebelumnya pas
+     karena containing block overlay ini JUGA `.note-content` (lihat
+     riwayat lengkap di komentar `.note-content`, layout.css). Sekarang
+     containing block-nya sudah dipindah ke `.note-scroll-area` (yang
+     PUNYA padding sungguhan: --editor-header-space di atas, buat kasih
+     ruang ke topbar mengambang di atasnya) — tanpa override ini, isi
+     skeleton (`.editor-skeleton__title` dst.) akan mulai dari y:0
+     containing block, alias KETUTUP topbar (position:fixed, z-index di
+     atas skeleton), bukan cuma soal skeleton "tidak muncul" lagi tapi
+     "muncul tapi ketutup". Duplikasi nilai padding kiri/kanan/atas
+     `.note-scroll-area` di sini (bukan cuma `inherit`) supaya baris
+     pertama skeleton sejajar persis dengan tempat #editorTitle asli akan
+     muncul. Padding-bawah sengaja tidak disamakan (skeleton tidak pernah
+     setinggi/sepanjang itu, jadi tidak ada bedanya secara visual). */
+  padding: var(--editor-header-space, 80px) var(--space-md) 0;
+}
+
+/* Elemen sungguhan (title/body) disembunyikan selama skeleton tampil —
+   ditoggle via class .is-loading di .note-content (lihat app.js boot()). */
+.note-content.is-loading #editorTitle,
+.note-content.is-loading #editorBody {
+  display: none;
+}
+
+.note-content.is-loading .editor-skeleton {
+  display: flex;
+}
+
+.editor-skeleton__title {
+  height: 40px;
+  width: 62%;
+  margin-top: 20px;
+  margin-bottom: 23px;
+}
+
+.editor-skeleton__body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.editor-skeleton__line { height: 13px; }
+.editor-skeleton__line--w1 { width: 100%; }
+.editor-skeleton__line--w2 { width: 96%; }
+.editor-skeleton__line--w3 { width: 89%; }
+.editor-skeleton__line--w4 { width: 60%; }
+
+.editor-skeleton__gap { height: var(--space-md); }
+
+/* ---- List skeleton generik (font-manager.html "Font Library",
+   cadangkan.html "Ekspor Satu Catatan", trash.html) ----
+   Beda dari home/editor skeleton di atas: dipasang di halaman yang
+   sebelumnya TIDAK punya skeleton apa pun, sehingga area kontennya
+   sempat kosong (cuma background tema) selagi menunggu `await` ke
+   IndexedDB/manifest font — itu yang terlihat sebagai "kedip putih"
+   pas pindah halaman. Ditampilkan by default di HTML (jadi langsung
+   kelihatan sejak first paint, tanpa nunggu JS), lalu disembunyikan
+   begitu data asli sudah dirender (lihat font-manager.js,
+   backup-import.js, trash.js). */
+
+.list-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.list-skeleton__row {
+  height: 52px;
+}
+
+.list-skeleton__row:nth-child(1) { animation-delay: 0ms; }
+.list-skeleton__row:nth-child(2) { animation-delay: 30ms; }
+.list-skeleton__row:nth-child(3) { animation-delay: 60ms; }
+
+/* ---- Card style skeleton (card-style.html) ----
+   Beda bentuk dari home/list/editor skeleton di atas — dibuat mengikuti
+   layout ASLI halaman Customisasi Kartu section per section (Pratinjau,
+   Font Judul, Bentuk Edge, Warna Latar, Gambar Latar), bukan grid kartu
+   atau baris list generik. boot() di card-style.js nunggu beberapa
+   `await` (loadNote, ensureInstalledFontsLoaded, getAvailableFonts)
+   sebelum apa pun sempat dirender, jadi tanpa ini halaman kelihatan
+   kosong/kedip putih sesaat. Disembunyikan begitu renderPreview() dkk.
+   pertama kali selesai (lihat boot() di card-style.js). */
+
+.card-style-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+.card-style-skeleton__label {
+  width: 110px;
+  height: 12px;
+  margin-bottom: var(--space-sm);
+}
+
+/* Meniru .card-style-preview (grid kolom responsif, lihat card-style.css)
+   supaya bentuk skeleton pratinjau ikut sama akuratnya dengan kartu asli
+   yang menggantikannya. */
+.card-style-skeleton__preview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  padding: var(--space-md) 0;
+}
+
+@media (min-width: 640px) {
+  .card-style-skeleton__preview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (min-width: 1024px) {
+  .card-style-skeleton__preview { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+.card-style-skeleton__preview-card {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-lg);
+}
+
+/* Dropdown "Font Judul" (.card-style-select--custom). */
+.card-style-skeleton__select {
+  width: 100%;
+  height: var(--touch-target-min);
+  border-radius: var(--radius-sm);
+}
+
+/* Strip "Bentuk Edge" (.card-style-shape-scroll / .card-style-shape-item,
+   width 72px tiap item). */
+.card-style-skeleton__shapes {
+  display: flex;
+  gap: var(--space-sm);
+  overflow: hidden;
+}
+
+.card-style-skeleton__shape {
+  flex: 0 0 auto;
+  width: 72px;
+  height: 66px;
+  border-radius: var(--radius-sm);
+}
+
+/* Strip "Warna Latar" (.card-style-color-swatch, bulat 36px). */
+.card-style-skeleton__colors {
+  display: flex;
+  gap: var(--space-sm);
+  overflow: hidden;
+}
+
+.card-style-skeleton__color {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+}
+
+/* Tombol "Unggah Gambar" (.card-style-btn). */
+.card-style-skeleton__upload-btn {
+  width: 168px;
+  height: var(--touch-target-min);
+  border-radius: var(--radius-sm);
+}
+
+.card-style-skeleton__shape:nth-child(1),
+.card-style-skeleton__color:nth-child(1) { animation-delay: 0ms; }
+.card-style-skeleton__shape:nth-child(2),
+.card-style-skeleton__color:nth-child(2) { animation-delay: 30ms; }
+.card-style-skeleton__shape:nth-child(3),
+.card-style-skeleton__color:nth-child(3) { animation-delay: 60ms; }
+.card-style-skeleton__shape:nth-child(4),
+.card-style-skeleton__color:nth-child(4) { animation-delay: 90ms; }
+.card-style-skeleton__shape:nth-child(5),
+.card-style-skeleton__color:nth-child(5) { animation-delay: 120ms; }

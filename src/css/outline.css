@@ -1,0 +1,264 @@
+/* ==========================================================================
+   outline.css
+   Fitur "Outline": FAB kanan-bawah yang membuka sidebar dari kanan berisi
+   daftar heading (H1-H6) dokumen dalam bentuk file tree (indentasi + garis
+   penuntun, mirip sidebar folder/file VS Code). Dikelola oleh
+   src/js/editor/outline.js — file ini KHUSUS styling.
+   ========================================================================== */
+
+/* ---- Scroll offset heading ----
+   Dipakai scrollToHeading() di outline.js (klik item sidebar -> scrollIntoView
+   ke block heading terkait). Topbar itu position:fixed DI ATAS
+   .note-scroll-area, jadi tanpa scroll-margin-top, scrollIntoView(block:
+   "start") biasa akan menaruh heading persis di scrollTop=0 -- ketutup
+   topbar. --editor-header-space (di-update live oleh viewport-pin.js,
+   sudah termasuk tinggi topbar + jarak nafas) dipakai supaya heading
+   selalu berhenti PERSIS di bawah topbar, sama seperti konten lain. */
+.note-body-field h1.editor-block,
+.note-body-field h2.editor-block,
+.note-body-field h3.editor-block,
+.note-body-field h4.editor-block,
+.note-body-field h5.editor-block,
+.note-body-field h6.editor-block {
+  scroll-margin-top: var(--editor-header-space, 80px);
+}
+
+/* ---- FAB ---- */
+
+/* Posisi & ukuran senada dengan .fab (layout.css), tapi FAB ini hanya
+   tampil KONDISIONAL (ada heading di dokumen) sehingga baseline-nya
+   tersembunyi (scale 0 + opacity 0), bukan `display:none` — supaya
+   animasi muncul/hilang (lihat keyframes di bawah) selalu bisa jalan
+   dari/ke state ini. `bottom` sengaja pakai --editor-footer-space (var
+   yang sama dipakai .note-scroll-area, di-update live oleh
+   viewport-pin.js) supaya otomatis naik ke atas keyboard mobile saat
+   keyboard terbuka, tanpa logic tambahan di JS. */
+.outline-fab {
+  position: fixed;
+  right: var(--space-lg);
+  bottom: var(--editor-footer-space, var(--space-lg));
+  z-index: var(--z-fab);
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  background-color: var(--color-accent);
+  color: #FFFFFF;
+  box-shadow: 0 6px 18px rgba(74, 85, 199, 0.35);
+  opacity: 0;
+  transform: scale(0);
+  pointer-events: none;
+  /* --editor-footer-space bisa berubah tiap frame selama keyboard mobile
+     buka/tutup (lihat viewport-pin.js) — SENGAJA tanpa transition di
+     `bottom` supaya tidak "geter" dobel-animasi dengan rAF update itu,
+     sama seperti alasan .note-scroll-area tidak men-transition
+     padding-bottom-nya. */
+}
+
+.outline-fab:active {
+  transform: scale(0.94);
+}
+
+/* Muncul & hilang "mantul-mantul" lewat keyframes (bukan cuma transition
+   linear) supaya ada efek overshoot yang jelas terasa di kedua arah,
+   tanpa scale sempat negatif (yang bisa bikin FAB kelihatan "kebalik"
+   sekilas kalau overshoot cubic-bezier dipakai langsung di transition). */
+.outline-fab.is-visible {
+  animation: outlineFabIn 420ms var(--ease-bounce) both;
+  pointer-events: auto;
+}
+
+.outline-fab.is-hiding {
+  animation: outlineFabOut 280ms var(--ease-standard) both;
+  pointer-events: none;
+}
+
+@keyframes outlineFabIn {
+  0%   { opacity: 0; transform: scale(0) translateY(16px); }
+  55%  { opacity: 1; transform: scale(1.14) translateY(-3px); }
+  80%  { transform: scale(0.94) translateY(1px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes outlineFabOut {
+  0%   { opacity: 1; transform: scale(1) translateY(0); }
+  35%  { opacity: 1; transform: scale(1.1) translateY(-2px); }
+  100% { opacity: 0; transform: scale(0) translateY(12px); }
+}
+
+@media (min-width: 640px) {
+  .outline-fab { right: var(--space-xl); }
+}
+
+/* ---- Overlay + sidebar ---- */
+
+/* z-index SENGAJA var(--z-fab) — lebih RENDAH dari .note-topbar
+   (var(--z-toolbar), lihat layout.css). Konsekuensinya: topbar (yang
+   punya background sendiri) selalu tergambar DI ATAS overlay & sidebar
+   ini, jadi sidebar tidak pernah bisa menutupi topbar walau posisinya
+   "top: 0" secara CSS. Sidebar diberi padding-top setinggi topbar (lihat
+   .outline-sidebar di bawah) supaya isinya sendiri juga tidak start
+   ketiban topbar secara visual. */
+.outline-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-fab);
+  pointer-events: none;
+}
+
+.outline-overlay[hidden] { display: none; }
+
+.outline-overlay__backdrop {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  transition: opacity var(--duration-base) var(--ease-standard);
+}
+
+.outline-overlay.is-open .outline-overlay__backdrop {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.outline-sidebar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(320px, 84vw);
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-bg);
+  border-left: 1px solid var(--color-border);
+  box-shadow: -6px 0 20px rgba(var(--shadow-color), 0.12);
+  transform: translateX(100%);
+  transition: transform var(--duration-base) var(--ease-standard);
+  pointer-events: none;
+  /* Ruang atas setinggi topbar (bukan cuma safe-area) supaya header
+     sidebar ("Outline" + tombol tutup) tampil PERSIS di bawah topbar,
+     bukan ketiban olehnya — lihat catatan z-index di atas. */
+  padding-top: var(--editor-header-space, 80px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+.outline-overlay.is-open .outline-sidebar {
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+.outline-sidebar__header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.outline-sidebar__title {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.outline-sidebar__close {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  color: var(--color-text-secondary);
+  transition: background-color var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out);
+}
+
+.outline-sidebar__close:hover {
+  background-color: var(--color-accent-soft);
+  color: var(--color-text-primary);
+}
+
+.outline-sidebar__list {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: var(--space-sm) 0;
+}
+
+.outline-sidebar__empty {
+  padding: var(--space-lg) var(--space-md);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
+/* ---- Item heading, gaya file tree (indentasi + garis penuntun) ---- */
+
+.outline-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md) var(--space-sm) 0;
+  color: var(--color-text-primary);
+  text-align: left;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.outline-item:hover,
+.outline-item:active {
+  background-color: var(--color-accent-soft);
+}
+
+/* Satu .outline-item__guide per level indentasi (level 1 = tanpa guide,
+   sejajar akar) — border-right-nya membentuk garis vertikal penuntun
+   persis seperti tree folder/file di VS Code. */
+.outline-item__guides {
+  flex: 0 0 auto;
+  align-self: stretch;
+  display: flex;
+}
+
+.outline-item__guide {
+  flex: 0 0 18px;
+  width: 18px;
+  border-right: 1px solid var(--color-border);
+}
+
+.outline-item__icon {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-xs);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  font-size: 9px;
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-secondary);
+}
+
+.outline-item__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-sm);
+}
+
+/* Heading tingkat tinggi (H1/H2) sedikit lebih menonjol, makin dalam
+   (H5/H6) makin halus — supaya hierarki kelihatan bukan cuma dari
+   indentasi, tapi juga dari bobot visual teksnya. */
+.outline-item--level-1 .outline-item__label { font-weight: var(--weight-semibold); font-size: var(--text-base); }
+.outline-item--level-2 .outline-item__label { font-weight: var(--weight-medium); }
+.outline-item--level-5 .outline-item__label,
+.outline-item--level-6 .outline-item__label { color: var(--color-text-secondary); }

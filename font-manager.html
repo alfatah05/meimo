@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Kelola Font — Catatan</title>
+
+<!-- ============ PWA: Manifest, Theme Color, App Icon, Splash Screen ============ -->
+<link rel="manifest" href="/manifest.json">
+<script src="/vendor/capacitor-filesystem.js"></script>
+<meta name="theme-color" content="#1E1E1E">
+<script>
+  // Terapkan tema tersimpan SEBELUM stylesheet dirender, supaya tidak ada
+  // kedip ke tema default — sekalian sinkronkan warna status bar
+  // (meta theme-color) dengan warna background tema tersebut. Peta warna
+  // di bawah HARUS sama dengan `swatch` di THEMES (lihat
+  // src/js/themes/theme-manager.js) & --color-bg per tema di
+  // src/css/themes.css.
+  (function () {
+    var THEME_COLORS = { light: "#FFFFFF", dark: "#17181C", sepia: "#F4ECD8", paper: "#FBFAF5", oled: "#000000" };
+    try {
+      var t = localStorage.getItem("notes-app-theme");
+      if (t) document.documentElement.setAttribute("data-theme", t);
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute("content", THEME_COLORS[t] || THEME_COLORS.light);
+    } catch (e) {}
+  })();
+</script>
+<link rel="icon" href="/assets/icons/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="192x192" href="/assets/icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/assets/icons/icon-512.png">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link rel="apple-touch-startup-image" href="/assets/splash/splash-screen.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Meimo">
+<meta name="mobile-web-app-capable" content="yes">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/src/css/variables.css">
+<link rel="stylesheet" href="/src/css/themes.css">
+<link rel="stylesheet" href="/src/css/base.css">
+<link rel="stylesheet" href="/src/css/typography.css">
+<link rel="stylesheet" href="/src/css/layout.css">
+<link rel="stylesheet" href="/src/css/notes-list.css">
+<link rel="stylesheet" href="/src/css/toolbar.css">
+<link rel="stylesheet" href="/src/css/animations.css">
+<link rel="stylesheet" href="/src/css/view-transitions.css">
+<link rel="stylesheet" href="/src/css/responsive.css">
+<link rel="stylesheet" href="/src/css/components.css">
+<link rel="stylesheet" href="/src/css/font-manager.css">
+<link rel="stylesheet" href="/src/css/skeleton.css">
+</head>
+<body>
+
+<div class="page">
+
+  <!-- ============ HEADER (Kelola Font) ============ -->
+  <header class="home-header">
+    <div style="display:flex; align-items:center; gap: var(--space-sm);">
+      <a href="/library" class="note-back-btn" aria-label="Kembali">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+      </a>
+      <div class="home-greeting">Kelola Font</div>
+    </div>
+  </header>
+
+  <!-- ============ CONTENT ============ -->
+  <!-- Dirender oleh src/js/fonts/font-manager.js. Font bawaan (Inter,
+       Georgia) selalu tampil & tidak bisa dihapus. Font Font Library
+       (assets/fonts/library/manifest.json) tampil dengan tombol Unduh;
+       setelah diunduh, berkasnya tersimpan di IndexedDB dan bisa dipakai
+       lewat dropdown Font Family di editor. -->
+  <main class="home-content">
+
+    <section class="section">
+      <div class="section-header">
+        <span class="section-title">Font Bawaan</span>
+      </div>
+      <p class="font-manager-hint">Selalu tersedia di editor, tidak perlu diunduh.</p>
+      <div id="builtinFontList" class="font-manager-list"></div>
+    </section>
+
+    <section class="section">
+      <div class="section-header">
+        <span class="section-title">Font Library</span>
+      </div>
+      <p class="font-manager-hint">Unduh font tambahan untuk dipakai di editor. Sekali diunduh, font tetap tersimpan di perangkat ini walau offline.</p>
+      <div id="libraryFontListSkeleton" class="list-skeleton skeleton-overlay" aria-hidden="true">
+        <div class="skeleton-bar list-skeleton__row"></div>
+        <div class="skeleton-bar list-skeleton__row"></div>
+        <div class="skeleton-bar list-skeleton__row"></div>
+      </div>
+      <div id="libraryFontList" class="font-manager-list" hidden></div>
+    </section>
+
+    <div id="libraryEmptyState" class="empty-state anim-fade-in" hidden>
+      <svg class="empty-state__illustration" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M30 20h24l12 12v44a4 4 0 0 1-4 4H30a4 4 0 0 1-4-4V24a4 4 0 0 1 4-4z"></path>
+        <polyline points="54 20 54 32 66 32"></polyline>
+        <line x1="34" y1="48" x2="62" y2="48"></line>
+        <line x1="34" y1="58" x2="62" y2="58"></line>
+        <line x1="34" y1="68" x2="50" y2="68"></line>
+      </svg>
+      <div class="empty-state__title">Font Library masih kosong</div>
+      <p class="empty-state__desc">Belum ada font tambahan yang bisa diunduh. Tambahkan lewat assets/fonts/library/manifest.json.</p>
+    </div>
+
+  </main>
+
+</div>
+
+<script type="module" src="/src/js/fonts/font-manager.js"></script>
+
+<!-- ============ PWA: Service Worker (mode offline) ============ -->
+<script type="module" src="/src/js/pwa/sw-register.js"></script>
+<script type="module" src="/src/js/pwa/install-prompt.js"></script>
+<script type="module" src="/src/js/utils/native-feel.js"></script>
+
+</body>
+</html>

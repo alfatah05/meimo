@@ -1,0 +1,356 @@
+/* ==========================================================================
+   layout.css
+   Struktur layout halaman: Home, Notes List, Note (fullscreen, tanpa sidebar).
+   ========================================================================== */
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- Home / Notes List page ---- */
+
+.home-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  background-color: var(--color-bg);
+  padding: var(--space-xl) var(--space-md) var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.home-content {
+  flex: 1;
+  /* BUGFIX v1.3.12 -> v1.3.13: position:relative ditambah supaya jadi
+     containing block untuk skeleton overlay (.skeleton-overlay, lihat
+     skeleton.css) — flex:1 di sini menjamin tingginya minimal setinggi
+     viewport yang tersisa di bawah .home-header, jadi overlay (inset:0)
+     ikut menutup penuh area itu walau konten aslinya sendiri masih
+     pendek/kosong. Dipakai index.html, trash.html, font-manager.html,
+     cadangkan.html — SEMUA halaman yang pakai class .home-content ini. */
+  position: relative;
+  padding: 0 var(--space-md) var(--space-5xl);
+  max-width: var(--container-max-width);
+  width: 100%;
+  margin: 0 auto;
+}
+
+.home-greeting {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
+}
+
+.home-greeting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.home-about-btn {
+  flex: 0 0 auto;
+  padding: 5px;
+  min-width: 36px;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-xs);
+  color: var(--color-text-secondary);
+  transition: background-color var(--duration-fast) var(--ease-out),
+              transform var(--duration-instant) var(--ease-out);
+}
+
+.home-about-btn:hover { background-color: var(--color-accent-soft); color: var(--color-text-primary); }
+.home-about-btn:active { transform: scale(0.96); }
+
+.section {
+  margin-top: var(--space-lg);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-sm);
+}
+
+/* ---- Note (fullscreen editor) page ----
+   Mobile-first: seluruh layar dipakai untuk menulis, tidak ada sidebar,
+   tidak ada ribbon. Yang tampil hanya topbar tipis, toolbar mengambang,
+   judul, dan isi. */
+
+.note-page {
+  /* dvh (dynamic viewport height) dipakai agar tinggi menyesuaikan saat
+     address bar / keyboard mobile muncul-hilang. vh dipertahankan sebagai
+     fallback untuk browser lama. */
+  min-height: 100vh;
+  min-height: 100dvh;
+  background-color: var(--color-bg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Topbar: back button + floating toolbar jadi satu baris di ATAS layar.
+   Posisi (left/right) di-set langsung oleh viewport-pin.js (px absolut
+   mengikuti visualViewport), supaya selalu terlihat walau browser mobile
+   menggeser halaman untuk menampilkan field yang fokus saat keyboard
+   muncul. Nilai di bawah ini hanya fallback sebelum JS jalan / pada
+   browser tanpa dukungan visualViewport.
+   topbar-autohide.js menggeser baris ini keluar viewport (translateY)
+   saat user scroll, lalu memunculkannya lagi setelah berhenti ~2 detik.
+
+   Dulu ini dua "pill" terpisah, lalu jadi satu bar tapi masih mengambang
+   dengan jarak dari tepi layar (top/left/right pakai var(--space-*)) dan
+   sudut membulat. Sekarang benar-benar NEMPEL ke tepi atas+kiri+kanan
+   (top/left/right: 0, tanpa border-radius/border kiri-kanan-atas) seperti
+   header biasa — cuma border-bottom tipis sebagai pemisah dari konten.
+   Safe-area notch/status-bar ditangani lewat padding-top (bukan `top`
+   offset lagi), supaya bar-nya sendiri tetap betul-betul di y=0. */
+.note-topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--z-toolbar);
+  /* Sekarang TIGA baris: (1) .note-topbar-row — 9 menu grid rata, (2)
+     .toolbar-child-bar — isi menu kelompok yang lagi aktif (Text/Style/
+     List/Block/Insert), TIDAK hilang saat discroll selama masih terbuka
+     (lihat isChildGroupOpen() di dom.js & topbar-autohide.js), dan (3)
+     .color-picker-bar — bar nilai/swatch (mis. Warna Teks), yang tetap
+     hilang saat discroll seperti sebelumnya. Safe-area kiri/kanan/atas
+     dipasang di sini supaya ketiga baris sama-sama nempel rapi ke tepi
+     layar. */
+  display: flex;
+  flex-direction: column;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  transition: transform var(--duration-base) var(--ease-standard),
+              opacity var(--duration-base) var(--ease-standard);
+}
+
+.note-topbar.is-hidden {
+  transform: translateY(-100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Baris pertama topbar: back button, Undo, Redo, Text, Style, List, Block,
+   Insert, Hapus Format, Read Only — SELALU 10 slot dibagi rata (1fr
+   masing-masing), gap 2px, TIDAK bisa discroll kesamping. Undo & Redo
+   masing-masing dapat slot sendiri (bukan dibagi 2 dalam 1 slot) supaya
+   lebarnya sama dengan tombol-tombol lain. Lebar tiap slot = lebar baris
+   ini dibagi 10 dikurangi total gap, dihitung otomatis oleh CSS grid.
+   Sizing tombol individual ada di toolbar.css. */
+.note-topbar-row {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  align-items: center;
+  gap: 2px;
+  padding: 5px;
+}
+
+/* Baris ketiga topbar: dipakai untuk Warna Teks & Highlight (lihat
+   color-picker.js / highlight-picker.js + openColorBar() di dom.js).
+   Full-width, HANYA satu baris — kalau preset warnanya banyak, yang
+   digeser adalah baris ini sendiri secara horizontal, persis seperti
+   dulu, bukan wrap ke baris berikutnya. */
+.color-picker-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  /* padding-top diberi ruang (var(--space-xs) = 4px) supaya outline
+     ring swatch aktif (.color-bar__swatch.is-active, outline 2px +
+     outline-offset 2px = total 4px menonjol ke atas dari tepi swatch)
+     punya tempat mendarat DI DALAM padding box baris ini sendiri.
+     Sebelumnya padding-top: 0 bikin bagian atas ring itu jatuh tepat
+     di tepi luar baris — overflow-x:auto pada elemen ini otomatis
+     memaksa overflow-y ikut ke-clip (bukan lagi "visible"), jadi
+     potongan ring itu ke-crop habis oleh baris ini sendiri, kelihatan
+     seperti "ketutup"/menyatu dengan baris lv2 (.toolbar-child-bar) di
+     atasnya, padahal sebenarnya bukan ketutup, cuma ke-clip. */
+  padding: var(--space-xs) 5px var(--space-sm);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+  scrollbar-width: none;
+}
+.color-picker-bar::-webkit-scrollbar { display: none; }
+
+.color-picker-bar[hidden] { display: none; }
+
+/* Muncul dengan fade + slide tipis, bukan langsung "nyentak" kepotong. */
+.color-picker-bar {
+  animation: colorBarIn var(--anim-scale) var(--ease-standard) both;
+}
+
+@keyframes colorBarIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Class sementara (ditambah/dilepas oleh openColorBar()/closeColorBar() di
+   dom.js, cuma sekitar durasi transisinya) supaya --editor-header-space
+   yang berubah gara-gara color bar buka/tutup ikut dianimasikan dengan
+   halus (konten geser turun pelan-pelan), bukan "snap" instan yang
+   kelihatan seperti kedorong/geter. TIDAK dipasang permanen di
+   .note-scroll-area supaya tidak bentrok dengan update --editor-footer-space
+   dari viewport-pin.js selama keyboard mobile buka/tutup (lihat komentar
+   di bawah). */
+.note-scroll-area.header-space-transition {
+  transition: padding-top var(--duration-base) var(--ease-standard);
+}
+
+.note-back-btn {
+  flex: 0 0 auto;
+  padding: 5px;
+  min-width: 36px;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-xs);
+  color: var(--color-text-primary);
+  transition: background-color var(--duration-fast) var(--ease-out),
+              transform var(--duration-instant) var(--ease-out);
+}
+
+.note-back-btn:hover { background-color: var(--color-accent-soft); }
+.note-back-btn:active { transform: scale(0.96); }
+
+.note-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  /* padding-top diberi ruang ekstra agar konten tidak tertutup topbar
+     (back button + floating toolbar, sekarang jadi satu baris di ATAS).
+     padding-bottom cuma perlu ruang aman untuk safe-area & keyboard mobile
+     (tidak ada lagi elemen mengambang di bawah). Nilai persisnya
+     (--editor-header-space, --editor-footer-space) dihitung & di-set oleh
+     viewport-pin.js; nilai di bawah cuma fallback awal. */
+  padding: var(--editor-header-space, 80px) var(--space-md) var(--space-5xl);
+  /* BUGFIX v1.3.19: containing block untuk overlay skeleton
+     (.editor-skeleton.skeleton-overlay, position:absolute; inset:0) HARUS
+     di sini (position:relative), BUKAN di `.note-content` (child langsung
+     di bawah — lihat kenapa di komentar `.note-content`). Tinggi elemen
+     ini sendiri sudah definitif dari `flex: 1` di atas, TANPA bergantung
+     pada percentage-height sama sekali, jadi aman dipakai sebagai acuan
+     posisi overlay. CSS positioning tidak mengharuskan containing block
+     jadi PARENT LANGSUNG di DOM — cukup ancestor positioned terdekat —
+     jadi ini tidak mengubah struktur HTML ataupun mekanisme scroll
+     (overflow-y:auto) sama sekali. */
+  position: relative;
+  /* --image-sheet-space, --scene-sheet-space & --music-sheet-space ditulis/
+     di-reset oleh toolbar/image-sheet.js, toolbar/scene-sheet.js, dan
+     toolbar/music-sheet.js masing-masing, persis setinggi bottom sheet yang
+     sedang terbuka (0px kalau tertutup), supaya konten paling bawah tetap
+     bisa di-scroll sampai terlihat di atas sheet, bukan ketiban/ketutup
+     olehnya. Ketiganya dijumlahkan (bukan salah satu) karena masing-masing
+     sheet punya var sendiri; dalam praktiknya cuma satu yang pernah
+     non-zero di saat bersamaan (sheet lain sudah ditutup duluan lewat
+     closeAnyOpenSheet() masing-masing modul). */
+  padding-bottom: calc(var(--editor-footer-space, calc(var(--space-5xl) + env(safe-area-inset-bottom, 0px))) + var(--image-sheet-space, 0px) + var(--scene-sheet-space, 0px) + var(--music-sheet-space, 0px));
+  /* SENGAJA tanpa transition di sini. viewport-pin.js sudah menulis ulang
+     --editor-footer-space lewat requestAnimationFrame yang di-sync ke
+     event visualViewport (yang sendirinya sudah "beranimasi" mengikuti
+     animasi native keyboard/scroll). Kalau padding-bottom masih di-CSS-
+     transition juga, dua animasi jalan bareng dan saling kejar: tiap kali
+     JS nulis nilai baru (termasuk perubahan sub-pixel yang wajar terjadi
+     SELAMA scroll, bukan cuma pas keyboard buka/tutup), transition CSS
+     restart dari awal lagi → hasilnya kelihatan geter-geter/nyendat pas
+     scroll sambil keyboard kebuka. Update dari JS dibiarkan "snap" instan
+     karena sudah cukup halus (rAF + dibulatkan ke integer px + skip kalau
+     nilainya belum berubah). */
+}
+
+.note-content {
+  max-width: var(--editor-max-width);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  /* BUGFIX v1.3.12 -> v1.3.13 (awalnya): position:relative + min-height:100%
+     dipasang di SINI supaya elemen ini jadi containing block untuk overlay
+     skeleton (.editor-skeleton.skeleton-overlay) & tidak kolaps ke tinggi 0
+     pas #editorTitle/#editorBody masih disembunyikan (display:none) selama
+     loading.
+     BUGFIX v1.3.19: itu TERNYATA tidak pernah benar-benar bekerja —
+     `min-height: 100%` di sini tidak pernah resolve. Elemen ini adalah
+     block child BIASA (bukan flex item) dari `.note-scroll-area`, dan
+     percentage-height seperti ini butuh containing block dengan tinggi
+     "specified" eksplisit, BUKAN cuma tinggi hasil hitungan flex:1 dua
+     level di atas (.note-page) — walau `.note-scroll-area` sendiri
+     me-render dengan tinggi definitif secara px, itu tidak otomatis
+     "diwariskan" ke child block biasa untuk keperluan resolve persentase.
+     Akibatnya elemen ini kolaps ke tinggi KONTEN IN-FLOW-nya doang — yang
+     pas loading = 0 (title/body display:none, skeleton-nya sendiri
+     position:absolute jadi keluar dari flow sama sekali) — overlay
+     skeleton ikut kolaps ke 0×0 dan TIDAK PERNAH kelihatan di layar,
+     meski display/z-index-nya semua sudah benar (sudah diverifikasi
+     langsung lewat headless browser, bukan cuma baca CSS).
+     Fix: containing block overlay dipindah ke `.note-scroll-area`
+     (lihat `position: relative` di sana, layout.css) — ancestor terdekat
+     yang tingginya SUDAH pasti definitif dari flex:1, tanpa lewat rantai
+     percentage-height yang rapuh itu. CSS positioning tidak mengharuskan
+     containing block jadi parent LANGSUNG di DOM, cuma ancestor positioned
+     terdekat, jadi cukup dipindah tanpa perlu restrukturisasi HTML —
+     `.note-content` sendiri jadi tidak perlu position:relative atau
+     min-height apa pun lagi, dan tetap kolaps mengikuti konten asli
+     seperti sedia kala (title+body) begitu loading selesai — perilaku
+     scroll untuk note yang panjang TIDAK berubah sama sekali. */
+}
+
+/* Diaktifkan oleh toolbar/image-sheet.js maupun toolbar/scene-sheet.js
+   selama bottom sheet masing-masing (gambar / Scene) terbuka. Menonaktifkan
+   pointer-events di judul/isi catatan supaya tap di sana tidak lagi memicu
+   fokus (=> keyboard tidak bisa muncul lagi), TANPA mematikan scroll —
+   scroll ditangani .note-scroll-area (parent), bukan elemen ini, jadi tetap
+   jalan normal. */
+.note-content--sheet-locked #editorTitle,
+.note-content--sheet-locked #editorBody {
+  pointer-events: none;
+}
+
+/* ---- Responsive: Note page ---- */
+
+@media (min-width: 640px) {
+  .note-scroll-area {
+    padding-left: var(--space-lg);
+    padding-right: var(--space-lg);
+  }
+}
+
+/* ---- Floating Add Button ---- */
+
+.fab {
+  position: fixed;
+  right: var(--space-lg);
+  bottom: var(--space-lg);
+  z-index: var(--z-fab);
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-accent);
+  color: #FFFFFF;
+  box-shadow: 0 6px 18px rgba(74, 85, 199, 0.35);
+  transition: transform var(--anim-slide) var(--ease-standard),
+              box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.fab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px rgba(74, 85, 199, 0.4);
+}
+
+.fab:active {
+  transform: scale(0.96);
+}

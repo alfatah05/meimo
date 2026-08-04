@@ -1,0 +1,100 @@
+/**
+ * scene.css
+ * Tampilan container "Scene" di dalam editor — lihat komentar panjang di
+ * src/js/editor/block-model.js (atas createBlock) untuk model datanya, dan
+ * src/js/editor/serializer.js renderSceneWrapper() untuk struktur DOM-nya:
+ *
+ *   <section class="editor-scene" data-scene-id="..." data-edge-style="...">
+ *     <div class="editor-scene__edge editor-scene__edge--top"></div>   (kalau edgeStyle != straight)
+ *     <div class="editor-scene__body"> ...block-block anggota Scene... </div>
+ *     <div class="editor-scene__edge editor-scene__edge--bottom"></div> (kalau edgeStyle != straight)
+ *   </section>
+ */
+
+.editor-scene {
+  position: relative;
+  /* Full-width mengikuti area editor (lebar penuh .note-body-field),
+     BUKAN bleed sampai ke tepi layar — spec "full width" di sini berarti
+     memenuhi kolom tulisan yang sama seperti block lain, konsisten dengan
+     margin kiri/kanan .note-content yang sudah ada. */
+  width: 100%;
+  /* Tinggi otomatis mengikuti isi (auto height) — sengaja tidak ada
+     min-height/height tetap sama sekali. */
+  margin: var(--space-2xs) 0 var(--space-md) 0;
+  border-radius: var(--radius-md);
+  overflow: hidden; /* supaya bar edge (clip-path) tidak "bocor" ke luar sudut membulat */
+  transition: box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.editor-scene__body {
+  padding: var(--scene-padding, 24px) var(--scene-padding, 24px);
+  /* bodyEl ini sekarang contenteditable="true" tersendiri (nested island
+     di dalam wrapperEl yang contenteditable="false", lihat komentar di
+     serializer.js) — beberapa browser otomatis kasih outline fokus ke
+     elemen contenteditable bersarang begitu diklik, resetnya di sini. */
+  outline: none;
+}
+
+/* Sama seperti clearfix .note-body-field::after (editor.css) — tanpa ini,
+   gambar wrap (float) sebagai block TERAKHIR di dalam Scene bikin
+   editor-scene__body collapse (tidak ikut menghitung tinggi float-nya),
+   jadi Scene tidak memanjang mengikuti gambar dan gambarnya overlap
+   keluar tepi bawah Scene sampai ada block/teks baru sesudahnya yang
+   "memaksa" clear. */
+.editor-scene__body::after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+/* Bar bentuk tepi (Edge Style) — tinggi HARUS sama dengan SCENE_EDGE_HEIGHT
+   di src/js/editor/scene-edges.js supaya clip-path yang dihitung di JS pas.
+   Warna latarnya diset langsung dari JS (serializer.js renderSceneWrapper),
+   sama seperti warna latar section-nya sendiri. */
+.editor-scene__edge {
+  height: 22px;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+/* Scene yang sedang aktif (fokus/karet user ada di dalamnya — lihat
+   toolbar/scene-sheet.js) sengaja TIDAK diberi outline/border apa pun;
+   satu-satunya penanda adalah chip "Scene" mengambang di bawah ini. */
+
+.editor-scene__customize-chip {
+  position: absolute;
+  top: var(--space-xs);
+  right: var(--space-xs);
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: var(--radius-full);
+  background-color: var(--color-accent, #4A55C7);
+  color: #fff;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium, 500);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+  animation: scene-chip-in var(--duration-fast, 0.15s) var(--ease-out, ease-out);
+}
+
+.editor-scene__customize-chip:hover {
+  filter: brightness(1.08);
+}
+
+@keyframes scene-chip-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 640px) {
+  .editor-scene__customize-chip span {
+    display: none; /* di layar sempit cukup ikonnya saja */
+  }
+  .editor-scene__customize-chip {
+    padding: 8px;
+  }
+}

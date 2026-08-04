@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Catatan — Home</title>
+<meta name="description" content="Meimo — aplikasi catatan pribadi offline-first dengan editor kaya format.">
+
+<!-- ============ PWA: Manifest, Theme Color, App Icon, Splash Screen ============ -->
+<link rel="manifest" href="/manifest.json">
+<script src="/vendor/capacitor-filesystem.js"></script>
+<meta name="theme-color" content="#1E1E1E">
+<script>
+  // Terapkan tema tersimpan SEBELUM stylesheet dirender, supaya tidak ada
+  // kedip ke tema default — sekalian sinkronkan warna status bar
+  // (meta theme-color) dengan warna background tema tersebut. Peta warna
+  // di bawah HARUS sama dengan `swatch` di THEMES (lihat
+  // src/js/themes/theme-manager.js) & --color-bg per tema di
+  // src/css/themes.css.
+  (function () {
+    var THEME_COLORS = { light: "#FFFFFF", dark: "#17181C", sepia: "#F4ECD8", paper: "#FBFAF5", oled: "#000000" };
+    try {
+      var t = localStorage.getItem("notes-app-theme");
+      if (t) document.documentElement.setAttribute("data-theme", t);
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute("content", THEME_COLORS[t] || THEME_COLORS.light);
+    } catch (e) {}
+  })();
+</script>
+<link rel="icon" href="/assets/icons/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="192x192" href="/assets/icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/assets/icons/icon-512.png">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<!-- iOS memakai gambar ini sebagai splash screen saat app dibuka dari Home Screen. -->
+<link rel="apple-touch-startup-image" href="/assets/splash/splash-screen.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Meimo">
+<meta name="mobile-web-app-capable" content="yes">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/src/css/variables.css">
+<link rel="stylesheet" href="/src/css/themes.css">
+<link rel="stylesheet" href="/src/css/base.css">
+<link rel="stylesheet" href="/src/css/typography.css">
+<link rel="stylesheet" href="/src/css/layout.css">
+<link rel="stylesheet" href="/src/css/notes-list.css">
+<link rel="stylesheet" href="/src/css/toolbar.css">
+<link rel="stylesheet" href="/src/css/animations.css">
+<link rel="stylesheet" href="/src/css/skeleton.css">
+<link rel="stylesheet" href="/src/css/view-transitions.css">
+<link rel="stylesheet" href="/src/css/responsive.css">
+<link rel="stylesheet" href="/src/css/components.css">
+</head>
+<body>
+
+<div class="page">
+
+  <!-- ============ HOME HEADER (Search) ============ -->
+  <header class="home-header">
+    <div class="home-greeting-row">
+      <div class="home-greeting">Catatan Saya</div>
+      <a href="/about" class="home-about-btn" aria-label="Tentang aplikasi">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9"></circle>
+          <line x1="12" y1="11" x2="12" y2="16.5"></line>
+          <circle cx="12" cy="7.5" r="1" fill="currentColor" stroke="none"></circle>
+        </svg>
+      </a>
+    </div>
+
+    <div class="search-bar">
+      <svg class="search-bar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="7"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+      <input
+        id="searchInput"
+        class="search-bar__input"
+        type="text"
+        inputmode="search"
+        autocomplete="off"
+        placeholder="Cari judul atau isi catatan…"
+        aria-label="Cari catatan berdasarkan judul atau isi"
+      >
+      <button
+        type="button"
+        id="sortTrigger"
+        class="search-bar__sort"
+        aria-haspopup="true"
+        aria-expanded="false"
+        aria-label="Urutkan catatan"
+      >
+        <span id="sortLabel" class="search-bar__sort-label">Terakhir diubah</span>
+        <svg class="search-bar__sort-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ============ HOME CONTENT (Notes List) ============ -->
+  <!-- Seluruh isi di bawah ini dirender oleh src/js/notes/notes-list.js
+       dari data asli di IndexedDB (lewat Document Service) — TIDAK ADA
+       data dummy/hardcoded di markup ini. -->
+  <main class="home-content">
+
+    <!-- ============ SKELETON LOADING ============
+         Tampil sejak awal (belum ada attribute hidden) selagi
+         src/js/notes/notes-list.js menunggu Document Service + font
+         kustom siap. Disembunyikan oleh JS begitu render() pertama
+         selesai. Bentuknya sengaja meniru layout Pinned strip + grid
+         Notes yang sesungguhnya (bukan skeleton generik). -->
+    <div id="homeSkeleton" class="home-skeleton skeleton-overlay" aria-hidden="true">
+      <div class="home-skeleton__pinned">
+        <div class="home-skeleton__pinned-card">
+          <div class="home-skeleton__pinned-card-header">
+            <div class="skeleton-bar home-skeleton__pinned-card-title"></div>
+            <div class="skeleton-bar home-skeleton__pinned-card-menu"></div>
+          </div>
+          <div class="skeleton-bar home-skeleton__pinned-card-snippet"></div>
+        </div>
+        <div class="home-skeleton__pinned-card">
+          <div class="home-skeleton__pinned-card-header">
+            <div class="skeleton-bar home-skeleton__pinned-card-title"></div>
+            <div class="skeleton-bar home-skeleton__pinned-card-menu"></div>
+          </div>
+          <div class="skeleton-bar home-skeleton__pinned-card-snippet"></div>
+        </div>
+        <div class="home-skeleton__pinned-card">
+          <div class="home-skeleton__pinned-card-header">
+            <div class="skeleton-bar home-skeleton__pinned-card-title"></div>
+            <div class="skeleton-bar home-skeleton__pinned-card-menu"></div>
+          </div>
+          <div class="skeleton-bar home-skeleton__pinned-card-snippet"></div>
+        </div>
+      </div>
+
+      <div class="skeleton-bar home-skeleton__section-title"></div>
+      <div class="home-skeleton__grid">
+        <div class="home-skeleton__card">
+          <div class="home-skeleton__card-header">
+            <div class="skeleton-bar home-skeleton__card-title"></div>
+            <div class="skeleton-bar home-skeleton__card-menu"></div>
+          </div>
+          <div class="skeleton-bar home-skeleton__card-line home-skeleton__card-line--w1"></div>
+          <div class="skeleton-bar home-skeleton__card-line home-skeleton__card-line--w2"></div>
+          <div class="skeleton-bar home-skeleton__card-line home-skeleton__card-line--w3"></div>
+          <div class="home-skeleton__card-footer">
+            <div class="skeleton-bar"></div>
+          </div>
+        </div>
+        <div class="home-skeleton__card">
+          <div class="home-skeleton__card-header">
+            <div class="skeleton-bar home-skeleton__card-title"></div>
+            <div class="skeleton-bar home-skeleton__card-menu"></div>
+          </div>
+          <div class="skeleton-bar home-skeleton__card-line home-skeleton__card-line--w1"></div>
+          <div class="skeleton-bar home-skeleton__card-line home-skeleton__card-line--w2"></div>
+          <div class="skeleton-bar home-skeleton__card-line home-skeleton__card-line--w3"></div>
+          <div class="home-skeleton__card-footer">
+            <div class="skeleton-bar"></div>
+          </div>
+        </div>
+        <div class="home-skeleton__card">
+          <div class="home-skeleton__card-header">
+            <div class="skeleton-bar home-skeleton__card-title"></div>
+            <div class="skeleton-bar home-skeleton__card-menu"></div>
+          </div>
+          <div class="skeleton-bar home-skeleton__card-line home-skeleton__card-line--w1"></div>
+          <div class="skeleton-bar home-skeleton__card-line home-skeleton__card-line--w2"></div>
+          <div class="skeleton-bar home-skeleton__card-line home-skeleton__card-line--w3"></div>
+          <div class="home-skeleton__card-footer">
+            <div class="skeleton-bar"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pinned — disembunyikan (hidden) bila tidak ada note pinned -->
+    <section id="pinnedSection" class="section anim-fade-in" hidden>
+      <div class="section-header">
+        <span class="section-title">Pinned</span>
+      </div>
+      <div id="pinnedStrip" class="pinned-strip"></div>
+    </section>
+
+    <!-- Recent / Semua Notes / Hasil Pencarian -->
+    <section id="recentSection" class="section" hidden>
+      <div class="section-header">
+        <span id="recentSectionTitle" class="section-title">Terbaru</span>
+      </div>
+      <div id="notesGrid" class="notes-grid"></div>
+    </section>
+
+    <!-- Empty state — dipakai baik untuk "belum ada catatan" maupun
+         "tidak ada hasil pencarian" (teks diisi ulang oleh JS). -->
+    <div id="emptyState" class="empty-state anim-fade-in" hidden>
+      <svg class="empty-state__illustration" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="20" y="14" width="48" height="64" rx="6"></rect>
+        <line x1="30" y1="30" x2="58" y2="30"></line>
+        <line x1="30" y1="40" x2="58" y2="40"></line>
+        <line x1="30" y1="50" x2="46" y2="50"></line>
+        <path d="M58 58l10 10-4 4-10-10 4-4z" fill="currentColor" stroke="none" opacity="0.5"></path>
+      </svg>
+      <div id="emptyStateTitle" class="empty-state__title">Belum ada catatan</div>
+      <p id="emptyStateDesc" class="empty-state__desc">Semua catatanmu akan muncul di sini. Ketuk tombol tambah di kanan bawah untuk mulai menulis yang pertama.</p>
+    </div>
+
+  </main>
+
+  <!-- ============ FLOATING MENU (tombol "+") ============
+       Dikelola oleh src/components/floating-button.js. Tombol utama
+       membuka 4 aksi cepat: 3 fitur baru (Cadangkan Catatan, Sampah,
+       Ganti Tema) plus Catatan Baru yang sudah ada sebelumnya. -->
+  <div class="fab-menu" data-fab-menu>
+    <div class="fab-menu__backdrop" data-fab-backdrop hidden></div>
+
+    <div class="fab-menu__actions" data-fab-actions hidden>
+      <div class="fab-action-item">
+        <span class="fab-action__label" aria-hidden="true">Cadangkan &amp; Impor</span>
+        <a href="/cadangkan" class="fab-action" data-fab-action="backup" aria-label="Buka halaman Cadangkan &amp; Impor">
+          <span class="fab-action__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3v12"></path>
+              <path d="M7 10l5 5 5-5"></path>
+              <path d="M4 19h16"></path>
+            </svg>
+          </span>
+        </a>
+      </div>
+
+      <div class="fab-action-item">
+        <span class="fab-action__label" aria-hidden="true">Sampah</span>
+        <a href="/trash" class="fab-action" data-fab-action="trash" aria-label="Buka Sampah">
+          <span class="fab-action__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+              <path d="M10 11v6"></path>
+              <path d="M14 11v6"></path>
+              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+            </svg>
+          </span>
+        </a>
+      </div>
+
+      <div class="fab-action-item">
+        <span class="fab-action__label" aria-hidden="true">Ganti Tema</span>
+        <button type="button" class="fab-action" data-fab-action="theme" aria-label="Ganti tema tampilan">
+          <span class="fab-action__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9"></circle>
+              <path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor" stroke="none" opacity="0.5"></path>
+            </svg>
+          </span>
+        </button>
+      </div>
+
+      <div class="fab-action-item" hidden>
+        <span class="fab-action__label" aria-hidden="true">Instal Aplikasi</span>
+        <button type="button" class="fab-action" data-fab-action="install" aria-label="Instal Meimo ke perangkat">
+          <span class="fab-action__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="5" y="2" width="14" height="20" rx="2"></rect>
+              <path d="M12 8v6"></path>
+              <path d="M9 11l3 3 3-3"></path>
+              <line x1="10" y1="19" x2="14" y2="19"></line>
+            </svg>
+          </span>
+        </button>
+      </div>
+
+      <div class="fab-action-item">
+        <span class="fab-action__label" aria-hidden="true">Font Library</span>
+        <a href="/font-manager" class="fab-action" data-fab-action="font-library" aria-label="Buka Font Library">
+          <span class="fab-action__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="4 7 4 4 20 4 20 7"></polyline>
+              <line x1="9" y1="20" x2="15" y2="20"></line>
+              <line x1="12" y1="4" x2="12" y2="20"></line>
+            </svg>
+          </span>
+        </a>
+      </div>
+
+      <div class="fab-action-item">
+        <span class="fab-action__label" aria-hidden="true">Catatan Baru</span>
+        <a href="/editor" class="fab-action fab-action--primary" data-fab-action="new-note" aria-label="Buat catatan baru">
+          <span class="fab-action__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </span>
+        </a>
+      </div>
+    </div>
+
+    <button type="button" class="fab anim-scale-in" data-fab-main aria-label="Menu catatan" aria-haspopup="true" aria-expanded="false">
+      <span class="fab__icon fab__icon--menu" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="4" width="7" height="7" rx="1.5"></rect>
+          <rect x="13" y="4" width="7" height="7" rx="1.5"></rect>
+          <rect x="4" y="13" width="7" height="7" rx="1.5"></rect>
+          <rect x="13" y="13" width="7" height="7" rx="1.5"></rect>
+        </svg>
+      </span>
+      <span class="fab__icon fab__icon--close" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+        </svg>
+      </span>
+    </button>
+  </div>
+
+</div>
+
+<script type="module" src="/src/js/notes/notes-list.js"></script>
+<script type="module" src="/src/components/floating-button.js"></script>
+
+<!-- ============ PWA: Service Worker (mode offline) ============ -->
+<script type="module" src="/src/js/pwa/sw-register.js"></script>
+<script type="module" src="/src/js/pwa/install-prompt.js"></script>
+<script type="module" src="/src/js/utils/native-feel.js"></script>
+
+</body>
+</html>

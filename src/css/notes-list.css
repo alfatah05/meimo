@@ -1,0 +1,344 @@
+/* ==========================================================================
+   notes-list.css
+   Search bar, section Pinned/Recent/Semua Notes, note card, empty state.
+   ========================================================================== */
+
+/* ---- Search ---- */
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  background-color: var(--color-surface);
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  padding: var(--space-sm) var(--space-md);
+  min-height: var(--touch-target-min);
+  box-shadow: 0 1px 2px rgba(var(--shadow-color), 0.04);
+  transition: box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.search-bar:focus-within {
+  box-shadow: 0 2px 10px rgba(var(--shadow-color), 0.08);
+}
+
+.search-bar__icon {
+  width: var(--icon-md);
+  height: var(--icon-md);
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+}
+
+.search-bar__input {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-base);
+  color: var(--color-text-primary);
+}
+
+.search-bar__input::placeholder {
+  color: var(--color-text-secondary);
+}
+
+/* Input pencarian sengaja TIDAK punya ring/outline fokus (baik saat klik
+   maupun keyboard) — beda dari tombol/link lain yang tetap pakai
+   focus-visible ring standar (lihat base.css). Wadahnya sendiri (.search-bar)
+   sudah memberi umpan balik fokus lewat shadow di atas. */
+.search-bar__input:focus,
+.search-bar__input:focus-visible {
+  outline: none;
+}
+
+.search-bar__sort {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+  padding: var(--space-2xs) var(--space-2xs) var(--space-2xs) var(--space-sm);
+  border-left: 1px solid var(--color-border);
+  border-radius: var(--radius-xs);
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.search-bar__sort:hover,
+.search-bar__sort.is-open {
+  color: var(--color-text-primary);
+}
+
+.search-bar__sort-chevron {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.search-bar__sort.is-open .search-bar__sort-chevron {
+  transform: rotate(180deg);
+}
+
+/* ---- Pinned strip (horizontal scroll) ---- */
+
+.pinned-strip {
+  display: flex;
+  gap: var(--space-sm);
+  overflow-x: auto;
+  padding-bottom: var(--space-2xs);
+  scrollbar-width: none;
+}
+.pinned-strip::-webkit-scrollbar { display: none; }
+
+.pinned-card {
+  position: relative;
+  flex: 0 0 auto;
+  width: 160px;
+  min-width: 0;
+  overflow: hidden;
+  background-color: var(--color-surface);
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  box-shadow: 0 1px 3px rgba(var(--shadow-color), 0.06);
+  transition: box-shadow var(--duration-fast) var(--ease-out),
+              transform var(--duration-fast) var(--ease-out);
+}
+
+.pinned-card:hover {
+  box-shadow: 0 4px 12px rgba(var(--shadow-color), 0.08);
+  transform: translateY(-1px);
+}
+
+.pinned-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2xs);
+  margin-bottom: var(--space-xs);
+}
+
+.pinned-card__title {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  /* Sengaja override line-height numerik (1.5) yang ke-inherit dari body —
+     itu dihitung sebagai 1.5x font-size si elemen APA PUN font-family-nya,
+     tanpa peduli metrik asli font tsb. Font custom dari card-style.html
+     (assets/fonts/library, kebanyakan font dekoratif/tulisan tangan) sering
+     punya ascent/descent jauh lebih besar dari font biasa (itu bagian dari
+     desainnya — swash, ekor huruf, dst.), jadi kalau dipaksa ke kotak
+     setinggi 1.5x font-size + overflow:hidden, bagian atas/bawahnya
+     kepotong. line-height: normal balik ke metrik BAWAAN font yang lagi
+     dipakai (dari font file itu sendiri), jadi tinggi barisnya otomatis
+     pas buat font apa pun yang dipilih user. */
+  line-height: normal;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Menu titik-tiga di pinned-card — satu-satunya cara "Lepas Sematan"
+   karena catatan yang disematkan tidak lagi tampil di grid utama (lihat
+   notes-list.js render()). Lebih kecil dari .note-card__menu-btn karena
+   kartu pinned jauh lebih ringkas (lihat createPinnedCard di note-card.js). */
+.pinned-card__menu-btn {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  margin: -2px -4px 0 0;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+  transition: background-color var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out);
+}
+
+.pinned-card__menu-btn:hover,
+.pinned-card__menu-btn.is-open {
+  background-color: var(--color-accent-soft);
+  color: var(--color-text-primary);
+}
+
+.pinned-card__menu-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.pinned-card__snippet {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ---- Notes grid ---- */
+
+.notes-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-md);
+}
+
+@media (min-width: 640px) {
+  .notes-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (min-width: 1024px) {
+  .notes-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+.note-card {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  background-color: var(--color-surface);
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  box-shadow: 0 1px 3px rgba(var(--shadow-color), 0.06);
+  transition: box-shadow var(--duration-fast) var(--ease-out),
+              transform var(--duration-fast) var(--ease-out);
+}
+
+.note-card:hover {
+  box-shadow: 0 6px 16px rgba(var(--shadow-color), 0.09);
+  transform: translateY(-2px);
+}
+
+.note-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
+.note-card__title-wrap {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.note-card__title {
+  font-size: var(--text-md);
+  font-weight: var(--weight-regular);
+  letter-spacing: var(--tracking-tight);
+  /* Lihat catatan panjang di .pinned-card__title (di atas) — alasan sama:
+     line-height numerik yang ke-inherit gak ngikutin metrik font custom
+     yang dipilih user, jadi font dekoratif yang lebih "besar" secara
+     visual kepotong atas/bawahnya oleh overflow:hidden. */
+  line-height: normal;
+  margin-bottom: var(--space-xs);
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.note-card__snippet {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--leading-snug);
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: var(--space-sm);
+}
+
+.note-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--text-2xs);
+  color: var(--color-text-secondary);
+}
+
+.note-card__pin-icon {
+  width: var(--icon-sm);
+  height: var(--icon-sm);
+  color: var(--color-accent);
+  flex-shrink: 0;
+}
+
+/* ---- Dekorasi Selotip Washi ----
+   Preset Bentuk Edge "washi-tape" (card-style-presets.js) menambah 2
+   elemen <span class="note-card__tape"> lewat applyWashiTapeDecor() —
+   bentuk kartu sendiri tetap kotak biasa (border-radius default), cuma
+   dihias 2 potong "selotip" miring di pojok atas. .note-card & .pinned-card
+   sudah position:relative jadi tinggal absolute-position di sini. */
+.note-card__tape {
+  position: absolute;
+  top: 8px;
+  width: 30%;
+  max-width: 68px;
+  height: 22px;
+  /* Sebelumnya pakai putih transparan (rgba 255,255,255) — nyaris tak
+     kelihatan di atas kartu berwarna terang/putih (warna default), karena
+     nyaris menyatu dengan latarnya. Diganti warna kraft/selotip washi
+     (krem-cokelat, cukup opak) + border & shadow lebih tegas, supaya
+     tetap kontras di atas warna latar apa pun (termasu default) maupun
+     gambar latar. */
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(255, 237, 201, 0.95) 0 6px,
+    rgba(238, 202, 133, 0.88) 6px 12px
+  );
+  border: 1px solid rgba(139, 98, 41, 0.4);
+  box-shadow: 0 2px 4px rgba(var(--shadow-color), 0.3);
+  pointer-events: none;
+}
+
+.note-card__tape--left {
+  left: 6%;
+  transform: rotate(-7deg);
+}
+
+.note-card__tape--right {
+  right: 6%;
+  transform: rotate(6deg);
+}
+
+.pinned-card .note-card__tape {
+  top: 6px;
+  height: 16px;
+}
+
+/* ---- Empty state ---- */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--space-4xl) var(--space-md);
+  gap: var(--space-md);
+}
+
+.empty-state__illustration {
+  width: 96px;
+  height: 96px;
+  color: var(--color-text-secondary);
+  opacity: 0.5;
+}
+
+.empty-state__title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+.empty-state__desc {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  max-width: 320px;
+  line-height: var(--leading-snug);
+}

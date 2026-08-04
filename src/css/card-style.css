@@ -1,0 +1,358 @@
+/* ==========================================================================
+   card-style.css
+   Tampilan halaman Customisasi Kartu (card-style.html): pratinjau kartu,
+   daftar pilihan font judul, grid preset bentuk edge/keliling, grid warna
+   latar, unggah gambar latar, dan action bar (Setel Ulang/Simpan) yang
+   nempel di bawah layar.
+   ========================================================================== */
+
+/* Ruang ekstra di bawah supaya action bar sticky tidak menutupi konten
+   terakhir (lihat .card-style-actionbar di bawah). */
+.card-style-page {
+  padding-bottom: calc(var(--space-4xl) + 64px);
+}
+
+/* ---- Pratinjau ---- */
+
+/* BUGFIX: sebelumnya .card-style-preview cuma flex+justify-content:center
+   dengan kartu dibatasi max-width:280px tetap/fixed di semua ukuran layar —
+   lebarnya jadi TIDAK PERNAH cocok dengan lebar asli kartu di Notes List
+   (index.html), yang lebarnya ikut kolom grid responsif (.notes-grid:
+   1 kolom di <640px, 2 kolom di >=640px, 3 kolom di >=1024px). Fix:
+   .card-style-preview sekarang pakai grid-template-columns yang SAMA
+   PERSIS dengan .notes-grid (lihat notes-list.css) — kartu pratinjau
+   (satu-satunya child, otomatis jatuh ke kolom pertama) jadi punya lebar
+   identik dengan kolom pertama kartu asli di breakpoint manapun, karena
+   .card-style-page berbagi container (.home-content, max-width & padding
+   sama) dengan index.html. */
+.card-style-preview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  padding: var(--space-md) 0;
+}
+
+@media (min-width: 640px) {
+  .card-style-preview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (min-width: 1024px) {
+  .card-style-preview { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* Kartu pratinjau memakai markup & class asli .note-card (lihat
+   notes/note-card.js createNoteCard) supaya tampilannya identik dengan
+   Notes List — di sini cuma dimatikan interaksinya (klik/hover tidak
+   menavigasi, lihat card-style.js); lebarnya sengaja TIDAK dibatasi lagi
+   (lihat .card-style-preview di atas), supaya akurat mengikuti lebar
+   kolom grid asli. */
+.card-style-preview__card {
+  width: 100%;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* ---- Font Judul (dropdown, hemat ruang vs daftar tombol) ---- */
+
+.card-style-select {
+  display: block;
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: var(--text-base);
+  min-height: var(--touch-target-min);
+  cursor: pointer;
+}
+
+.card-style-select:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+/* Tombol trigger custom (menggantikan <select> bawaan browser) — dibuka
+   lewat openPanel() di utils/dom.js, pola yang sama dengan dropdown di
+   floating toolbar editor (lihat toolbar/dropdowns/font-family-dropdown.js). */
+.card-style-select--custom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  text-align: left;
+}
+
+.card-style-select--custom.is-open {
+  border-color: var(--color-accent);
+}
+
+.card-style-select__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-style-select__chevron {
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.card-style-select--custom.is-open .card-style-select__chevron {
+  transform: rotate(180deg);
+}
+
+/* Panel daftar font — dilebarkan supaya sama dengan lebar tombol trigger
+   (beda dari dropdown toolbar yang trigger-nya kecil), biar nama font
+   panjang tetap enak dibaca. */
+.card-style-font-panel {
+  min-width: 220px;
+  max-width: min(360px, calc(100vw - 32px));
+}
+
+/* ---- Bentuk Edge (strip scroll horizontal) ----
+   Sengaja horizontal (bukan grid yang wrap ke banyak baris) supaya halaman
+   customisasi tidak jadi tinggi walau presetnya banyak (lihat
+   card-style-presets.js EDGE_SHAPES) — scrollbar-nya sendiri sudah
+   otomatis disembunyikan lewat aturan global `html, * { scrollbar-width:
+   none }` di base.css. */
+.card-style-shape-scroll {
+  display: flex;
+  gap: var(--space-sm);
+  overflow-x: auto;
+  padding-bottom: 2px; /* ruang kecil biar box-shadow/border item aktif tidak kepotong */
+}
+
+.card-style-shape-item {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xs);
+  width: 72px;
+  padding: var(--space-xs) var(--space-2xs);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  transition: border-color var(--duration-fast) var(--ease-out),
+              background-color var(--duration-fast) var(--ease-out);
+}
+
+.card-style-shape-item:hover {
+  background-color: var(--color-accent-soft);
+}
+
+.card-style-shape-item.is-active {
+  border-color: var(--color-accent);
+  background-color: var(--color-accent-soft);
+}
+
+.card-style-shape-item__swatch {
+  display: block;
+  width: 44px;
+  height: 30px;
+  background-color: var(--color-bg);
+  border: 1.5px solid var(--color-text-secondary);
+  position: relative;
+}
+
+.card-style-shape-item.is-active .card-style-shape-item__swatch {
+  border-color: var(--color-accent);
+}
+
+/* Penanda kecil khusus preview preset "Selotip Washi" (bentuknya sendiri
+   kotak biasa — lihat card-style-presets.js — jadi butuh penanda visual
+   biar beda dari swatch "Default" yang juga kotak polos). */
+.card-style-shape-item[data-shape-id="washi-tape"] .card-style-shape-item__swatch::before,
+.card-style-shape-item[data-shape-id="washi-tape"] .card-style-shape-item__swatch::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  width: 16px;
+  height: 8px;
+  background: repeating-linear-gradient(45deg,
+    rgba(255, 255, 255, 0.7) 0 3px, rgba(255, 255, 255, 0.35) 3px 6px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+.card-style-shape-item[data-shape-id="washi-tape"] .card-style-shape-item__swatch::before {
+  left: 2px;
+  transform: rotate(-10deg);
+}
+.card-style-shape-item[data-shape-id="washi-tape"] .card-style-shape-item__swatch::after {
+  right: 2px;
+  transform: rotate(8deg);
+}
+
+.card-style-shape-item__label {
+  font-size: var(--text-2xs);
+  color: var(--color-text-secondary);
+  text-align: center;
+  line-height: var(--leading-tight);
+}
+
+.card-style-shape-item.is-active .card-style-shape-item__label {
+  color: var(--color-accent);
+  font-weight: var(--weight-medium);
+}
+
+/* ---- Warna Latar (strip scroll horizontal + swatch kustom di ujung) ---- */
+
+.card-style-color-scroll {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.card-style-color-scroll__presets {
+  display: flex;
+  gap: var(--space-sm);
+  flex-shrink: 0;
+}
+
+.card-style-color-swatch {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  border: 2px solid var(--color-border);
+  background-color: var(--color-surface);
+  flex-shrink: 0;
+  transition: transform var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out);
+}
+
+.card-style-color-swatch:hover {
+  transform: scale(1.08);
+}
+
+.card-style-color-swatch.is-active {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-accent-soft);
+}
+
+.card-style-color-swatch--none {
+  background-image: linear-gradient(45deg, var(--color-border) 25%, transparent 25%, transparent 75%, var(--color-border) 75%),
+                     linear-gradient(45deg, var(--color-border) 25%, transparent 25%, transparent 75%, var(--color-border) 75%);
+  background-size: 10px 10px;
+  background-position: 0 0, 5px 5px;
+}
+
+/* Swatch "Warna kustom" (<input type="color"> dibungkus <label> berbentuk
+   swatch bulat yang sama, supaya duduk rapi di ujung strip scroll alih-alih
+   jadi baris terpisah di bawahnya — lihat card-style.html). */
+.card-style-color-swatch--custom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-style: dashed;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.card-style-color-swatch--custom input[type="color"] {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+/* ---- Gambar Latar ---- */
+
+.card-style-optional-tag {
+  font-weight: var(--weight-regular);
+  color: var(--color-text-secondary);
+}
+
+.card-style-bg-image {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.card-style-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  min-height: var(--touch-target-min);
+  white-space: nowrap;
+  transition: background-color var(--duration-fast) var(--ease-out),
+              opacity var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out);
+}
+
+.card-style-btn svg { flex-shrink: 0; }
+
+.card-style-btn--primary {
+  background-color: var(--color-accent);
+  color: #FFFFFF;
+}
+
+.card-style-btn--primary:hover { opacity: 0.9; }
+
+.card-style-btn--danger {
+  background-color: transparent;
+  color: var(--color-danger);
+  border: 1px solid var(--color-border);
+}
+
+.card-style-btn--danger:hover { background-color: var(--color-accent-soft); }
+
+/* ---- Slider Opacity Gambar Latar ---- */
+
+.card-style-opacity-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+}
+
+.card-style-opacity-row__label {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.card-style-opacity-row__value {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+  width: 40px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.card-style-opacity-row input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  height: 4px;
+  border-radius: var(--radius-full);
+  accent-color: var(--color-accent);
+  cursor: pointer;
+}
+
+/* ---- Action bar (Setel Ulang / Simpan) ---- */
+
+.card-style-actionbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  padding-bottom: calc(var(--space-md) + env(safe-area-inset-bottom, 0px));
+  background-color: var(--color-bg);
+  border-top: 1px solid var(--color-border);
+}
+
+.card-style-actionbar .modal-btn {
+  flex: 1;
+}

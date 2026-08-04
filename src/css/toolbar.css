@@ -1,0 +1,558 @@
+/* ==========================================================================
+   toolbar.css
+   Floating Toolbar — solid style, icon buttons, dropdown, scroll horizontal.
+   ========================================================================== */
+
+/* ==========================================================================
+   Baris 1 (topbar): back button, Undo, Redo, Text, Style, List, Block,
+   Insert, Hapus Format, Read Only — SELALU 10 slot, grid rata (1fr masing2),
+   TIDAK bisa discroll kesamping. Lebar tiap slot otomatis = lebar
+   .note-topbar-row dibagi 10 dikurangi gap (ditangani CSS grid). Struktur
+   ini didefinisikan di layout.css (.note-topbar-row); di sini cuma
+   override sizing tombol supaya ikut mengisi penuh kolom grid-nya
+   (bukan flex 0 0 auto seperti tombol di dalam child bar/panel). Undo &
+   Redo sekarang slot sendiri-sendiri, jadi cukup ikut rule yang sama
+   dengan tombol lain — tidak butuh wrapper/rule khusus lagi. */
+.note-topbar-row > .note-back-btn,
+.note-topbar-row > .toolbar-btn {
+  width: 100%;
+  min-width: 0;
+}
+
+/* ==========================================================================
+   Baris 2 (child bar): isi dari menu kelompok (Text/Style/List/Block/
+   Insert) yang sedang aktif. Hanya SATU .toolbar-child-group yang tampil;
+   isinya icon-only, lebar tiap tombol = lebar child bar dibagi jumlah
+   menu di kelompok itu (flex sama rata, tidak scroll kesamping).
+   ========================================================================== */
+.toolbar-child-bar {
+  position: relative;
+  display: flex;
+  padding: 6px 5px 5px;
+}
+.toolbar-child-bar[hidden] { display: none; }
+
+/* Divider tipis antara baris 1 (topbar) & baris 2 (child bar). Sengaja
+   width 90% (bukan 100%/full) biar ada sedikit jarak dari tepi kiri-kanan,
+   ::before ditempel di posisi absolute top:0 supaya persis di batas atas
+   child bar tanpa ikut makan ruang flex (dan otomatis ikut hidden saat
+   .toolbar-child-bar[hidden], karena elemen induknya display:none). */
+.toolbar-child-bar::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  height: 1px;
+  background-color: var(--color-border);
+}
+
+.toolbar-child-bar {
+  animation: colorBarIn var(--anim-scale) var(--ease-standard) both;
+}
+
+.toolbar-child-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+}
+.toolbar-child-group[hidden] { display: none; }
+
+.toolbar-child-group > .toolbar-btn,
+.toolbar-child-group > .toolbar-swatch {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* Tombol menu kelompok (Text/Style/List/Block/Insert) di baris 1 — dapat
+   state "terbuka" sendiri (beda dari .is-active toggle format biasa),
+   dipasang/dilepas oleh openChildGroup()/closeChildGroup() di dom.js. */
+.toolbar-btn.is-open {
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+/* Indikator kecil "tombol ini punya child" — segitiga miring tipis di
+   pojok kanan-bawah, cuma dipasang di tombol menu kelompok (Text/Style/
+   List/Block/Insert), bukan tombol aksi biasa (Undo/Redo/Hapus Format/
+   dst). Dibuat pakai border-trick (tanpa nambah markup), warnanya ikut
+   warna teks tombol saat ini (currentColor) supaya otomatis kebawa saat
+   tombolnya .is-open (jadi warna aksen).*/
+.toolbar-btn--group {
+  position: relative;
+}
+.toolbar-btn--group::after {
+  content: "";
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 5px 5px 0;
+  border-color: transparent transparent currentColor transparent;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.toolbar-btn--group-text { font-weight: var(--weight-bold); }
+
+/* Sama seperti .toolbar-btn--group::after di atas, versi untuk child bar
+   (baris 2): dipasang cuma di tombol yang membuka dropdown lewat openPanel()
+   (Heading, Font Family, Font Size, Perataan Teks, Line Height, Letter
+   Spacing, Hyperlink) ATAU color picker lewat openColorBar() (Warna Teks,
+   Highlight) — lihat src/js/utils/dom.js. TIDAK dipasang di tombol aksi
+   langsung sekali klik (Bold/Italic/Underline/Strikethrough, List,
+   Quote/Divider) atau yang membuka bottom sheet, bukan dropdown (Sisipkan
+   Gambar/Scene/Musik). Dipasang di elemen tombolnya sendiri (`.toolbar-btn`
+   ATAU `.toolbar-swatch`, BUKAN `.toolbar-swatch__glyph` yang sudah punya
+   `::after` sendiri untuk garis warna) — warnanya currentColor supaya ikut
+   berubah ke warna aksen saat tombolnya `.is-open`. */
+.toolbar-btn--has-dropdown {
+  position: relative;
+}
+.toolbar-btn--has-dropdown::after {
+  content: "";
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 5px 5px 0;
+  border-color: transparent transparent currentColor transparent;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* Glyph icon-only untuk Heading / Font Family / Font Size di child bar
+   Text — dulu berupa dropdown berlabel teks ("Paragraf ▾", "Inter ▾",
+   "16 ▾"), sekarang jadi tombol icon saja sama seperti Bold/Italic/dst. */
+.toolbar-btn--heading { font-weight: var(--weight-bold); font-size: var(--text-base); }
+.toolbar-btn--fontfamily { font-weight: var(--weight-semibold); font-size: var(--text-sm); }
+
+.toolbar-btn--fontsize-icon {
+  display: flex;
+  align-items: baseline;
+  gap: 1px;
+}
+.toolbar-btn--fontsize-icon .fs-lg { font-size: 15px; font-weight: var(--weight-semibold); }
+.toolbar-btn--fontsize-icon .fs-sm { font-size: 10px; font-weight: var(--weight-semibold); }
+
+.toolbar-btn {
+  flex: 0 0 auto;
+  padding: 5px;
+  min-width: 36px;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  font-size: var(--text-base);
+  transition: background-color var(--duration-fast) var(--ease-out),
+              transform var(--duration-instant) var(--ease-out);
+}
+
+.toolbar-btn:hover {
+  background-color: var(--color-accent-soft);
+}
+
+.toolbar-btn:active {
+  transform: scale(0.96);
+}
+
+.toolbar-btn.is-active {
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.toolbar-btn:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.toolbar-btn--bold   { font-weight: var(--weight-bold); }
+.toolbar-btn--italic { font-style: italic; }
+.toolbar-btn--underline { text-decoration: underline; }
+.toolbar-btn--strike { text-decoration: line-through; }
+
+/* Toggle "Set as Current Style" (child bar Text & Style, paling kanan) —
+   icon bintang/pin, cuma outline saat nonaktif, terisi penuh (fill:
+   currentColor menimpa fill="none" bawaan svg-nya) saat aktif supaya beda
+   statusnya kebaca jelas walau tanpa label teks (icon-only). */
+.toolbar-btn--keep-style.is-active svg {
+  fill: currentColor;
+}
+
+/* Dropdown trigger (Heading, Font Family, Font Size, dst.) */
+.toolbar-dropdown {
+  flex: 0 0 auto;
+  padding: 5px;
+  min-width: 36px;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.toolbar-dropdown:hover {
+  background-color: var(--color-accent-soft);
+}
+
+.toolbar-dropdown.is-active {
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.toolbar-dropdown__chevron {
+  font-size: var(--text-2xs);
+  color: var(--color-text-secondary);
+}
+
+/* Color / highlight swatch button */
+.toolbar-swatch {
+  flex: 0 0 auto;
+  padding: 5px;
+  min-width: 36px;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+}
+
+.toolbar-swatch:hover {
+  background-color: var(--color-accent-soft);
+}
+
+.toolbar-swatch:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.toolbar-swatch__glyph {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  position: relative;
+}
+
+.toolbar-swatch__glyph::after {
+  content: "";
+  position: absolute;
+  left: -2px;
+  right: -2px;
+  bottom: -3px;
+  height: 3px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-accent);
+}
+
+.toolbar-swatch--highlight .toolbar-swatch__glyph {
+  background-color: var(--highlight-amber);
+  padding: 0 var(--space-2xs);
+  border-radius: var(--radius-xs);
+}
+.toolbar-swatch--highlight .toolbar-swatch__glyph::after {
+  content: none;
+}
+
+@keyframes cornerIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ==========================================================================
+   Dropdown open state & floating panels (heading, font size/weight, align,
+   text color, highlight). Panel-nya sendiri dipasang lewat JS (dom.js
+   openPanel) sebagai elemen fixed di document.body, supaya tidak terpotong
+   overflow-x:auto milik .toolbar-child-bar/.color-picker-bar.
+   ========================================================================== */
+
+.toolbar-dropdown.is-open,
+.toolbar-swatch.is-open {
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.toolbar-panel {
+  position: fixed;
+  z-index: var(--z-dropdown);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 6px 16px rgba(var(--shadow-color), 0.12);
+  padding: var(--space-xs);
+  width: max-content;
+  animation: panelIn var(--anim-scale) var(--ease-standard) both;
+}
+
+@keyframes panelIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Dipasang lewat close() di dom.js (openPanel) pas panel mulai ditutup —
+   durasinya (var(--anim-scale)) HARUS sinkron dengan PANEL_CLOSE_ANIM_MS di
+   dom.js, supaya elemen baru benar-benar dilepas dari DOM setelah animasi
+   keluarnya kelar. pointer-events dimatikan supaya panel yang lagi
+   memudar tidak bisa lagi diklik. */
+.toolbar-panel.is-closing {
+  animation: panelOut var(--anim-scale) var(--ease-standard) both;
+  pointer-events: none;
+}
+
+@keyframes panelOut {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(-6px) scale(0.97); }
+}
+
+.toolbar-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 60vh;
+  overflow-y: auto;
+  min-width: 168px;
+}
+
+.toolbar-panel__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-sm);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  text-align: left;
+  white-space: nowrap;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.toolbar-panel__item:hover {
+  background-color: var(--color-accent-soft);
+}
+
+.toolbar-panel__item.is-active {
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-weight: var(--weight-semibold);
+}
+
+.toolbar-panel__item--heading-1 { font-size: var(--text-xl); font-weight: var(--weight-semibold); }
+.toolbar-panel__item--heading-2 { font-size: var(--text-lg); font-weight: var(--weight-semibold); }
+.toolbar-panel__item--heading-3 { font-size: var(--text-md); font-weight: var(--weight-semibold); }
+
+.toolbar-panel__item--align svg { flex: 0 0 auto; }
+
+.toolbar-panel__empty {
+  padding: var(--space-sm);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.toolbar-panel__item--manage-fonts {
+  border-top: 1px solid var(--color-border);
+  margin-top: var(--space-2xs);
+  padding-top: var(--space-sm);
+  color: var(--color-accent);
+  font-weight: var(--weight-medium);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.toolbar-panel__item--manage-fonts:hover {
+  background-color: var(--color-accent-soft);
+}
+
+.toolbar-panel__colors {
+  display: grid;
+  grid-template-columns: repeat(4, 32px);
+  gap: var(--space-xs);
+  padding: var(--space-2xs);
+  width: max-content;
+}
+
+.toolbar-panel__swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-text-primary);
+  transition: transform var(--duration-instant) var(--ease-out);
+}
+
+.toolbar-panel__swatch:hover {
+  transform: scale(1.08);
+}
+
+.toolbar-panel__swatch--none {
+  background-color: transparent;
+  background-image: linear-gradient(45deg, transparent 45%, var(--color-danger) 45%, var(--color-danger) 55%, transparent 55%);
+}
+
+.toolbar-panel__custom-color {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.toolbar-panel__custom-color input[type="color"] {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   Color bar (baris kedua .note-topbar) — Warna Teks & Highlight.
+   Dipakai oleh color-picker.js / highlight-picker.js lewat openColorBar()
+   di dom.js. Satu baris, flex:0 0 auto per swatch, scroll horizontal
+   ditangani oleh .color-picker-bar (layout.css).
+   ========================================================================== */
+
+.color-bar__swatch {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-text-primary);
+  transition: transform var(--duration-instant) var(--ease-out);
+}
+
+.color-bar__swatch:hover {
+  transform: scale(1.08);
+}
+
+.color-bar__swatch.is-active {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.color-bar__swatch--none {
+  background-color: transparent;
+  background-image: linear-gradient(45deg, transparent 45%, var(--color-danger) 45%, var(--color-danger) 55%, transparent 55%);
+}
+
+.color-bar__divider {
+  flex: 0 0 auto;
+  width: 1px;
+  height: 24px;
+  background-color: var(--color-border);
+  margin: 0 var(--space-2xs);
+}
+
+.color-bar__custom {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  padding: var(--space-2xs) var(--space-xs);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.color-bar__custom:hover {
+  background-color: var(--color-accent-soft);
+}
+
+.color-bar__custom.is-active {
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.color-bar__custom.is-active input[type="color"] {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.color-bar__custom input[type="color"] {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+}
+
+/* Panel Hyperlink */
+.toolbar-panel__link {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-sm);
+  width: min(280px, 80vw);
+}
+
+.toolbar-panel__link-input {
+  height: var(--touch-target-min);
+  padding: 0 var(--space-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-base);
+  color: var(--color-text-primary);
+  background-color: var(--color-surface);
+}
+
+.toolbar-panel__link-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.toolbar-panel__link-hint {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.toolbar-panel__link-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-xs);
+}
+
+.toolbar-panel__link-remove,
+.toolbar-panel__link-apply {
+  height: var(--touch-target-min);
+  padding: 0 var(--space-sm);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.toolbar-panel__link-remove {
+  color: var(--color-danger);
+}
+
+.toolbar-panel__link-remove:hover {
+  background-color: var(--color-accent-soft);
+}
+
+.toolbar-panel__link-apply {
+  background-color: var(--color-accent);
+  color: var(--color-surface);
+}
+
+.toolbar-panel__link-apply:hover {
+  opacity: 0.92;
+}

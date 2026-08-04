@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Customisasi Kartu — Catatan</title>
+
+<!-- ============ PWA: Manifest, Theme Color, App Icon, Splash Screen ============ -->
+<link rel="manifest" href="/manifest.json">
+<script src="/vendor/capacitor-filesystem.js"></script>
+<meta name="theme-color" content="#1E1E1E">
+<script>
+  // Terapkan tema tersimpan SEBELUM stylesheet dirender, supaya tidak ada
+  // kedip ke tema default — sekalian sinkronkan warna status bar
+  // (meta theme-color) dengan warna background tema tersebut. Peta warna
+  // di bawah HARUS sama dengan `swatch` di THEMES (lihat
+  // src/js/themes/theme-manager.js) & --color-bg per tema di
+  // src/css/themes.css.
+  (function () {
+    var THEME_COLORS = { light: "#FFFFFF", dark: "#17181C", sepia: "#F4ECD8", paper: "#FBFAF5", oled: "#000000" };
+    try {
+      var t = localStorage.getItem("notes-app-theme");
+      if (t) document.documentElement.setAttribute("data-theme", t);
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute("content", THEME_COLORS[t] || THEME_COLORS.light);
+    } catch (e) {}
+  })();
+</script>
+<link rel="icon" href="/assets/icons/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="192x192" href="/assets/icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/assets/icons/icon-512.png">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link rel="apple-touch-startup-image" href="/assets/splash/splash-screen.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Meimo">
+<meta name="mobile-web-app-capable" content="yes">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/src/css/variables.css">
+<link rel="stylesheet" href="/src/css/themes.css">
+<link rel="stylesheet" href="/src/css/base.css">
+<link rel="stylesheet" href="/src/css/typography.css">
+<link rel="stylesheet" href="/src/css/layout.css">
+<link rel="stylesheet" href="/src/css/notes-list.css">
+<link rel="stylesheet" href="/src/css/toolbar.css">
+<link rel="stylesheet" href="/src/css/animations.css">
+<link rel="stylesheet" href="/src/css/view-transitions.css">
+<link rel="stylesheet" href="/src/css/responsive.css">
+<link rel="stylesheet" href="/src/css/components.css">
+<link rel="stylesheet" href="/src/css/skeleton.css">
+<link rel="stylesheet" href="/src/css/card-style.css">
+</head>
+<body>
+
+<div class="page">
+
+  <!-- ============ HEADER ============ -->
+  <header class="home-header">
+    <div style="display:flex; align-items:center; gap: var(--space-sm);">
+      <a href="/library" class="note-back-btn" aria-label="Kembali">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+      </a>
+      <div class="home-greeting">Customisasi Kartu</div>
+    </div>
+  </header>
+
+  <!-- ============ CONTENT ============ -->
+  <!-- Dirender & dikelola oleh src/js/notes/card-style.js. Pratinjau kartu
+       (#cardPreviewSlot) memakai fungsi render kartu yang sama dengan Notes
+       List (createNoteCard di notes/note-card.js) supaya hasilnya identik
+       persis dengan tampilan di Home. -->
+  <main class="home-content card-style-page">
+
+    <!-- Skeleton loading: boot() di card-style.js nunggu loadNote() +
+         ensureInstalledFontsLoaded()/getAvailableFonts() (IndexedDB) dulu
+         sebelum apa pun dirender, jadi tanpa ini halaman kelihatan
+         kosong/kedip putih sesaat. Bentuknya sengaja disamakan section per
+         section dengan layout ASLI di bawah (Pratinjau, Font Judul, Bentuk
+         Edge, Warna Latar, Gambar Latar) — beda dari skeleton grid kartu
+         (Home) atau skeleton baris list generik (Font Library/Cadangkan/
+         Sampah). Ditampilkan by default sejak first paint (tanpa nunggu
+         JS), disembunyikan begitu render pertama selesai (lihat boot()
+         di card-style.js). -->
+    <div id="cardStyleSkeleton" class="card-style-skeleton skeleton-overlay" aria-hidden="true">
+      <div class="card-style-skeleton__preview">
+        <div class="skeleton-bar card-style-skeleton__preview-card"></div>
+      </div>
+      <div>
+        <div class="skeleton-bar card-style-skeleton__label"></div>
+        <div class="skeleton-bar card-style-skeleton__select"></div>
+      </div>
+      <div>
+        <div class="skeleton-bar card-style-skeleton__label"></div>
+        <div class="card-style-skeleton__shapes">
+          <div class="skeleton-bar card-style-skeleton__shape"></div>
+          <div class="skeleton-bar card-style-skeleton__shape"></div>
+          <div class="skeleton-bar card-style-skeleton__shape"></div>
+          <div class="skeleton-bar card-style-skeleton__shape"></div>
+          <div class="skeleton-bar card-style-skeleton__shape"></div>
+        </div>
+      </div>
+      <div>
+        <div class="skeleton-bar card-style-skeleton__label"></div>
+        <div class="card-style-skeleton__colors">
+          <div class="skeleton-bar card-style-skeleton__color"></div>
+          <div class="skeleton-bar card-style-skeleton__color"></div>
+          <div class="skeleton-bar card-style-skeleton__color"></div>
+          <div class="skeleton-bar card-style-skeleton__color"></div>
+          <div class="skeleton-bar card-style-skeleton__color"></div>
+        </div>
+      </div>
+      <div>
+        <div class="skeleton-bar card-style-skeleton__label"></div>
+        <div class="skeleton-bar card-style-skeleton__upload-btn"></div>
+      </div>
+    </div>
+
+    <section class="section">
+      <div class="section-header">
+        <span class="section-title">Pratinjau</span>
+      </div>
+      <div id="cardPreviewSlot" class="card-style-preview"></div>
+    </section>
+
+    <section class="section">
+      <div class="section-header">
+        <span class="section-title">Font Judul</span>
+      </div>
+      <button type="button" id="fontSelect" class="card-style-select card-style-select--custom" aria-haspopup="listbox" aria-expanded="false">
+        <span id="fontSelectLabel" class="card-style-select__label">Default</span>
+        <svg class="card-style-select__chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </button>
+    </section>
+
+    <section class="section">
+      <div class="section-header">
+        <span class="section-title">Bentuk Edge (Keliling)</span>
+      </div>
+      <div id="edgeShapeList" class="card-style-shape-scroll"></div>
+    </section>
+
+    <section class="section">
+      <div class="section-header">
+        <span class="section-title">Warna Latar</span>
+      </div>
+      <div class="card-style-color-scroll">
+        <div id="bgColorList" class="card-style-color-scroll__presets"></div>
+        <label class="card-style-color-swatch card-style-color-swatch--custom" title="Warna kustom">
+          <input type="color" id="bgColorCustom" value="#4A55C7">
+        </label>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-header">
+        <span class="section-title">Gambar Latar <span class="card-style-optional-tag">(opsional)</span></span>
+      </div>
+      <div class="card-style-bg-image">
+        <input type="file" id="bgImageInput" accept="image/*" hidden>
+        <button type="button" id="bgImageUploadBtn" class="card-style-btn card-style-btn--primary">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+          <span>Unggah Gambar</span>
+        </button>
+        <button type="button" id="bgImageRemoveBtn" class="card-style-btn card-style-btn--danger" hidden>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>
+          <span>Hapus Gambar</span>
+        </button>
+      </div>
+      <div id="bgImageOpacityRow" class="card-style-opacity-row" hidden>
+        <label for="bgImageOpacity" class="card-style-opacity-row__label">Opacity</label>
+        <input type="range" id="bgImageOpacity" min="0" max="1" step="0.05" value="1">
+        <span id="bgImageOpacityValue" class="card-style-opacity-row__value">100%</span>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============ ACTION BAR ============ -->
+  <div class="card-style-actionbar">
+    <button type="button" id="resetBtn" class="modal-btn modal-btn--ghost">Setel Ulang</button>
+    <button type="button" id="saveBtn" class="modal-btn modal-btn--primary">Simpan</button>
+  </div>
+
+</div>
+
+<script type="module" src="/src/js/notes/card-style.js"></script>
+
+<!-- ============ PWA: Service Worker (mode offline) ============ -->
+<script type="module" src="/src/js/pwa/sw-register.js"></script>
+<script type="module" src="/src/js/pwa/install-prompt.js"></script>
+<script type="module" src="/src/js/utils/native-feel.js"></script>
+
+</body>
+</html>

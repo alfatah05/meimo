@@ -1,0 +1,116 @@
+/* ==========================================================================
+   themes.css
+   Token warna per tema. Aktif lewat atribut [data-theme] pada <html>.
+   Sumber: DESIGN_SYSTEM.md — identitas accent "Ink" konsisten di semua tema.
+   ========================================================================== */
+
+:root,
+[data-theme="light"] {
+  --color-bg: #FFFFFF;
+  --color-surface: #F6F6F8;
+  --color-text-primary: #1B1B1F;
+  --color-text-secondary: #6E6E76;
+  --color-border: #E6E6EA;
+  --color-accent: #4A55C7;
+  --color-accent-soft: rgba(74, 85, 199, 0.12);
+  --color-danger: #E5484D;
+
+  --glass-bg: rgba(255, 255, 255, 0.65);
+  --glass-border: rgba(255, 255, 255, 0.25);
+  --shadow-color: 0, 0, 0;
+}
+
+[data-theme="dark"] {
+  --color-bg: #17181C;
+  --color-surface: #1F2025;
+  --color-text-primary: #ECECEF;
+  --color-text-secondary: #9A9AA2;
+  --color-border: #2B2C32;
+  --color-accent: #8892F0;
+  --color-accent-soft: rgba(136, 146, 240, 0.16);
+  --color-danger: #FF6369;
+
+  --glass-bg: rgba(32, 33, 39, 0.55);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --shadow-color: 0, 0, 0;
+}
+
+[data-theme="sepia"] {
+  --color-bg: #F4ECD8;
+  --color-surface: #ECE0C3;
+  --color-text-primary: #3B3021;
+  --color-text-secondary: #7C6D51;
+  --color-border: #DDCBA2;
+  --color-accent: #8A5A34;
+  --color-accent-soft: rgba(138, 90, 52, 0.14);
+  --color-danger: #C1453D;
+
+  --glass-bg: rgba(244, 236, 216, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.3);
+  --shadow-color: 59, 48, 33;
+}
+
+[data-theme="paper"] {
+  --color-bg: #FBFAF5;
+  --color-surface: #F1EFE6;
+  --color-text-primary: #26241F;
+  --color-text-secondary: #6B675C;
+  --color-border: #E2DFD1;
+  --color-accent: #4A55C7;
+  --color-accent-soft: rgba(74, 85, 199, 0.12);
+  --color-danger: #D14A45;
+
+  --glass-bg: rgba(251, 250, 245, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.35);
+  --shadow-color: 38, 36, 31;
+}
+
+[data-theme="oled"] {
+  --color-bg: #000000;
+  --color-surface: #0C0C0E;
+  --color-text-primary: #E7E7EA;
+  --color-text-secondary: #87878E;
+  --color-border: #1B1B1E;
+  --color-accent: #8F99F2;
+  --color-accent-soft: rgba(143, 153, 242, 0.16);
+  --color-danger: #FF6369;
+
+  --glass-bg: rgba(13, 13, 15, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --shadow-color: 0, 0, 0;
+}
+
+/* Highlight preset — konsisten lintas tema */
+:root {
+  --highlight-amber: rgba(245, 200, 66, 0.35);
+  --highlight-mint: rgba(95, 217, 166, 0.35);
+  --highlight-sky: rgba(111, 182, 245, 0.35);
+  --highlight-rose: rgba(245, 135, 154, 0.35);
+  --highlight-lavender: rgba(183, 156, 240, 0.35);
+  --highlight-lime: rgba(163, 214, 84, 0.35);
+  --highlight-peach: rgba(245, 165, 120, 0.35);
+  --highlight-aqua: rgba(94, 214, 214, 0.35);
+  --highlight-grape: rgba(196, 120, 214, 0.35);
+}
+
+/* Preset background Scene (scene-sheet.js) — SENGAJA rgba tipis (bukan hex
+   solid per tema) supaya satu definisi warna otomatis "ikut" tema aktif:
+   bercampur dengan --color-bg yang ada di baliknya, jadi pastel lembut di
+   atas latar terang (light/paper/sepia) dan jadi gelap pekat/berkarakter di
+   atas latar gelap (dark/oled) — TANPA perlu menuliskan set warna terpisah
+   untuk tiap-tiap dari 5 tema. Alpha sengaja lebih rendah dari
+   --highlight-* di atas (yang cuma menyorot inline teks) karena warna ini
+   menutupi area Scene yang jauh lebih luas. */
+:root {
+  --scene-bg-rose: rgba(245, 135, 154, 0.20);
+  --scene-bg-peach: rgba(245, 165, 120, 0.20);
+  --scene-bg-amber: rgba(245, 200, 66, 0.20);
+  --scene-bg-lime: rgba(163, 214, 84, 0.18);
+  --scene-bg-mint: rgba(95, 217, 166, 0.18);
+  --scene-bg-aqua: rgba(94, 214, 214, 0.18);
+  --scene-bg-sky: rgba(111, 182, 245, 0.18);
+  --scene-bg-periwinkle: rgba(120, 140, 240, 0.18);
+  --scene-bg-lavender: rgba(183, 156, 240, 0.20);
+  --scene-bg-grape: rgba(196, 120, 214, 0.18);
+  --scene-bg-gray: rgba(120, 120, 132, 0.16);
+}

@@ -1,0 +1,153 @@
+/* ==========================================================================
+   music.css
+   Tombol play musik PERSISTEN di area catatan (Root Editor / Divider /
+   Scene) — lihat blok komentar panjang di src/js/toolbar/music-sheet.js
+   untuk cara tombol ini disinkronkan ke DOM. Styling bottom sheet "Insert
+   Music" sendiri dipakai bareng dari image-sheet.css/scene-sheet.css lewat
+   class ganda (`class="music-sheet image-sheet"`), sama seperti scene-sheet
+   — file ini cuma berisi beberapa bit kecil yang khas sheet musik, plus
+   seluruh styling tombol play-nya.
+   ========================================================================== */
+
+.music-player {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  max-width: 100%;
+  padding: 6px 12px 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background-color: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: var(--text-xs);
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: border-color var(--duration-fast) var(--ease-out),
+              background-color var(--duration-fast) var(--ease-out);
+}
+
+.music-player:hover {
+  border-color: var(--color-accent);
+}
+
+.music-player.is-playing {
+  border-color: var(--color-accent);
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.music-player__icon {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: var(--color-accent);
+  color: #FFFFFF;
+}
+
+.music-player__icon svg {
+  width: 12px;
+  height: 12px;
+}
+
+.music-player__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+  font-weight: var(--weight-medium);
+}
+
+/* ---- Root Editor: kiri atas isi editor, sebelum block pertama ---- */
+.music-player--root {
+  margin-bottom: var(--space-sm);
+}
+
+/* Note yang isinya (baru) musik Root saja, belum ada teks sama sekali —
+   placeholder ".note-body-field.is-empty::before" (editor.css) normalnya
+   duduk di posisi statis paling atas isi editor, PERSIS tempat tombol
+   musik Root ini sekarang berada. Turunkan placeholder-nya sedikit supaya
+   tidak numpuk dengan tombol. */
+.note-body-field.is-empty:has(> .music-player--root)::before {
+  top: 44px;
+}
+
+/* ---- Divider: tepat di bawah Divider, rata kiri ----
+   .editor-block--divider punya margin-bottom besar (var(--space-lg), lihat
+   editor.css) supaya ada jarak lega dari teks sesudahnya — begitu ada
+   tombol musik menyusul persis di bawahnya, jarak itu terasa berlebihan
+   (bar+jarak+tombol+jarak lagi). `:has()` di sini menciutkan margin-bottom
+   Divider itu KHUSUS saat diikuti tombol musik, supaya tombolnya menempel
+   wajar tepat di bawah garisnya. */
+.editor-block--divider:has(+ .music-player--divider) {
+  margin-bottom: var(--space-sm);
+}
+
+.music-player--divider {
+  display: flex;
+  width: fit-content;
+  margin-bottom: var(--space-lg);
+}
+
+/* ---- Scene: kiri atas Scene, mengambang di atas isinya (posisi sama
+   persis dengan chip "Scene" di scene.css, cuma di sudut sebaliknya —
+   supaya tidak pernah bertabrakan dengan chip itu kalau kedua-duanya
+   sama-sama tampil bersamaan). Turun sedikit dari sudut supaya tidak
+   "nabrak" tepi luar Scene (apalagi kalau edgeStyle-nya bukan straight —
+   ada bar bentuk tepi setinggi 22px di paling atas, lihat scene.css). ---- */
+.music-player--scene {
+  position: absolute;
+  top: 29px;
+  left: var(--space-sm);
+  z-index: 5;
+  box-shadow: 0 2px 8px rgba(var(--shadow-color), 0.12);
+}
+
+/* Sisakan ruang di atas teks Scene supaya tidak ketiban pill musik yang
+   mengambang itu — cuma diterapkan kalau Scene-nya memang punya musik
+   (`:has()`), Scene lain tanpa musik tetap pakai padding normalnya.
+   Edge non-straight sudah dapat "jatah" 22px gratis dari bar
+   .editor-scene__edge--top yang duduk di ATAS body (lihat scene.css),
+   jadi body-nya cukup kompensasi +49px. Edge straight TIDAK punya bar
+   itu sama sekali, jadi body-nya mulai persis dari puncak Scene —
+   perlu kompensasi tambahan +22px (menggantikan tinggi bar yang hilang)
+   supaya teksnya tidak ketiban pill. */
+.editor-scene:has(> .music-player--scene) > .editor-scene__body {
+  padding-top: calc(var(--scene-padding, 24px) + 49px);
+}
+
+.editor-scene[data-edge-style="straight"]:has(> .music-player--scene) > .editor-scene__body {
+  padding-top: calc(var(--scene-padding, 24px) + 71px);
+}
+
+/* ---- Bottom sheet "Insert Music": bit kecil yang khas ---- */
+.music-sheet__file-label {
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Tombol "Pilih Lagu" sekarang menyatu dalam section yang sama dengan
+   label & kotak nama berkas (lihat music-sheet.js) — bukan section
+   sendiri lagi — jadi butuh jarak atasnya sendiri (dulu didapat gratis
+   dari margin-bottom section sebelumnya). */
+.music-sheet__upload-btn {
+  margin-top: var(--space-xs);
+}
+
+@media (max-width: 640px) {
+  .music-player__label {
+    max-width: 140px;
+  }
+}

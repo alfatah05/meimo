@@ -1,0 +1,49 @@
+/* ==========================================================================
+   responsive.css
+   Penyesuaian tambahan lintas breakpoint (mobile-first).
+   Breakpoint acuan: mobile < 640px, tablet 640–1024px, desktop > 1024px.
+   ========================================================================== */
+
+@media (min-width: 640px) {
+  .home-header,
+  .home-content {
+    padding-left: var(--space-lg);
+    padding-right: var(--space-lg);
+  }
+}
+
+@media (min-width: 1024px) {
+  .home-header,
+  .home-content {
+    padding-left: var(--space-2xl);
+    padding-right: var(--space-2xl);
+  }
+}
+
+/* FAB sedikit lebih kecil di layar sangat kecil agar tidak menutupi konten */
+@media (max-width: 360px) {
+  .fab {
+    width: 52px;
+    height: 52px;
+    right: var(--space-md);
+    bottom: var(--space-md);
+  }
+}
+
+/* ---- Editor: mobile-first fine-tuning ---- */
+
+/* Base (mobile) sudah didesain lega untuk jempol & layar sempit.
+   Di layar sangat kecil, judul sedikit diperkecil agar tidak wrap 3 baris. */
+@media (max-width: 360px) {
+  .note-title-field {
+    font-size: var(--text-4xl);
+  }
+}
+
+/* Tablet ke atas: beri sedikit lebih banyak jarak dari tepi layar */
+@media (min-width: 640px) {
+  .note-topbar {
+    left: var(--space-lg);
+    right: var(--space-lg);
+  }
+}

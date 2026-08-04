@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Tentang Catatan</title>
+
+<!-- ============ PWA: Manifest, Theme Color, App Icon, Splash Screen ============ -->
+<link rel="manifest" href="/manifest.json">
+<script src="/vendor/capacitor-filesystem.js"></script>
+<meta name="theme-color" content="#1E1E1E">
+<script>
+  // Terapkan tema tersimpan SEBELUM stylesheet dirender, supaya tidak ada
+  // kedip ke tema default — sekalian sinkronkan warna status bar
+  // (meta theme-color) dengan warna background tema tersebut. Peta warna
+  // di bawah HARUS sama dengan `swatch` di THEMES (lihat
+  // src/js/themes/theme-manager.js) & --color-bg per tema di
+  // src/css/themes.css.
+  (function () {
+    var THEME_COLORS = { light: "#FFFFFF", dark: "#17181C", sepia: "#F4ECD8", paper: "#FBFAF5", oled: "#000000" };
+    try {
+      var t = localStorage.getItem("notes-app-theme");
+      if (t) document.documentElement.setAttribute("data-theme", t);
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute("content", THEME_COLORS[t] || THEME_COLORS.light);
+    } catch (e) {}
+  })();
+</script>
+<link rel="icon" href="/assets/icons/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="192x192" href="/assets/icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/assets/icons/icon-512.png">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link rel="apple-touch-startup-image" href="/assets/splash/splash-screen.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Meimo">
+<meta name="mobile-web-app-capable" content="yes">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/src/css/variables.css">
+<link rel="stylesheet" href="/src/css/themes.css">
+<link rel="stylesheet" href="/src/css/base.css">
+<link rel="stylesheet" href="/src/css/typography.css">
+<link rel="stylesheet" href="/src/css/layout.css">
+<link rel="stylesheet" href="/src/css/toolbar.css">
+<link rel="stylesheet" href="/src/css/animations.css">
+<link rel="stylesheet" href="/src/css/view-transitions.css">
+<link rel="stylesheet" href="/src/css/responsive.css">
+<link rel="stylesheet" href="/src/css/components.css">
+<link rel="stylesheet" href="/src/css/about.css">
+</head>
+<body>
+
+<div class="page">
+
+  <!-- ============ HEADER (Tentang) ============ -->
+  <header class="home-header">
+    <div style="display:flex; align-items:center; gap: var(--space-sm);">
+      <a href="/library" class="note-back-btn" aria-label="Kembali">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+      </a>
+      <div class="home-greeting">Tentang</div>
+    </div>
+  </header>
+
+  <!-- ============ CONTENT ============ -->
+  <main class="home-content">
+
+    <div class="about-hero anim-fade-in">
+      <img class="about-hero__icon" src="/assets/icons/icon-192.png" alt="Ikon aplikasi Meimo">
+      <div class="about-hero__name">Meimo</div>
+      <p class="about-hero__tagline">Aplikasi catatan pribadi offline-first dengan editor kaya format. Semua catatan tersimpan di perangkatmu sendiri.</p>
+    </div>
+
+    <section class="about-section">
+      <div class="about-section__title">Deskripsi Aplikasi</div>
+      <p>Meimo adalah aplikasi catatan pribadi yang dibangun sebagai PWA (Progressive Web App), bisa dipasang di ponsel atau desktop seperti aplikasi biasa, dan tetap bisa dibuka meski tanpa koneksi internet. Seluruh catatan disimpan langsung di perangkatmu (IndexedDB), bukan di server, jadi datamu tetap privat dan sepenuhnya di tanganmu sendiri.</p>
+      <p>Editornya mendukung format teks yang cukup lengkap layaknya aplikasi catatan modern, dengan berbagai opsi kustomisasi tampilan supaya tiap catatan bisa terasa personal.</p>
+    </section>
+
+    <section class="about-section">
+      <div class="about-section__title">Fitur Utama</div>
+      <div class="about-feature-list">
+
+        <div class="about-feature">
+          <svg class="about-feature__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3z"></path>
+          </svg>
+          <div class="about-feature__text"><strong>Editor kaya format</strong>: bold, italic, underline, heading, list, quote, divider, hyperlink, warna teks & highlight, sampai font kustom.</div>
+        </div>
+
+        <div class="about-feature">
+          <svg class="about-feature__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="3" width="16" height="18" rx="2"></rect>
+            <path d="M8 3v4h8V3"></path>
+          </svg>
+          <div class="about-feature__text"><strong>100% offline-first</strong>: semua catatan tersimpan di perangkatmu sendiri lewat IndexedDB, tanpa perlu koneksi internet.</div>
+        </div>
+
+        <div class="about-feature">
+          <svg class="about-feature__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9"></circle>
+            <path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor" stroke="none" opacity="0.5"></path>
+          </svg>
+          <div class="about-feature__text"><strong>Kustomisasi tampilan</strong>: 5 pilihan tema (Light, Dark, Sepia, Paper, OLED), plus kustomisasi kartu catatan per-catatan (font judul, bentuk, warna, gambar latar).</div>
+        </div>
+
+        <div class="about-feature">
+          <svg class="about-feature__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3v12"></path>
+            <path d="M7 10l5 5 5-5"></path>
+            <path d="M4 19h16"></path>
+          </svg>
+          <div class="about-feature__text"><strong>Cadangkan &amp; impor</strong>: ekspor semua catatan sekaligus (lengkap dengan gambar/musiknya) jadi satu file <code>.zip</code>, atau satu catatan saja lewat format <code>.meimo</code> — keduanya bisa diimpor balik kapan saja, termasuk impor sekaligus dari file <code>.zip</code>-nya.</div>
+        </div>
+
+        <div class="about-feature">
+          <svg class="about-feature__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="5" y="2" width="14" height="20" rx="2"></rect>
+            <path d="M12 8v6"></path>
+            <path d="M9 11l3 3 3-3"></path>
+          </svg>
+          <div class="about-feature__text"><strong>Installable</strong>: bisa dipasang ke Home Screen ponsel atau desktop seperti aplikasi native, lengkap dengan splash screen &amp; ikon sendiri.</div>
+        </div>
+
+      </div>
+    </section>
+
+    <section class="about-section">
+      <div class="about-section__title">Kontributor</div>
+      <div class="about-creator-card">
+        <div class="about-creator-card__avatar">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="8" r="4"></circle>
+            <path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8"></path>
+          </svg>
+        </div>
+        <div>
+          <div class="about-creator-card__name">Nabil Alfatah</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="about-footer-note">Meimo, Catatan Pribadi</div>
+
+  </main>
+
+</div>
+
+<!-- ============ PWA: Service Worker (mode offline) ============ -->
+<script type="module" src="/src/js/pwa/sw-register.js"></script>
+<script type="module" src="/src/js/pwa/install-prompt.js"></script>
+<script type="module" src="/src/js/utils/native-feel.js"></script>
+<!-- Shortcut tersembunyi: double-click logo di atas -> reset Service
+     Worker/cache PWA (lihat factory-reset.js untuk detail & alasannya). -->
+<script type="module" src="/src/js/pwa/factory-reset.js"></script>
+
+</body>
+</html>

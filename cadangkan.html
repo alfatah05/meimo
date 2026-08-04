@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Cadangkan &amp; Impor — Catatan</title>
+
+<!-- ============ PWA: Manifest, Theme Color, App Icon, Splash Screen ============ -->
+<link rel="manifest" href="/manifest.json">
+<script src="/vendor/capacitor-filesystem.js"></script>
+<meta name="theme-color" content="#1E1E1E">
+<script>
+  // Terapkan tema tersimpan SEBELUM stylesheet dirender, supaya tidak ada
+  // kedip ke tema default — sekalian sinkronkan warna status bar
+  // (meta theme-color) dengan warna background tema tersebut. Peta warna
+  // di bawah HARUS sama dengan `swatch` di THEMES (lihat
+  // src/js/themes/theme-manager.js) & --color-bg per tema di
+  // src/css/themes.css.
+  (function () {
+    var THEME_COLORS = { light: "#FFFFFF", dark: "#17181C", sepia: "#F4ECD8", paper: "#FBFAF5", oled: "#000000" };
+    try {
+      var t = localStorage.getItem("notes-app-theme");
+      if (t) document.documentElement.setAttribute("data-theme", t);
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute("content", THEME_COLORS[t] || THEME_COLORS.light);
+    } catch (e) {}
+  })();
+</script>
+<link rel="icon" href="/assets/icons/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="192x192" href="/assets/icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/assets/icons/icon-512.png">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link rel="apple-touch-startup-image" href="/assets/splash/splash-screen.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Meimo">
+<meta name="mobile-web-app-capable" content="yes">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/src/css/variables.css">
+<link rel="stylesheet" href="/src/css/themes.css">
+<link rel="stylesheet" href="/src/css/base.css">
+<link rel="stylesheet" href="/src/css/typography.css">
+<link rel="stylesheet" href="/src/css/layout.css">
+<link rel="stylesheet" href="/src/css/notes-list.css">
+<link rel="stylesheet" href="/src/css/toolbar.css">
+<link rel="stylesheet" href="/src/css/animations.css">
+<link rel="stylesheet" href="/src/css/view-transitions.css">
+<link rel="stylesheet" href="/src/css/responsive.css">
+<link rel="stylesheet" href="/src/css/components.css">
+<link rel="stylesheet" href="/src/css/backup-import.css">
+<link rel="stylesheet" href="/src/css/skeleton.css">
+</head>
+<body>
+
+<div class="page">
+
+  <!-- ============ HEADER (Cadangkan & Impor) ============ -->
+  <header class="home-header">
+    <div style="display:flex; align-items:center; gap: var(--space-sm);">
+      <a href="/library" class="note-back-btn" aria-label="Kembali">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+      </a>
+      <div class="home-greeting">Cadangkan &amp; Impor</div>
+    </div>
+  </header>
+
+  <!-- ============ CONTENT ============ -->
+  <main class="home-content">
+
+    <!-- Dua aksi utama: Cadangkan (SEMUA catatan, tiap note jadi .meimo
+         LENGKAP dengan asset, dibungkus satu file .zip — lihat
+         backup-service.js) & Impor (SATU file .meimo, DENGAN asset — lihat
+         meimo-import.js). Beda cakupan (semua vs satu note), sengaja
+         dipisah jadi 2 tombol, bukan digabung jadi satu alur. -->
+    <section class="section">
+      <div class="backup-actions">
+        <button type="button" id="btnBackupAll" class="backup-action-btn">
+          <span class="backup-action-btn__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg>
+          </span>
+          <span class="backup-action-btn__text">
+            <span class="backup-action-btn__title">Cadangkan Semua Catatan</span>
+            <span class="backup-action-btn__desc">Unduh semua catatan sebagai .meimo (dengan gambar/musik), dibungkus satu file .zip</span>
+          </span>
+        </button>
+
+        <button type="button" id="btnImportMeimo" class="backup-action-btn">
+          <span class="backup-action-btn__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V9"/><path d="M7 14l5-5 5 5"/><path d="M4 5h16"/></svg>
+          </span>
+          <span class="backup-action-btn__text">
+            <span class="backup-action-btn__title">Impor Catatan (.meimo)</span>
+            <span class="backup-action-btn__desc">Masukkan satu file .meimo jadi catatan baru, lengkap dengan gambar/musiknya</span>
+          </span>
+        </button>
+        <input type="file" id="importFileInput" accept=".meimo" hidden>
+
+        <!-- Impor SEKALIGUS semua .meimo di dalam satu file .zip cadangan
+             (hasil tombol "Cadangkan Semua Catatan" di atas) — beda dari
+             tombol "Impor Catatan (.meimo)" yang cuma satu file/satu note.
+             Wiring & validasi isinya ada di backup-import.js, lewat
+             backup-service/backup-restore.js. -->
+        <button type="button" id="btnImportBackupZip" class="backup-action-btn">
+          <span class="backup-action-btn__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M12 9v6"/><path d="M9.5 12.5L12 15l2.5-2.5"/></svg>
+          </span>
+          <span class="backup-action-btn__text">
+            <span class="backup-action-btn__title">Impor Cadangan (.zip)</span>
+            <span class="backup-action-btn__desc">Masukkan satu file .zip cadangan, semua .meimo di dalamnya langsung diimpor sekaligus</span>
+          </span>
+        </button>
+        <input type="file" id="importBackupZipInput" accept=".zip" hidden>
+      </div>
+    </section>
+
+    <!-- Daftar catatan buat pilih mana yang mau diekspor jadi .meimo satuan
+         (DENGAN asset-nya) — beda dari "Cadangkan Semua Catatan" di atas.
+         Dirender oleh src/js/notes/backup-import.js. -->
+    <div id="exportListSkeleton" class="list-skeleton skeleton-overlay" aria-hidden="true">
+      <div class="skeleton-bar list-skeleton__row"></div>
+      <div class="skeleton-bar list-skeleton__row"></div>
+      <div class="skeleton-bar list-skeleton__row"></div>
+    </div>
+
+    <section id="exportListSection" class="section" hidden>
+      <div class="section-header">
+        <span class="section-title">Ekspor Satu Catatan</span>
+      </div>
+      <div id="exportList" class="notes-grid"></div>
+    </section>
+
+    <div id="exportEmptyState" class="empty-state anim-fade-in" hidden>
+      <svg class="empty-state__illustration" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M24 20h32l16 16v40a4 4 0 0 1-4 4H24a4 4 0 0 1-4-4V24a4 4 0 0 1 4-4z"></path>
+        <path d="M56 20v16h16"></path>
+      </svg>
+      <div class="empty-state__title">Belum ada catatan</div>
+      <p class="empty-state__desc">Catatan yang kamu buat akan muncul di sini untuk bisa diekspor satu per satu.</p>
+    </div>
+
+  </main>
+
+</div>
+
+<script type="module" src="/src/js/notes/backup-import.js"></script>
+
+<!-- ============ PWA: Service Worker (mode offline) ============ -->
+<script type="module" src="/src/js/pwa/sw-register.js"></script>
+<script type="module" src="/src/js/pwa/install-prompt.js"></script>
+<script type="module" src="/src/js/utils/native-feel.js"></script>
+
+</body>
+</html>

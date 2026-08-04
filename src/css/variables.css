@@ -1,0 +1,107 @@
+/* ==========================================================================
+   variables.css
+   Token struktural (bukan warna — warna ada di themes.css).
+   Sumber: DESIGN_SYSTEM.md
+   ========================================================================== */
+
+:root {
+  /* Spacing (base 4px) */
+  --space-2xs: 2px;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 40px;
+  --space-3xl: 48px;
+  --space-4xl: 64px;
+  --space-5xl: 80px;
+
+  /* Border radius */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-full: 999px;
+
+  /* Typography — size scale */
+  --text-2xs: 10px;
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-md: 18px;
+  --text-lg: 20px;
+  --text-xl: 24px;
+  --text-2xl: 28px;
+  --text-3xl: 32px;
+  --text-4xl: 36px;
+  --text-5xl: 40px;
+  --text-6xl: 48px;
+  --text-7xl: 64px;
+
+  /* Typography — weight */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* Typography — line height */
+  --leading-tight: 1.2;
+  --leading-snug: 1.5;
+  --leading-relaxed: 1.8;
+  --leading-loose: 2;
+
+  /* Typography — letter spacing */
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0em;
+  --tracking-wide: 0.02em;
+  --tracking-wider: 0.04em;
+
+  /* Fonts */
+  --font-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-document: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  /* Icon size */
+  --icon-sm: 18px;
+  --icon-md: 20px;
+  --icon-lg: 24px;
+  --icon-xl: 28px;
+
+  /* Transition durations & easing */
+  --duration-instant: 80ms;
+  --duration-fast: 120ms;
+  --duration-base: 150ms;
+  --duration-theme: 240ms;
+  --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-out: ease-out;
+  --ease-in: ease-in;
+
+  /* Animation durations */
+  --anim-fade: 150ms;
+  --anim-scale: 150ms;
+  --anim-slide: 180ms;
+
+  /* Transisi antar-halaman (Cross-Document View Transitions, lihat
+     view-transitions.css) — durasi masuk sedikit lebih lama dari durasi
+     keluar supaya "pantulan" overshoot-nya kelihatan, bukan cuma dipotong. */
+  --duration-page-out: 220ms;
+  --duration-page-in: 380ms;
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Z-index */
+  --z-base: 0;
+  --z-skeleton: 5;
+  --z-sticky: 10;
+  --z-fab: 20;
+  --z-toolbar: 30;
+  --z-dropdown: 35;
+  --z-overlay: 40;
+  --z-modal: 41;
+  --z-toast: 50;
+
+  /* Layout */
+  --editor-max-width: 680px;
+  --container-max-width: 1200px;
+  --touch-target-min: 44px;
+}

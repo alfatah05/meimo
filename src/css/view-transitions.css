@@ -1,0 +1,71 @@
+/* ==========================================================================
+   view-transitions.css
+   Animasi pindah antar halaman (mis. /library -> /editor/<uuid>, atau ke
+   /trash, /cadangkan.html, dst) — pakai Cross-Document View Transitions
+   bawaan browser (Chrome/Edge 126+ & Safari 18.2+), BUKAN library atau
+   JavaScript kustom. Cukup opt-in lewat @view-transition di bawah;
+   browser yang belum dukung (mis. Firefox saat file ini ditulis) otomatis
+   navigasi normal tanpa animasi apa pun — aman dipasang di semua halaman,
+   tidak butuh feature-detect manual.
+
+   Efek yang diminta: halaman baru "mantul" tipis dari bawah ke atas
+   (~50px) sambil fade in; halaman lama fade out sambil geser naik sedikit
+   supaya kesan perpindahannya menyatu, bukan dua animasi yang tidak
+   berhubungan.
+   ========================================================================== */
+
+@view-transition {
+  navigation: auto;
+}
+
+/* Matikan animasi default browser (cross-fade datar) di kedua snapshot
+   root, ganti pakai keyframes sendiri di bawah. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--duration-page-in);
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  animation: meimo-page-out var(--duration-page-out) var(--ease-standard) both;
+}
+
+::view-transition-new(root) {
+  /* Ease "bounce" (overshoot dikit lalu balik pas) yang bikin efek
+     "mantul" tipis pas halaman baru masuk — bukan easing datar biasa. */
+  animation: meimo-page-in var(--duration-page-in) var(--ease-bounce) both;
+}
+
+@keyframes meimo-page-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+}
+
+@keyframes meimo-page-in {
+  from {
+    opacity: 0;
+    transform: translateY(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Orang yang mengaktifkan "Kurangi Gerakan" di OS-nya TIDAK boleh dapat
+   animasi geser/mantul ini (bisa bikin pusing) — biarkan browser fallback
+   ke perpindahan halaman biasa/instan, cuma fade tipis sekali (dan itu
+   pun boleh kalau device-nya benar-benar minta TANPA animasi apa pun,
+   opacity crossfade dianggap aman/netral dibanding transform). */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
+}

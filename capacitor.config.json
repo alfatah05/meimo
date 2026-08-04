@@ -1,0 +1,8 @@
+{
+  "appId": "id.meimo.notes",
+  "appName": "Meimo",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false
+  }
+}

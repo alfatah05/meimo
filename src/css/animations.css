@@ -1,0 +1,55 @@
+/* ==========================================================================
+   animations.css
+   Keyframe & animasi statis (muncul saat halaman dimuat). Tidak ada JS.
+   ========================================================================== */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Dipakai spinner loading kecil (mis. tombol "Unggah Gambar" saat gambar
+   sedang dikonversi ke WebP — lihat .image-sheet__spinner di
+   image-sheet.css). */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.anim-fade-in {
+  animation: fadeIn var(--anim-fade) var(--ease-out) both;
+}
+
+.anim-scale-in {
+  animation: scaleIn var(--anim-scale) var(--ease-standard) both;
+}
+
+.anim-slide-up {
+  animation: slideUp var(--anim-slide) var(--ease-out) both;
+}
+
+/* Stagger halus untuk card di grid notes */
+.notes-grid > .note-card:nth-child(1) { animation-delay: 0ms; }
+.notes-grid > .note-card:nth-child(2) { animation-delay: 30ms; }
+.notes-grid > .note-card:nth-child(3) { animation-delay: 60ms; }
+.notes-grid > .note-card:nth-child(4) { animation-delay: 90ms; }
+.notes-grid > .note-card:nth-child(5) { animation-delay: 120ms; }
+.notes-grid > .note-card:nth-child(6) { animation-delay: 150ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
