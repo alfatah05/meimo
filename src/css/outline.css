@@ -41,13 +41,10 @@
 .outline-fab {
   position: fixed;
   right: var(--space-lg);
-  /* Naik di atas keyboard: --editor-footer-space sudah = keyboardInset + gap
-     saat IME terbuka (viewport-pin.js). max() dengan --keyboard-inset +
-     tinggi FAB + margin sebagai jaring pengaman kalau footer-space basi. */
-  bottom: max(
-    calc(var(--editor-footer-space, var(--space-lg)) - 40px),
-    calc(var(--keyboard-inset, 0px) + var(--space-md))
-  );
+  /* --outline-fab-bottom di-set viewport-pin.js:
+     - keyboard tutup: di atas nav bar
+     - keyboard buka: rapat di atas tepi IME (tanpa double-count safe-area) */
+  bottom: var(--outline-fab-bottom, calc(var(--editor-footer-space, var(--space-lg)) - 40px));
   z-index: var(--z-fab);
   width: 52px;
   height: 52px;

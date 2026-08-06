@@ -169,6 +169,7 @@ export function initFontFamilyDropdown(button, editor) {
     // (bukan satu elemen bertumpuk), jadi sebenarnya klik keduanya tidak
     // akan saling bentrok — tapi dijaga tetap eksplisit kalau markup-nya
     // berubah nanti.
+    favBtn.addEventListener("pointerdown", (e) => { e.preventDefault(); });
     favBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       font.favorite = toggleFontFavorite(font.id);
@@ -217,6 +218,10 @@ export function initFontFamilyDropdown(button, editor) {
         text: tab.label,
       });
       tabBtn.classList.toggle("is-active", tab.id === activeTab);
+      // preventDefault di pointerdown: cegah fokus pindah ke tombol tab
+      // (yang bikin Android menutup keyboard + kadang menutup bar). Fokus
+      // tetap di contenteditable, keyboard & menu font family tetap terbuka.
+      tabBtn.addEventListener("pointerdown", (e) => { e.preventDefault(); });
       tabBtn.addEventListener("click", () => {
         if (activeTab === tab.id) return;
         activeTab = tab.id;

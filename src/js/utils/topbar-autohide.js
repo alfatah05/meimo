@@ -17,7 +17,7 @@
  * closeTransientPickers().
  */
 
-import { closeAllPanels, closeTransientPickers, isChildGroupOpen } from "./dom.js";
+import { closeAllPanels, closeTransientPickers, closeActivePanel, isChildGroupOpen } from "./dom.js";
 
 const SHOW_AFTER_IDLE_MS = 300;
 const SCROLL_DELTA_THRESHOLD_PX = 4; // abaikan micro-scroll/rubber-band di ujung
@@ -59,10 +59,16 @@ function init() {
       lastScrollTop = current;
 
       if (delta > SCROLL_DELTA_THRESHOLD_PX) {
-        // Bar nilai/swatch (mis. Warna Teks, Heading, Font Size — baris
-        // ketiga) SELALU ditutup saat discroll, apa pun kondisi child
-        // bar/topbar di atasnya.
-        closeTransientPickers();
+        // Bar nilai/swatch (mis. Warna Teks, Heading, Font Size) ditutup
+        // saat discroll. Kecuali saat keyboard terbuka: font-family bar
+        // sering dibuka sambil mengetik; ganti tab Favorit/Impor atau
+        // resize IME bisa memicu "scroll" palsu — jangan ikut menutup
+        // font-family/color bar (hanya dropdown fixed openPanel).
+        if (document.body.classList.contains("is-keyboard-open")) {
+          closeActivePanel();
+        } else {
+          closeTransientPickers();
+        }
         hide();
       }
 

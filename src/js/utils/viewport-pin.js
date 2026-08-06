@@ -29,7 +29,7 @@
  * langsung berhenti dan CSS fallback (posisi fixed statis) yang dipakai.
  */
 
-import { closeTransientPickers } from "./dom.js";
+import { closeActivePanel } from "./dom.js";
 
 const KEYBOARD_THRESHOLD_PX = 120; // di bawah ini dianggap bukan keyboard (mis. cuma toolbar Safari)
 // Topbar sekarang NEMPEL ke tepi (bukan mengambang dengan jarak lagi),
@@ -170,13 +170,16 @@ function init() {
     const keyboardInset = layoutAlreadyInset ? 0 : Math.max(vvInset, nativeKeyboardHeight);
 
     if (keyboardOpen !== wasKeyboardOpen) {
-      // Tutup panel level-3 saja (dropdown Heading/Font Size, color bar,
-      // font-family bar) yang posisinya bisa nyangkut saat viewport berubah.
-      // JANGAN tutup child group topbar level-2 (Text/Style/List/Block/Insert):
-      // user sering buka menu itu dulu baru keyboard ikut naik (fokus ke
-      // contenteditable) — kalau closeAllPanels() ikut menutup child group,
-      // menu lv2 langsung hilang lagi padahal user baru saja membukanya.
-      closeTransientPickers();
+      // Hanya tutup dropdown mengambang (Heading/Font Size/dll lewat
+      // openPanel) yang koordinat fixed-nya bisa nyangkut saat viewport
+      // berubah. JANGAN tutup:
+      //  - child group lv2 (Text/Style/List/…)
+      //  - color bar / font-family bar (nempel di topbar)
+      // Font-family bar sering terbuka SELAGI keyboard aktif; ganti tab
+      // Favorit/Impor bisa bikin Android sebentar fire keyboard hide/show
+      // — kalau closeTransientPickers() ikut jalan, menu + keyboard tutup
+      // mendadak padahal user cuma ganti tab.
+      closeActivePanel();
       document.body.classList.toggle("is-keyboard-open", keyboardOpen);
       if (keyboardOpen) topbar.classList.remove("is-hidden"); // butuh toolbar saat lagi ngetik
       // Saat keyboard baru tutup, catat ulang tinggi layout penuh supaya
@@ -206,26 +209,29 @@ function init() {
     const topbarHeight = topbar.getBoundingClientRect().height;
     const headerSpace = topbarTop + topbarHeight + CONTENT_GAP_PX;
 
-    // Padding bawah konten + acuan FAB outline.
-    // - Overlay (keyboardInset > 0): butuh tinggi IME + gap.
-    // - Layout sudah mengecil (keyboardInset = 0 meski keyboardOpen):
-    //   WebView sudah pendek, cukup gap kecil + raw height agar FAB
-    //   outline yang position:fixed tetap dihitung dari tepi visual —
-    //   pakai rawKeyboardInset agar FAB tidak ketutup setengah.
-    // Tinggi block-selection-bar TIDAK ditambah di sini (FAB sudah
-    // diangkat lewat translate di outline.css saat bar terbuka).
+    // Padding bawah konten + acuan posisi FAB outline.
+    // PENTING saat keyboard terbuka: JANGAN tambah insets.bottom (nav bar
+    // HP). Nav bar biasanya sudah hilang di balik IME; kalau tetap dijumlah
+    // ke keyboardInset / gap, FAB "melayang" terlalu tinggi (jarak dihitung
+    // seolah ke bawah layar penuh, bukan ke tepi atas keyboard).
+    // Tinggi block-selection-bar TIDAK ditambah di sini (FAB sudah diangkat
+    // lewat translate di outline.css saat bar terbuka).
+    const FAB_KEYBOARD_GAP_PX = 12; // jarak rapat FAB di atas tepi keyboard
     let footerSpace;
+    let fabBottom;
     if (!keyboardOpen) {
       footerSpace = insets.bottom + FOOTER_CONTENT_GAP_PX;
+      // FAB: sedikit di atas nav bar (footer space dikurangi offset visual)
+      fabBottom = Math.max(insets.bottom + 12, footerSpace - 40);
     } else if (keyboardInset > 0) {
-      // Mode overlay: angkat sejauh tinggi keyboard
+      // Overlay: angkat konten & FAB tepat di atas IME, gap kecil saja
       footerSpace = keyboardInset + KEYBOARD_CONTENT_GAP_PX;
+      fabBottom = keyboardInset + FAB_KEYBOARD_GAP_PX;
     } else {
-      // Mode layout-resize: fixed bottom sudah di atas IME, tapi FAB
-      // pakai --editor-footer-space sebagai jarak dari tepi layout yang
-      // sudah pendek — cukup gap konten, jangan tambah rawKeyboardInset
-      // (itu yang bikin dobel di versi sebelumnya).
-      footerSpace = KEYBOARD_CONTENT_GAP_PX + insets.bottom;
+      // Layout sudah di-resize: tepi bawah WebView = tepi atas IME.
+      // Cukup gap kecil dari tepi layout — tanpa safe-area nav.
+      footerSpace = KEYBOARD_CONTENT_GAP_PX;
+      fabBottom = FAB_KEYBOARD_GAP_PX;
     }
 
     setPxIfChanged(
@@ -237,6 +243,11 @@ function init() {
       "--editor-footer-space",
       (v) => document.documentElement.style.setProperty("--editor-footer-space", v),
       footerSpace
+    );
+    setPxIfChanged(
+      "--outline-fab-bottom",
+      (v) => document.documentElement.style.setProperty("--outline-fab-bottom", v),
+      fabBottom
     );
     setPxIfChanged(
       "--keyboard-inset",
