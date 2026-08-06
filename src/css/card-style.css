@@ -9,7 +9,13 @@
 /* Ruang ekstra di bawah supaya action bar sticky tidak menutupi konten
    terakhir (lihat .card-style-actionbar di bawah). */
 .card-style-page {
-  padding-bottom: calc(var(--space-4xl) + 64px);
+  /* BUGFIX: 64px di sini cuma perkiraan TINGGI action bar sticky
+     (.card-style-actionbar) yang dipakai buat kasih ruang scroll — tapi
+     tinggi actionbar itu sendiri ikut membesar oleh
+     env(safe-area-inset-bottom, lihat padding-bottom-nya di bawah). Tanpa
+     ditambahkan di sini juga, konten paling bawah bisa masih separuh
+     ketutup actionbar di HP dengan navigation bar Android yang tinggi. */
+  padding-bottom: calc(var(--space-4xl) + 64px + env(safe-area-inset-bottom, 0px));
 }
 
 /* ---- Pratinjau ---- */

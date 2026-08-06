@@ -40,7 +40,13 @@
      pendek/kosong. Dipakai index.html, trash.html, font-manager.html,
      cadangkan.html — SEMUA halaman yang pakai class .home-content ini. */
   position: relative;
-  padding: 0 var(--space-md) var(--space-5xl);
+  /* BUGFIX: sebelumnya cuma --space-5xl (padding statis), tidak
+     memperhitungkan env(safe-area-inset-bottom) — di HP dengan navigation
+     bar Android (baik gesture-nav pill maupun 3-tombol lama), konten
+     paling bawah (mis. item terakhir notes list) bisa ketutup separuh
+     oleh nav bar itu. Ditambahkan (bukan diganti) supaya jarak "napas"
+     yang sudah ada tetap sama di HP tanpa nav bar/gesture nav minimal. */
+  padding: 0 var(--space-md) calc(var(--space-5xl) + env(safe-area-inset-bottom, 0px));
   max-width: var(--container-max-width);
   width: 100%;
   margin: 0 auto;
@@ -480,7 +486,10 @@
 .fab {
   position: fixed;
   right: var(--space-lg);
-  bottom: var(--space-lg);
+  /* BUGFIX: ditambah env(safe-area-inset-bottom) — sebelumnya tombol ini
+     bisa separuh ketutup/kepepet navigation bar Android (gesture pill atau
+     3-tombol), terutama di HP dengan inset bawah yang tinggi. */
+  bottom: calc(var(--space-lg) + env(safe-area-inset-bottom, 0px));
   z-index: var(--z-fab);
   width: 56px;
   height: 56px;

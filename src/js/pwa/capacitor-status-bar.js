@@ -44,7 +44,27 @@ const COLD_START_THEME_COLORS = {
  */
 export async function syncCapacitorStatusBar(hexColor, isDarkBackground) {
   if (!Capacitor?.isNativePlatform?.()) return;
-  const { StatusBar } = Capacitor.Plugins || {};
+  const { StatusBar, ThemeBridge } = Capacitor.Plugins || {};
+
+  // BUGFIX: warna latar Window & WebView native (beda dari <body> di
+  // halaman web) diam statis di warna splash/launch bawaan sepanjang app
+  // berjalan kalau tidak ditimpa manual — inilah penyebab (1) sisa warna
+  // splash "nembus" di celah inset status bar (EdgeToEdge bikin area itu
+  // transparan, tapi yang ketutup di baliknya tetap warna splash lama) dan
+  // (2) celah warna salah yang kelihatan pas pindah halaman (WebView yang
+  // SAMA cuma ganti dokumen, ada jeda singkat sebelum <body> halaman baru
+  // ter-paint). Dipisah try/catch sendiri (bukan digabung ke blok StatusBar
+  // di bawah) supaya kalau plugin ini gagal/tidak ada, warna ikon status
+  // bar di bawah tetap kepasang seperti biasa. Lihat ThemeBridgePlugin.java
+  // untuk detail implementasi native-nya.
+  if (ThemeBridge) {
+    try {
+      await ThemeBridge.syncBackground({ color: hexColor });
+    } catch (err) {
+      console.warn("[capacitor-status-bar] gagal menyinkronkan warna latar Window/WebView:", err);
+    }
+  }
+
   if (!StatusBar) return;
 
   // PENTING: dua panggilan di bawah SENGAJA dipisah try/catch masing-masing

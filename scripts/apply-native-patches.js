@@ -7,8 +7,10 @@
  *   1. Baca `appId` dari capacitor.config.json -> jadi path package Java
  *      (mis. "com.meimo.app" -> android/app/.../java/com/meimo/app/).
  *   2. Timpa MainActivity.java bawaan dengan versi kita (native-patches/
- *      android/MainActivity.java) yang masang PrettyUrlWebViewClient.
- *   3. Salin PrettyUrlWebViewClient.java ke folder package yang sama.
+ *      android/MainActivity.java) yang masang PrettyUrlWebViewClient &
+ *      mendaftarkan ThemeBridgePlugin.
+ *   3. Salin PrettyUrlWebViewClient.java & ThemeBridgePlugin.java ke folder
+ *      package yang sama.
  * Placeholder "__PACKAGE__" di kedua file diganti jadi nama package asli.
  */
 
@@ -34,7 +36,7 @@ function main() {
   }
 
   const patchSrcDir = path.join(ROOT, "native-patches", "android");
-  for (const fileName of ["MainActivity.java", "PrettyUrlWebViewClient.java"]) {
+  for (const fileName of ["MainActivity.java", "PrettyUrlWebViewClient.java", "ThemeBridgePlugin.java"]) {
     const raw = fs.readFileSync(path.join(patchSrcDir, fileName), "utf8");
     const patched = raw.replace(/__PACKAGE__/g, appId);
     fs.writeFileSync(path.join(javaDir, fileName), patched, "utf8");

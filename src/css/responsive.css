@@ -26,7 +26,7 @@
     width: 52px;
     height: 52px;
     right: var(--space-md);
-    bottom: var(--space-md);
+    bottom: calc(var(--space-md) + env(safe-area-inset-bottom, 0px));
   }
 }
 

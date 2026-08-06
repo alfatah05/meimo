@@ -29,7 +29,10 @@
      ikon child benar-benar lurus (center-align) dengan ikon "+" utama,
      offset kanannya ditambah setengah selisih diameter: (56 - 44) / 2 = 6px. */
   right: calc(var(--space-lg) + 6px);
-  bottom: calc(var(--space-lg) + 68px);
+  /* BUGFIX: samakan dengan penyesuaian env(safe-area-inset-bottom) di
+     .fab (layout.css) supaya jarak antara item speed-dial ini dengan
+     tombol utama tetap konsisten di HP dengan navigation bar Android. */
+  bottom: calc(var(--space-lg) + 68px + env(safe-area-inset-bottom, 0px));
   z-index: 41;
   display: flex;
   flex-direction: column-reverse;
@@ -447,6 +450,6 @@
 @media (max-width: 360px) {
   .fab-menu__actions {
     right: var(--space-md);
-    bottom: calc(var(--space-md) + 64px);
+    bottom: calc(var(--space-md) + 64px + env(safe-area-inset-bottom, 0px));
   }
 }
