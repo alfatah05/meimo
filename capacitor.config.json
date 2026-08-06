@@ -5,7 +5,8 @@
   "backgroundColor": "#1E1E1E",
   "android": {
     "backgroundColor": "#1E1E1E",
-    "allowMixedContent": false
+    "allowMixedContent": false,
+    "adjustMarginsForEdgeToEdge": "disable"
   },
   "plugins": {
     "SplashScreen": {
@@ -16,10 +17,15 @@
     },
     "StatusBar": {
       "style": "DARK",
-      "backgroundColor": "#1E1E1E"
+      "backgroundColor": "#1E1E1E",
+      "overlaysWebView": true
     },
     "Keyboard": {
       "resize": "body",
+      "style": "DARK"
+    },
+    "NavigationBar": {
+      "color": "#1E1E1E",
       "style": "DARK"
     }
   }

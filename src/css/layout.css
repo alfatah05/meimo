@@ -16,7 +16,14 @@
   top: 0;
   z-index: var(--z-sticky);
   background-color: var(--color-bg);
-  padding: var(--space-xl) var(--space-md) var(--space-md);
+  /* Safe-area inset top: di Capacitor Android (edge-to-edge) status bar
+     menutupi konten kalau padding-top tidak ditambah env(safe-area-inset-top).
+     Editor sudah punya ini di .note-topbar — halaman Home/Arsip/dll harus
+     konsisten supaya judul & tombol header tidak ketutup notifikasi bar. */
+  padding-top: calc(var(--space-xl) + env(safe-area-inset-top, 0px));
+  padding-bottom: var(--space-md);
+  padding-left: max(var(--space-md), env(safe-area-inset-left, 0px));
+  padding-right: max(var(--space-md), env(safe-area-inset-right, 0px));
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);
@@ -32,7 +39,12 @@
      pendek/kosong. Dipakai index.html, trash.html, font-manager.html,
      cadangkan.html — SEMUA halaman yang pakai class .home-content ini. */
   position: relative;
-  padding: 0 var(--space-md) var(--space-5xl);
+  /* Safe-area inset bottom: ruang ekstra di atas navigation bar / gesture
+     bar Android supaya konten & FAB tidak ketutup. */
+  padding-top: 0;
+  padding-bottom: calc(var(--space-5xl) + env(safe-area-inset-bottom, 0px));
+  padding-left: max(var(--space-md), env(safe-area-inset-left, 0px));
+  padding-right: max(var(--space-md), env(safe-area-inset-right, 0px));
   max-width: var(--container-max-width);
   width: 100%;
   margin: 0 auto;
@@ -472,7 +484,8 @@
 .fab {
   position: fixed;
   right: var(--space-lg);
-  bottom: var(--space-lg);
+  /* Naikkan di atas navigation bar / gesture bar Android. */
+  bottom: calc(var(--space-lg) + env(safe-area-inset-bottom, 0px));
   z-index: var(--z-fab);
   width: 56px;
   height: 56px;

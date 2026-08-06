@@ -16,6 +16,8 @@
  * Menu di Home).
  */
 
+import { syncSystemBars } from "../pwa/native-bridge.js";
+
 export const THEME_STORAGE_KEY = "notes-app-theme";
 
 export const THEMES = [
@@ -42,6 +44,8 @@ export function setTheme(themeId) {
     // untuk sesi berjalan saja, tidak fatal.
   }
   applyThemeColorMeta(valid);
+  // Sinkronkan status bar + navigation bar native (no-op di browser).
+  try { syncSystemBars(valid); } catch (_) {}
   return valid;
 }
 

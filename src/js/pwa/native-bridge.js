@@ -42,14 +42,66 @@ function setupBackButton() {
   });
 }
 
-function setupStatusBarAndSplash() {
+/* Peta warna tema — HARUS sinkron dengan THEMES.swatch di theme-manager.js
+   & --color-bg di themes.css. Dipakai untuk status bar + navigation bar. */
+const THEME_BAR_COLORS = {
+  light: "#FFFFFF",
+  dark: "#17181C",
+  sepia: "#F4ECD8",
+  paper: "#FBFAF5",
+  oled: "#000000",
+};
+
+/** Tema gelap butuh ikon status bar terang (style DARK), tema terang sebaliknya. */
+function isDarkTheme(themeId) {
+  return themeId === "dark" || themeId === "oled";
+}
+
+function currentThemeId() {
+  return document.documentElement.getAttribute("data-theme") || "light";
+}
+
+/**
+ * Sinkronkan warna status bar (atas) & navigation bar (bawah) Android
+ * dengan background tema yang sedang aktif. Dipanggil saat init native
+ * dan setiap kali user ganti tema (lihat theme-manager.js).
+ *
+ * - StatusBar: plugin resmi @capacitor/status-bar
+ * - NavigationBar: plugin @capgo/capacitor-navigation-bar (opsional —
+ *   kalau belum terpasang, status bar tetap di-set, nav bar diabaikan)
+ */
+export function syncSystemBars(themeId) {
+  if (!isNative()) return;
+  const id = themeId || currentThemeId();
+  const color = THEME_BAR_COLORS[id] || THEME_BAR_COLORS.light;
+  const style = isDarkTheme(id) ? "DARK" : "LIGHT";
+
   const StatusBar = plugin("StatusBar");
   if (StatusBar) {
-    // Warna sama dengan theme_color/background_color di manifest.json,
-    // biar status bar menyatu dengan app (app ini gelap by default).
-    StatusBar.setBackgroundColor?.({ color: "#1E1E1E" }).catch(() => {});
-    StatusBar.setStyle?.({ style: "DARK" }).catch(() => {});
+    // Overlay WebView supaya CSS env(safe-area-inset-*) bekerja & warna
+    // bar bisa diganti runtime sesuai tema (bukan dipotong margin hitam).
+    StatusBar.setOverlaysWebView?.({ overlay: true }).catch(() => {});
+    StatusBar.setBackgroundColor?.({ color }).catch(() => {});
+    StatusBar.setStyle?.({ style }).catch(() => {});
   }
+
+  // Capgo NavigationBar (nama plugin di window.Capacitor.Plugins)
+  const NavigationBar = plugin("NavigationBar");
+  if (NavigationBar?.setNavigationBarColor) {
+    NavigationBar.setNavigationBarColor({
+      color,
+      darkButtons: !isDarkTheme(id),
+    }).catch(() => {});
+  } else if (NavigationBar?.setColor) {
+    // fallback nama API alternatif
+    NavigationBar.setColor({ color }).catch(() => {});
+  }
+}
+
+function setupStatusBarAndSplash() {
+  // Pakai tema yang sudah diterapkan inline script di <head>, bukan hardcode.
+  syncSystemBars(currentThemeId());
+
   const SplashScreen = plugin("SplashScreen");
   // Kasih sedikit jeda supaya first paint sempat render dulu sebelum splash
   // hilang (splash native dikonfigurasi "launchAutoHide: false" di
