@@ -1,0 +1,242 @@
+/* ==========================================================================
+   scene-sheet.css
+   Bottom sheet kustomisasi Scene (Background Color / Padding / Edge Style)
+   — dibuka dari toolbar/scene-sheet.js. Struktur dasar overlay & sheet
+   (posisi, animasi naik dari bawah, judul, section, label, tombol
+   Batal/Terapkan) SENGAJA dipakai bareng dari image-sheet.css lewat class
+   ganda (mis. `class="scene-sheet-overlay image-sheet-overlay"`), persis
+   seperti bottom sheet gambar — file ini HANYA berisi bagian yang khas
+   Scene: preset warna tambahan, grup preset Padding, grid preview Edge
+   Style.
+   ========================================================================== */
+
+/* ---- Background Color: strip yang bisa digeser horizontal ----
+   Dulu dipakai grid 4-kolom yang bisa "makan tempat" vertikal begitu
+   presetnya banyak — sekarang satu baris flex, scroll ke samping, sama
+   semangatnya dengan .color-bar__swatch (topbar) supaya konsisten dan
+   preset boleh terus ditambah tanpa mendorong bagian sheet di bawahnya.
+   Padding kiri-kanan SENGAJA `--space-sm` (8px, bukan cuma `--space-2xs`
+   2px seperti sebelumnya) dan TIDAK dikompensasi habis oleh margin negatif
+   (cuma `-space-2xs`) — swatch paling pojok (kiri saat scroll ke awal,
+   kanan saat scroll mentok ke swatch/input warna kustom terakhir) jadi
+   punya ruang napas ~6px, cukup untuk ring `.is-active` (box-shadow 4px,
+   lihat di bawah) supaya tidak ke-crop `overflow-x: auto` di elemen yang
+   sama saat swatch di ujung itu yang aktif. */
+.scene-sheet__color-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: var(--space-2xs) var(--space-sm) var(--space-xs);
+  margin: 0 calc(var(--space-2xs) * -1);
+}
+
+.scene-sheet__color-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.scene-sheet__swatch {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-text-primary);
+  transition: transform var(--duration-instant) var(--ease-out);
+}
+
+.scene-sheet__swatch:hover {
+  transform: scale(1.08);
+}
+
+.scene-sheet__swatch.is-active {
+  box-shadow: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-accent);
+}
+
+/* Item terakhir di strip: input warna kustom native. */
+.scene-sheet__custom-color {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.scene-sheet__custom-color input[type="color"] {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+}
+
+/* ---- Padding: preset pill ---- */
+.scene-sheet__preset-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.scene-sheet__preset-btn {
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+}
+
+.scene-sheet__preset-btn.is-active {
+  border-color: var(--color-accent);
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-weight: var(--weight-medium);
+}
+
+/* ---- Edge Style: strip tombol (preview bentuk) yang bisa digeser
+   horizontal — dulu grid 3-kolom yang tingginya bertambah begitu preset
+   Edge Style baru ditambahkan (kini ada 7), sekarang satu baris tetap
+   tanpa mendorong section lain di bawahnya. */
+.scene-sheet__edge-grid {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-xs);
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: var(--space-2xs) var(--space-2xs) var(--space-xs);
+  margin: 0 calc(var(--space-2xs) * -1);
+}
+
+.scene-sheet__edge-grid::-webkit-scrollbar {
+  display: none;
+}
+
+.scene-sheet__edge-btn {
+  flex: 0 0 auto;
+  width: 96px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: var(--space-xs);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 11px;
+}
+
+.scene-sheet__edge-btn.is-active {
+  border-color: var(--color-accent);
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-weight: var(--weight-medium);
+}
+
+.scene-sheet__edge-preview {
+  width: 100%;
+  height: 46px;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-xs);
+  overflow: hidden;
+}
+
+.scene-sheet__edge-preview-bar {
+  height: 10px;
+  width: 100%;
+  background-color: var(--color-accent);
+  flex-shrink: 0;
+  opacity: 0.55;
+}
+
+.scene-sheet__edge-preview-body {
+  flex: 1;
+  width: 100%;
+  background-color: var(--color-accent);
+  opacity: 0.3;
+}
+
+/* ---- Baris tombol aksi gaya "kartu" (ikon + label, berjejer sejajar) —
+   nama class-nya historis dari sheet Scene, TAPI class ini sekarang
+   dipakai HANYA oleh toolbar/music-sheet.js (tombol "Hapus Musik" dkk.) —
+   JANGAN dihapus/direname tanpa mengecek music-sheet.js. Sheet Scene
+   sendiri sudah tidak pakai lagi sama sekali (Duplicate Scene dihapus
+   total, Delete Scene pindah jadi icon button di title row — lihat
+   .scene-sheet__title-row / .scene-sheet__delete-icon-btn di bawah). ---- */
+.scene-sheet__actions {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-xs);
+}
+
+.scene-sheet__action-btn {
+  flex: 1;
+  min-width: 0; /* boleh menyusut di bawah lebar konten intrinsik (ikon+teks) supaya dua tombol tetap muat sejajar di layar sempit */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: var(--space-sm) var(--space-xs);
+  min-height: 56px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: var(--text-xs);
+  text-align: center;
+}
+
+.scene-sheet__action-btn span {
+  white-space: normal;
+  line-height: 1.2;
+}
+
+.scene-sheet__action-btn--danger {
+  color: var(--color-danger);
+}
+
+.scene-sheet__action-btn--danger.is-armed {
+  border-color: var(--color-danger);
+  background-color: rgba(var(--shadow-color), 0.04);
+}
+
+/* ---- Title row sheet Scene: judul "Scene" + tombol Hapus Scene
+   icon-only di pojok kanan atas (mode "edit" saja, lihat scene-sheet.js).
+   Reset margin-bottom bawaan .image-sheet__title karena di sini
+   dibungkus flex row, bukan teks polos lagi. ---- */
+.scene-sheet__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+}
+
+.scene-sheet__delete-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background-color: transparent;
+  color: var(--color-text-secondary);
+}
+
+.scene-sheet__delete-icon-btn.is-armed {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+  background-color: rgba(var(--shadow-color), 0.04);
+}
