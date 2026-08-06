@@ -241,7 +241,7 @@
 // logic-nya di backup-import.js, style .export-card* di backup-import.css)
 // — ekspor satu catatan sekarang bisa langsung dari note card di mana pun
 // tampil, tidak perlu lagi buka halaman Cadangkan & Impor dulu.
-const CACHE_VERSION = "v77";
+const CACHE_VERSION = "v78";
 const APP_SHELL_CACHE = `meimo-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `meimo-runtime-${CACHE_VERSION}`;
 const FONT_CACHE = `meimo-fonts-${CACHE_VERSION}`;
@@ -327,6 +327,7 @@ const APP_SHELL_FILES = [
   "/src/js/pwa/install-prompt.js",
   "/src/js/pwa/sw-register.js",
   "/src/js/pwa/factory-reset.js",
+  "/src/js/pwa/native-bridge.js",
 
   "/src/js/services/backup-service.js",
   "/src/js/services/backup-restore.js",
@@ -563,6 +564,24 @@ function resolveShellPath(pathname) {
     pathname.startsWith("/about/")
   ) {
     return "/about.html";
+  }
+  // BUGFIX v36 -> v37: /Download (URL cantik halaman instalasi PWA, lihat
+  // htaccess rule 3c) SENGAJA tidak dimasukkan ke APP_SHELL_FILES/precache
+  // — halaman ini cuma didatangi orang yang BELUM install app alias pasti
+  // online, jadi tidak butuh dukungan offline. TAPI shellPath-nya tetap
+  // harus dikenali di sini, karena cacheFirstNavigation() cek cache
+  // SEBELUM ke jaringan sama sekali (lihat komentar di atas fungsi itu) —
+  // tanpa ini, /Download ikut jatuh ke default "/index.html", dan begitu
+  // index.html kepasang di cache (hampir pasti, dari kunjungan pertama ke
+  // situs ini), /Download langsung disajikan sebagai Home yang SALAH walau
+  // sedang online, bukan cuma pas offline. download.html memang tidak ada
+  // di cache manapun (sesuai niatnya) — begitu shellPath-nya benar,
+  // cache.match akan MISS, dan cacheFirstNavigation otomatis lanjut fetch
+  // ke jaringan lalu menyajikan download.html yang sungguhan. Dicek
+  // case-insensitive (regex /i) karena htaccess rule 3c juga pakai flag
+  // [NC] (menerima /download, /Download, /DOWNLOAD, dst).
+  if (/^\/download\/?$/i.test(pathname) || pathname === "/download.html") {
+    return "/download.html";
   }
   return "/index.html";
 }

@@ -16,8 +16,6 @@
  * Menu di Home).
  */
 
-import { isNativePlatform, getNativePlugin } from "../utils/capacitor-env.js";
-
 export const THEME_STORAGE_KEY = "notes-app-theme";
 
 export const THEMES = [
@@ -27,12 +25,6 @@ export const THEMES = [
   { id: "paper", label: "Kertas", swatch: "#FBFAF5" },
   { id: "oled", label: "OLED Hitam", swatch: "#000000" },
 ];
-
-// Tema mana yang backgroundnya GELAP -> status bar butuh ikon TERANG
-// (Style.Light) supaya tetap kebaca; sisanya (background terang) butuh
-// ikon GELAP (Style.Dark). Cuma "dark" & "oled" yang gelap di antara
-// THEMES di atas.
-const DARK_BACKGROUND_THEME_IDS = new Set(["dark", "oled"]);
 
 /** Tema yang sedang aktif di halaman ini. */
 export function getTheme() {
@@ -67,15 +59,4 @@ function applyThemeColorMeta(themeId) {
   if (!theme) return;
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute("content", theme.swatch);
-
-  // [Native/APK saja] status bar overlay (lihat native-feel.js) transparan
-  // & warnanya sudah otomatis "ikut" background halaman lewat CSS — yang
-  // TETAP perlu disinkron manual di sini cuma WARNA IKON status bar
-  // (jam, baterai, sinyal), supaya tetap kebaca di atas background gelap
-  // maupun terang tiap tema.
-  if (isNativePlatform()) {
-    const StatusBar = getNativePlugin("StatusBar");
-    const style = DARK_BACKGROUND_THEME_IDS.has(theme.id) ? "LIGHT" : "DARK";
-    StatusBar?.setStyle({ style }).catch(() => {});
-  }
 }

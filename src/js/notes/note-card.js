@@ -78,17 +78,16 @@ const DOWNLOAD_MENU_ICON_SVG =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
   '<path d="M12 3v12"></path><polyline points="7 10 12 15 17 10"></polyline><path d="M4 19h16"></path></svg>';
 
-// id note dikirim lewat query string (bukan path cantik /editor/<id>) —
-// .htaccess (mod_rewrite Apache) tidak berfungsi di build APK Capacitor.
-// Lihat getNoteIdFromUrl di app.js untuk cara id ini dibaca balik.
+// URL cantik /editor/<id> — lihat .htaccess di root project & app.js
+// (getNoteIdFromUrl) untuk cara id ini dibaca balik di halaman editor.
 function noteHref(note) {
-  return `editor.html?id=${encodeURIComponent(note.id)}`;
+  return `/editor/${encodeURIComponent(note.id)}`;
 }
 
-// id note dikirim lewat query string (bukan path cantik /card-style/<id>).
-// Lihat getNoteIdFromUrl di src/js/notes/card-style.js.
+// URL cantik /card-style/<id> — lihat .htaccess & getNoteIdFromUrl di
+// src/js/notes/card-style.js untuk cara id ini dibaca balik di halaman itu.
 function cardStyleHref(note) {
-  return `card-style.html?id=${encodeURIComponent(note.id)}`;
+  return `/card-style/${encodeURIComponent(note.id)}`;
 }
 
 /** Terapkan cardStyle tersimpan (kalau ada) ke elemen kartu & judulnya,

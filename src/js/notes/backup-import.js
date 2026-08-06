@@ -33,10 +33,10 @@ async function boot() {
     backupBtn.addEventListener("click", async () => {
       backupBtn.disabled = true;
       try {
-        const { noteCount, shared } = await exportAllNotes();
+        const { noteCount } = await exportAllNotes();
         showToast(
           noteCount > 0
-            ? `Cadangan ${noteCount} catatan (lengkap dengan gambar/musik) ${shared ? "siap disimpan/dibagikan" : "berhasil diunduh"}.`
+            ? `Cadangan ${noteCount} catatan (lengkap dengan gambar/musik) berhasil diunduh.`
             : "Belum ada catatan untuk dicadangkan."
         );
       } catch (err) {

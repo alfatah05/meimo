@@ -34,7 +34,7 @@
 
 import * as documentService from "./document-service.js";
 import { buildZipBlob } from "../utils/zip-writer.js";
-import { saveOrShareBlob } from "../utils/native-share.js";
+import { saveOrShareBlob } from "../pwa/native-bridge.js";
 
 
 // Versi format file .meimo itu sendiri (BEDA dari DOCUMENT_SCHEMA_VERSION
@@ -120,10 +120,14 @@ export function safeFileNameFromTitle(title) {
   return cleaned || "Catatan tanpa judul";
 }
 
+// BUGFIX (dukungan app native Capacitor): lihat komentar sama di
+// backup-service.js — triggerBlobDownload() di sini dipertahankan supaya
+// pemanggil di bawah tidak berubah, tapi kini didelegasikan ke
+// saveOrShareBlob() yang otomatis pilih jalur benar (web vs native).
 function triggerBlobDownload(blob, fileName) {
-  // Native (APK): Filesystem+Share. Web: Blob+<a download> seperti
-  // sebelumnya. Lihat utils/native-share.js untuk detail & alasannya.
-  return saveOrShareBlob(blob, fileName);
+  saveOrShareBlob(blob, fileName).catch((err) => {
+    console.error("Gagal menyimpan/membagikan file .meimo:", err);
+  });
 }
 
 /**
@@ -184,8 +188,7 @@ export async function buildMeimoZipBytes(doc) {
  * Ekspor satu catatan (berdasarkan model dokumen yang SEDANG ada di memori
  * editor — bukan baca ulang dari IndexedDB, supaya perubahan yang belum
  * sempat di-autosave tetap ikut terekspor) jadi file `.meimo`, lalu langsung
- * memicu unduhan (web) atau Share sheet native (APK) lewat
- * utils/native-share.js.
+ * memicu unduhan lewat browser.
  *
  * @param {object} doc - hasil state.getDocument() dari editor-state.js
  *   (schemaVersion, id, title, blocks, scenes, music, dst).
@@ -196,7 +199,7 @@ export async function exportNoteAsMeimo(doc) {
   const zipBlob = new Blob([bytes], { type: MEIMO_MIME_TYPE });
 
   const fileName = `${safeFileNameFromTitle(doc.title)}.meimo`;
-  const { shared } = await triggerBlobDownload(zipBlob, fileName);
+  triggerBlobDownload(zipBlob, fileName);
 
-  return { assetCount, fileName, shared };
+  return { assetCount, fileName };
 }

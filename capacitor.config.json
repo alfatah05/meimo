@@ -1,0 +1,26 @@
+{
+  "appId": "com.meimo.app",
+  "appName": "Meimo",
+  "webDir": "www",
+  "backgroundColor": "#1E1E1E",
+  "android": {
+    "backgroundColor": "#1E1E1E",
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": false,
+      "backgroundColor": "#1E1E1E",
+      "androidSplashResourceName": "splash",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#1E1E1E"
+    },
+    "Keyboard": {
+      "resize": "body",
+      "style": "DARK"
+    }
+  }
+}

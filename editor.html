@@ -72,7 +72,7 @@
     <!-- ============ BARIS 1: TOPBAR — 9 menu, grid rata (1fr masing2),
          icon-only, TIDAK bisa discroll kesamping. ============ -->
     <div class="note-topbar-row">
-      <a href="index.html" class="note-back-btn" aria-label="Kembali">
+      <a href="/library" class="note-back-btn" aria-label="Kembali">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <line x1="19" y1="12" x2="5" y2="12"></line>
           <polyline points="12 19 5 12 12 5"></polyline>
@@ -307,6 +307,7 @@
 <!-- Hanya urusan registrasi SW & capture event install, tidak menyentuh
      mesin editor / app.js sama sekali. -->
 <script type="module" src="/src/js/pwa/sw-register.js"></script>
+<script type="module" src="/src/js/pwa/native-bridge.js"></script>
 <script type="module" src="/src/js/pwa/install-prompt.js"></script>
 <script type="module" src="/src/js/utils/native-feel.js"></script>
 

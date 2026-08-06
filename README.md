@@ -219,6 +219,21 @@ Setiap ada perubahan yang di-deploy, versi di `manifest.json` (field
 `"version"`) HARUS dinaikkan sesuai aturan di atas, dan ditambahkan satu
 entri baru di bawah ini (versi terbaru paling atas).
 
+### v1.19.0
+- **Dukungan build app native Android lewat Capacitor + GitHub Actions**
+  (lihat `NATIVE_BUILD.md`) — project ini sekarang bisa di-build jadi
+  `.apk`/`.aab` otomatis di CI, tanpa mengubah satu pun perilaku web/PWA
+  yang sudah ada. Ditambah `src/js/pwa/native-bridge.js` (dimuat di semua
+  halaman persis di sebelah `sw-register.js`): urus tombol back Android,
+  warna status bar & splash screen native, no-op total di web/PWA biasa.
+- **Fix ekspor file (`.meimo` per-note & "Cadangkan Semua Catatan") di app
+  native**: `triggerBlobDownload()` di `backup-service.js` &
+  `meimo-export.js` sekarang lewat `saveOrShareBlob()` — di web/PWA
+  perilakunya SAMA PERSIS seperti sebelumnya (anchor + blob URL), tapi di
+  app native (di mana `<a download>` ke blob URL tidak berfungsi di
+  WebView) file ditulis ke cache app lalu dibuka lewat lembar "Bagikan"
+  native supaya user tetap bisa simpan ke Download/Drive/app lain.
+
 ### v1.18.0
 - **Fitur baru: item menu "Download" di menu titik-tiga note card**, buat
   mengekspor satu catatan jadi file `.meimo` (lengkap dengan asset)

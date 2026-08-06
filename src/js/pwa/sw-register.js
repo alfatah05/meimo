@@ -10,19 +10,10 @@
  * dipakai setelah reload, tanpa modul ini perlu tahu soal UI toast.
  */
 
-import { isNativePlatform } from "../utils/capacitor-env.js";
-
 const SW_URL = "/service-worker.js";
 
 async function register() {
   if (!("serviceWorker" in navigator)) return;
-
-  // Di build APK Capacitor, tidak ada konsep "Service Worker offline app
-  // shell" seperti di browser — app-nya sendiri sudah dibundle utuh ke
-  // dalam APK (lihat capacitor.config.ts webDir), jadi service-worker.js
-  // tidak perlu (dan sebaiknya tidak) didaftarkan sama sekali di sana.
-  // Versi web/PWA tetap register seperti biasa, tidak berubah.
-  if (isNativePlatform()) return;
 
   try {
     const registration = await navigator.serviceWorker.register(SW_URL, {

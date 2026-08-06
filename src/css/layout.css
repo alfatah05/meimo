@@ -16,16 +16,7 @@
   top: 0;
   z-index: var(--z-sticky);
   background-color: var(--color-bg);
-  /* Safe-area status bar: sebelumnya cuma .note-topbar (editor.html) yang
-     punya padding-top env(safe-area-inset-top) — .home-header dipakai 7
-     dari 8 halaman (index, arsip, trash, cadangkan, font-manager, about,
-     card-style) dan sebelumnya TIDAK punya sama sekali, jadi konten
-     ketutup status bar overlay di APK Capacitor (lihat StatusBar overlay
-     di src/js/utils/native-feel.js). Ditambahkan ke padding-top yang
-     sudah ada (bukan menggantinya) supaya jarak visual dari konten ke
-     status bar tetap konsisten dengan sebelumnya di web/browser biasa
-     (env() resolve ke 0px di sana). */
-  padding: calc(var(--space-xl) + env(safe-area-inset-top, 0px)) var(--space-md) var(--space-md);
+  padding: var(--space-xl) var(--space-md) var(--space-md);
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);

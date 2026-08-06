@@ -32,23 +32,28 @@ const AUTOSAVE_DELAY_MS = 600;
 
 /**
  * Ambil `id` note dari URL.
+ * Mendukung dua bentuk:
+ *   - URL cantik: /editor/<id>            (lihat .htaccess di root project)
+ *   - URL lama:   editor.html?id=<id>     (fallback — dipakai kalau file
+ *     dibuka langsung tanpa rewrite, mis. saat development lokal)
  *
- * CATATAN CAPACITOR: sebelumnya ada dua bentuk (path cantik /editor/<id>
- * dari .htaccess, atau query string sebagai fallback). Di build APK
- * Capacitor, .htaccess (mod_rewrite Apache) TIDAK berfungsi sama sekali,
- * jadi ketergantungan ke pathname dihapus — id note SELALU dibaca dari
- * query string ?id=... Ini juga tetap valid untuk versi web biasa (yang
- * masih pakai .htaccess untuk hal lain, tapi tidak lagi untuk id note).
+ * PENTING soal .htaccess: rewrite Apache di sini sifatnya INTERNAL (bukan
+ * redirect), jadi begitu browser menampilkan /editor/<id>, `window.location`
+ * di JS TIDAK PERNAH melihat query string ?id=... sama sekali — makanya id
+ * di sini wajib diambil dari pathname, bukan cuma dari URLSearchParams.
  */
 function getNoteIdFromUrl() {
+  const pathMatch = window.location.pathname.match(/\/editor\/([^/]+)\/?$/i);
+  if (pathMatch) return decodeURIComponent(pathMatch[1]);
   return new URLSearchParams(window.location.search).get("id");
 }
 
-/** Tulis `id` note baru ke URL (query string ?id=...) tanpa reload,
+/** Tulis `id` note baru ke URL (bentuk cantik /editor/<id>) tanpa reload,
  * supaya refresh tetap membuka note yang sama. */
 function setNoteIdInUrl(id) {
   const url = new URL(window.location.href);
-  url.searchParams.set("id", id);
+  url.pathname = `/editor/${encodeURIComponent(id)}`;
+  url.search = "";
   window.history.replaceState({}, "", url);
 }
 

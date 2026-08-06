@@ -27,7 +27,7 @@
 import * as documentService from "./document-service.js";
 import { buildMeimoZipBytes, safeFileNameFromTitle } from "./meimo-export.js";
 import { buildZipBlob } from "../utils/zip-writer.js";
-import { saveOrShareBlob } from "../utils/native-share.js";
+import { saveOrShareBlob } from "../pwa/native-bridge.js";
 
 // Versi format file cadangan-semua-catatan ITU SENDIRI (struktur zip
 // terluarnya: daftar entry `*.meimo` + `backup-manifest.json`) — BEDA dari
@@ -65,21 +65,24 @@ function uniqueZipEntryName(baseName, usedNames) {
   return candidate;
 }
 
+// BUGFIX (dukungan app native Capacitor): <a download> ke blob: URL tidak
+// berfungsi di WebView Android (tidak ada UI unduhan bawaan seperti
+// browser). saveOrShareBlob() di native-bridge.js otomatis pakai jalur
+// yang benar tergantung konteksnya — anchor+blob URL lama di web/PWA,
+// atau tulis-ke-cache + lembar "Bagikan" native kalau di app native.
 function triggerBlobDownload(blob, fileName) {
-  // Native (APK): Filesystem+Share. Web: Blob+<a download> seperti
-  // sebelumnya. Lihat utils/native-share.js untuk detail & alasannya.
-  return saveOrShareBlob(blob, fileName);
+  saveOrShareBlob(blob, fileName).catch((err) => {
+    console.error("Gagal menyimpan/membagikan file cadangan:", err);
+  });
 }
 
 /**
- * Buat & picu unduhan (web) / Share sheet native (APK) untuk satu file
- * `.zip` berisi `.meimo` (lengkap dengan asset & kustomisasi tampilan)
- * untuk SETIAP catatan, termasuk yang di Arsip & Sampah.
+ * Buat & picu unduhan satu file `.zip` berisi `.meimo` (lengkap dengan
+ * asset & kustomisasi tampilan) untuk SETIAP catatan, termasuk yang di
+ * Arsip & Sampah.
  *
- * @returns {Promise<{noteCount: number, assetCount: number, shared: boolean}>}
- *   jumlah catatan & total asset (gambar/musik) yang berhasil ikut
- *   dicadangkan, serta `shared` (true = lewat Share native, false = lewat
- *   unduhan browser biasa).
+ * @returns {Promise<{noteCount: number, assetCount: number}>} jumlah
+ *   catatan & total asset (gambar/musik) yang berhasil ikut dicadangkan.
  */
 export async function exportAllNotes() {
   const notes = await documentService.listNotes({ includeTrashed: true, includeArchived: true });
@@ -112,7 +115,7 @@ export async function exportAllNotes() {
   const zipBlob = buildZipBlob([{ name: "backup-manifest.json", data: manifestBytes }, ...zipEntries], "application/zip");
 
   const dateStr = new Date().toISOString().slice(0, 10);
-  const { shared } = await triggerBlobDownload(zipBlob, `catatan-cadangan-${dateStr}.zip`);
+  triggerBlobDownload(zipBlob, `catatan-cadangan-${dateStr}.zip`);
 
-  return { noteCount: notes.length, assetCount: totalAssetCount, shared };
+  return { noteCount: notes.length, assetCount: totalAssetCount };
 }
