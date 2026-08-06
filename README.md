@@ -268,6 +268,23 @@ Setiap ada perubahan yang di-deploy, versi di `manifest.json` (field
 `"version"`) HARUS dinaikkan sesuai aturan di atas, dan ditambahkan satu
 entri baru di bawah ini (versi terbaru paling atas).
 
+### v1.18.2
+- **Perbaikan: ikon status bar Android tidak kebaca di tema terang (putih di
+  atas putih).** Akar masalahnya: `StatusBar.setBackgroundColor()` sudah
+  tidak didukung lagi di Android 15+, dan sebelumnya panggilan itu digabung
+  satu `try/catch` dengan `StatusBar.setStyle()` (pengatur warna ikon) — jadi
+  begitu `setBackgroundColor` gagal, `setStyle` ikut TIDAK PERNAH kepanggil,
+  ikon nyangkut di warna default. `src/js/pwa/capacitor-status-bar.js`
+  sekarang memisah keduanya ke `try/catch` masing-masing, supaya kegagalan
+  `setBackgroundColor` (diperkirakan di Android 15+) tidak lagi mengorbankan
+  `setStyle`.
+- **Perbaikan: bagian atas app ketutup status bar** (khususnya header Home/
+  Sampah/Arsip/Cadangkan/Tentang/Gaya Kartu/Font Manager). Sejak Android 15,
+  WebView Capacitor digambar edge-to-edge di belakang status bar — `.note-
+  topbar` (editor.html) sudah lama punya `padding-top: env(safe-area-inset-
+  top)` buat ini, tapi `.home-header` (dipakai halaman-halaman lain di atas)
+  belum. Ditambahkan di `src/css/layout.css`.
+
 ### v1.18.1
 - **Perbaikan: unduhan `.meimo`/`.zip` tidak berfungsi di dalam APK.** Trik
   lama `<a download>` + `blob:` URL cuma jalan di browser — WebView Android

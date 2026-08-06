@@ -47,16 +47,32 @@ export async function syncCapacitorStatusBar(hexColor, isDarkBackground) {
   const { StatusBar } = Capacitor.Plugins || {};
   if (!StatusBar) return;
 
+  // PENTING: dua panggilan di bawah SENGAJA dipisah try/catch masing-masing
+  // (bukan digabung satu try). Sebelumnya digabung, dan itu penyebab bug
+  // "status bar tema terang ikonnya putih (nggak kebaca)": setBackgroundColor
+  // TIDAK didukung lagi di Android 15+ (plugin membuang/reject promise-nya di
+  // situ), jadi begitu baris itu gagal, setStyle (yang ngatur warna ikon) ikut
+  // TIDAK PERNAH kepanggil sama sekali — ikon nyangkut di warna default
+  // (terang) walau temanya terang juga, jadi tembus/nggak kebaca. Warna
+  // BACKGROUND status bar sendiri di Android 15+ sudah otomatis transparan
+  // & ngikut warna konten di baliknya (lihat padding-top: env(safe-area-
+  // inset-top) di .home-header/.note-topbar, src/css/layout.css) — jadi
+  // setBackgroundColor gagal di situ bukan masalah, warnanya tetap benar.
   try {
     await StatusBar.setBackgroundColor({ color: hexColor });
+  } catch (err) {
+    // Diperkirakan gagal di Android 15+ (fitur ini memang sudah dihapus di
+    // sana) — bukan error yang perlu ditindaklanjuti, cukup dicatat.
+    console.warn("[capacitor-status-bar] setBackgroundColor tidak didukung (kemungkinan Android 15+):", err);
+  }
+
+  try {
     // Style "DARK" = ikon status bar gelap (buat background TERANG),
     // Style "LIGHT" = ikon status bar terang (buat background GELAP) — jadi
     // KEBALIKAN dari nama variabelnya, ini penamaan resmi plugin StatusBar.
     await StatusBar.setStyle({ style: isDarkBackground ? "LIGHT" : "DARK" });
   } catch (err) {
-    // Gagal set warna status bar bukan hal fatal buat app-nya sendiri —
-    // cukup dicatat, jangan sampai menghentikan alur ganti tema.
-    console.warn("[capacitor-status-bar] gagal sinkronkan warna status bar:", err);
+    console.warn("[capacitor-status-bar] gagal mengatur warna ikon status bar:", err);
   }
 }
 

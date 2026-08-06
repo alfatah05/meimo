@@ -252,7 +252,15 @@
 // no-op total di luar app native (Capacitor.isNativePlatform() false), dan
 // service worker ini sendiri tidak pernah aktif di app native (lihat
 // sw-register.js).
-const CACHE_VERSION = "v78";
+// v78 -> v79: dua bugfix status bar Android (isi filenya sudah ada di
+// precache dari v78, dinaikkan di sini semata supaya klien lama ikut ambil
+// isi terbaru): capacitor-status-bar.js — setBackgroundColor & setStyle
+// dipisah try/catch (setBackgroundColor gagal di Android 15+ dulu ikut
+// menggagalkan setStyle, bikin ikon status bar nyangkut putih di tema
+// terang); layout.css — .home-header dapat padding-top: env(safe-area-
+// inset-top) (dulu cuma .note-topbar/editor.html yang punya), supaya
+// header Home/Sampah/Arsip/dll tidak ketutup status bar edge-to-edge.
+const CACHE_VERSION = "v79";
 const APP_SHELL_CACHE = `meimo-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `meimo-runtime-${CACHE_VERSION}`;
 const FONT_CACHE = `meimo-fonts-${CACHE_VERSION}`;

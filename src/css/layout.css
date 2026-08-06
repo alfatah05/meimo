@@ -16,7 +16,15 @@
   top: 0;
   z-index: var(--z-sticky);
   background-color: var(--color-bg);
-  padding: var(--space-xl) var(--space-md) var(--space-md);
+  /* padding-top pakai env(safe-area-inset-top) supaya header ini (dipakai
+     Home, Sampah, Font Manager, Cadangkan, Arsip, Tentang, Gaya Kartu) tidak
+     ketutup status bar Android saat dibungkus Capacitor — sejak Android 15
+     WebView-nya digambar edge-to-edge di belakang status bar (lihat juga
+     src/js/pwa/capacitor-status-bar.js utk warna & ikon status bar-nya).
+     Pola yang sama persis (padding-top + safe-area) sudah lama dipakai di
+     .note-topbar (editor.html) di bawah — cuma di sini belum sempat ikut
+     ditambahkan sebelumnya. */
+  padding: calc(var(--space-xl) + env(safe-area-inset-top, 0px)) var(--space-md) var(--space-md);
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);
