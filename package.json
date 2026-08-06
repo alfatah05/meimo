@@ -5,7 +5,7 @@
   "description": "Meimo \u2014 Catatan Pribadi. Web app statis (tanpa build step) + shell native Android lewat Capacitor.",
   "scripts": {
     "build": "node scripts/build-www.mjs",
-    "assets": "capacitor-assets generate --android --iconBackgroundColor '#1E1E1E' --iconBackgroundColorDark '#1E1E1E' --splashBackgroundColor '#1E1E1E' --splashBackgroundColorDark '#1E1E1E'",
+    "assets": "capacitor-assets generate --android --assetPath resources --iconBackgroundColor '#1E1E1E' --iconBackgroundColorDark '#1E1E1E' --splashBackgroundColor '#1E1E1E' --splashBackgroundColorDark '#1E1E1E'",
     "cap:add:android": "cap add android",
     "cap:sync": "cap sync android",
     "android:open": "cap open android"

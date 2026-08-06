@@ -33,7 +33,7 @@ export async function downloadNoteAsMeimo(note) {
       return;
     }
     const { fileName } = await exportNoteAsMeimo(freshDoc);
-    showToast(`Diunduh sebagai ${fileName}`);
+    showToast(`Disimpan: ${fileName}`);
   } catch (err) {
     console.error("Gagal mengunduh catatan:", err);
     showToast("Gagal mengunduh catatan. Coba lagi.", { tone: "danger" });

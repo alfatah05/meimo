@@ -98,17 +98,48 @@ export function syncSystemBars(themeId) {
   }
 }
 
+/**
+ * Terapkan warna system bars berkali-kali di awal — plugin StatusBar /
+ * NavigationBar kadang belum siap di frame pertama cold start, jadi bar
+ * tetap warna default config sampai user refresh. Retry singkat menutup
+ * race itu tanpa menunggu interaksi user.
+ */
+function syncSystemBarsWithRetry(themeId) {
+  const id = themeId || currentThemeId();
+  syncSystemBars(id);
+  [50, 150, 400, 900].forEach((ms) => {
+    setTimeout(() => syncSystemBars(id), ms);
+  });
+}
+
 function setupStatusBarAndSplash() {
-  // Pakai tema yang sudah diterapkan inline script di <head>, bukan hardcode.
-  syncSystemBars(currentThemeId());
+  const themeId = currentThemeId();
+  // Langsung + retry — jangan tunggu event load saja.
+  syncSystemBarsWithRetry(themeId);
 
   const SplashScreen = plugin("SplashScreen");
-  // Kasih sedikit jeda supaya first paint sempat render dulu sebelum splash
-  // hilang (splash native dikonfigurasi "launchAutoHide: false" di
-  // capacitor.config.json, lihat file itu untuk alasannya).
-  window.addEventListener("load", () => {
-    setTimeout(() => SplashScreen?.hide?.().catch(() => {}), 150);
-  });
+  const App = plugin("App");
+
+  // Saat app kembali dari background, sinkronkan lagi (OS kadang reset bar).
+  if (App?.addListener) {
+    App.addListener("appStateChange", ({ isActive }) => {
+      if (isActive) syncSystemBars(currentThemeId());
+    });
+  }
+
+  // Terapkan warna bar dulu, baru hilangkan splash supaya transisi mulus.
+  const hideSplash = () => {
+    syncSystemBars(currentThemeId());
+    setTimeout(() => {
+      SplashScreen?.hide?.().catch(() => {});
+    }, 120);
+  };
+
+  if (document.readyState === "complete") {
+    setTimeout(hideSplash, 80);
+  } else {
+    window.addEventListener("load", () => setTimeout(hideSplash, 80));
+  }
 }
 
 /**
@@ -154,40 +185,14 @@ function classicAnchorDownload(blob, fileName) {
 }
 
 /**
- * Coba Web Share Level 2 (files[]) dulu — tanpa base64, lebih hemat
- * memori, dan keyboard/focus aman. Banyak WebView Android modern support.
- * AbortError = user batal di lembar share (bukan error).
- */
-async function tryWebShareFiles(blob, fileName) {
-  if (typeof navigator === "undefined" || !navigator.share || !navigator.canShare) {
-    return false;
-  }
-  try {
-    const type = blob.type || "application/octet-stream";
-    const file = new File([blob], fileName, { type });
-    if (!navigator.canShare({ files: [file] })) return false;
-    await navigator.share({ files: [file], title: fileName });
-    return true;
-  } catch (err) {
-    if (err && (err.name === "AbortError" || err.name === "NotAllowedError")) {
-      // User batal / ditolak sistem — anggap selesai, jangan fallback crash
-      return true;
-    }
-    return false;
-  }
-}
-
-/**
- * Simpan/bagikan sebuah Blob sebagai file bernama `fileName`.
+ * Simpan Blob langsung ke perangkat (tanpa lembar Share).
  *
- *  - Web/PWA (window.Capacitor tidak ada): <a download> blob URL.
- *  - Native (Android via Capacitor):
- *      1) Web Share API files[] kalau tersedia (paling aman, tanpa base64)
- *      2) Tulis ke Cache lewat Filesystem + Share plugin
- *      3) Fallback anchor (jarang berhasil di WebView, tapi lebih baik
- *         daripada silent fail)
+ *  - Web/PWA: <a download> seperti browser biasa.
+ *  - Native Android: tulis ke folder Download publik kalau memungkinkan,
+ *    fallback ke Documents app, lalu Data/Cache. Tidak membuka share sheet.
  *
- * Dipakai backup-service.js & meimo-export.js.
+ * @returns {Promise<{ location: string }>}
+ *   "download" | "documents" | "cache" | "browser"
  */
 export async function saveOrShareBlob(blob, fileName) {
   if (!blob) throw new Error("File kosong — tidak ada data untuk diunduh.");
@@ -195,74 +200,57 @@ export async function saveOrShareBlob(blob, fileName) {
 
   if (!isNative()) {
     classicAnchorDownload(blob, safeName);
-    return;
+    return { location: "browser" };
   }
-
-  // 1) Web Share dengan File — hindari OOM base64 untuk cadangan besar
-  if (await tryWebShareFiles(blob, safeName)) return;
 
   const Filesystem = plugin("Filesystem");
-  const Share = plugin("Share");
-  if (!Filesystem) {
+  if (!Filesystem?.writeFile) {
     classicAnchorDownload(blob, safeName);
-    return;
+    return { location: "browser" };
   }
 
-  // Path di dalam Cache app — subfolder exports/ + timestamp supaya
-  // tidak bentrok & karakter aneh di judul note tidak merusak path.
-  const path = `exports/${Date.now()}_${safeName}`;
+  const base64Data = await blobToBase64(blob);
+
+  // Minta izin storage kalau API-nya ada (Android < 10 / legacy paths).
+  // Di Android 10+ scoped storage, Documents tetap jalan tanpa izin ini.
+  try {
+    if (Filesystem.requestPermissions) await Filesystem.requestPermissions();
+  } catch (_) {
+    /* ignore — tetap coba write */
+  }
+
+  // Urutan: Download publik → Documents → Data → Cache.
+  // EXTERNAL_STORAGE/Download = folder Download di app Files user.
+  const attempts = [
+    { directory: "EXTERNAL_STORAGE", path: `Download/${safeName}`, location: "download" },
+    { directory: "DOCUMENTS", path: safeName, location: "documents" },
+    { directory: "DATA", path: `exports/${safeName}`, location: "documents" },
+    { directory: "CACHE", path: `exports/${Date.now()}_${safeName}`, location: "cache" },
+  ];
+
+  let lastErr = null;
+  for (const attempt of attempts) {
+    try {
+      await Filesystem.writeFile({
+        path: attempt.path,
+        data: base64Data,
+        directory: attempt.directory,
+        recursive: true,
+      });
+      return { location: attempt.location };
+    } catch (err) {
+      lastErr = err;
+      console.warn(`writeFile gagal (${attempt.directory}):`, err);
+    }
+  }
 
   try {
-    const base64Data = await blobToBase64(blob);
-    const written = await Filesystem.writeFile({
-      path,
-      data: base64Data,
-      directory: "CACHE",
-      recursive: true,
-    });
-
-    // Ambil URI content/file yang bisa di-share (lebih andal dari
-    // written.uri di beberapa versi plugin).
-    let uri = written?.uri || null;
-    if (!uri && Filesystem.getUri) {
-      try {
-        const got = await Filesystem.getUri({ path, directory: "CACHE" });
-        uri = got?.uri || null;
-      } catch (_) {
-        /* ignore */
-      }
-    }
-
-    if (Share?.share && uri) {
-      try {
-        await Share.share({
-          title: safeName,
-          url: uri,
-          dialogTitle: safeName,
-        });
-        return;
-      } catch (shareErr) {
-        // User batal share → AbortError / message "Share canceled"
-        const msg = String(shareErr?.message || shareErr || "");
-        if (/cancel|abort/i.test(msg) || shareErr?.name === "AbortError") return;
-        console.error("Share plugin gagal:", shareErr);
-        // Jangan rethrow dulu — coba fallback di bawah
-      }
-    }
-
-    // Fallback terakhir
     classicAnchorDownload(blob, safeName);
-  } catch (err) {
-    console.error("saveOrShareBlob gagal:", err);
-    // Jangan biarkan exception native menutup WebView tanpa feedback —
-    // lempar ke pemanggil supaya toast error bisa ditampilkan.
-    try {
-      classicAnchorDownload(blob, safeName);
-    } catch (_) {
-      /* ignore */
-    }
-    throw err;
+    return { location: "browser" };
+  } catch (_) {
+    /* ignore */
   }
+  throw lastErr || new Error("Gagal menyimpan file ke perangkat.");
 }
 
 export function initNativeBridge() {

@@ -17,12 +17,46 @@
   // src/css/themes.css.
   (function () {
     var THEME_COLORS = { light: "#FFFFFF", dark: "#17181C", sepia: "#F4ECD8", paper: "#FBFAF5", oled: "#000000" };
+    var t = null;
     try {
-      var t = localStorage.getItem("notes-app-theme");
+      t = localStorage.getItem("notes-app-theme");
       if (t) document.documentElement.setAttribute("data-theme", t);
       var meta = document.querySelector('meta[name="theme-color"]');
       if (meta) meta.setAttribute("content", THEME_COLORS[t] || THEME_COLORS.light);
     } catch (e) {}
+    // System bars native sedini mungkin (sebelum module native-bridge jalan).
+    // Plugin Capacitor kadang belum inject di frame pertama cold start —
+    // poll singkat sampai siap, supaya warna bar langsung cocok tema
+    // (bukan nunggu refresh).
+    function applyNativeBars() {
+      try {
+        var Cap = window.Capacitor;
+        if (!Cap || !Cap.isNativePlatform || !Cap.isNativePlatform()) return false;
+        var id = document.documentElement.getAttribute("data-theme") || "light";
+        var color = THEME_COLORS[id] || THEME_COLORS.light;
+        var dark = id === "dark" || id === "oled";
+        var SB = Cap.Plugins && Cap.Plugins.StatusBar;
+        if (SB) {
+          if (SB.setOverlaysWebView) SB.setOverlaysWebView({ overlay: true });
+          if (SB.setBackgroundColor) SB.setBackgroundColor({ color: color });
+          if (SB.setStyle) SB.setStyle({ style: dark ? "DARK" : "LIGHT" });
+        }
+        var NB = Cap.Plugins && Cap.Plugins.NavigationBar;
+        if (NB && NB.setNavigationBarColor) {
+          NB.setNavigationBarColor({ color: color, darkButtons: !dark });
+        } else if (NB && NB.setColor) {
+          NB.setColor({ color: color });
+        }
+        return !!(SB || NB);
+      } catch (e) { return false; }
+    }
+    if (!applyNativeBars()) {
+      var n = 0;
+      var timer = setInterval(function () {
+        n++;
+        if (applyNativeBars() || n >= 60) clearInterval(timer);
+      }, 50);
+    }
   })();
 </script>
 <link rel="icon" href="/assets/icons/favicon.ico" sizes="any">
@@ -153,6 +187,7 @@
 <!-- ============ PWA: Service Worker (mode offline) ============ -->
 <script type="module" src="/src/js/pwa/sw-register.js"></script>
 <script type="module" src="/src/js/pwa/native-bridge.js"></script>
+<script type="module" src="/src/js/utils/view-transition-nav.js"></script>
 <script type="module" src="/src/js/pwa/install-prompt.js"></script>
 <script type="module" src="/src/js/utils/native-feel.js"></script>
 <!-- Shortcut tersembunyi: double-click logo di atas -> reset Service

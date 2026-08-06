@@ -36,7 +36,7 @@ async function boot() {
         const { noteCount } = await exportAllNotes();
         showToast(
           noteCount > 0
-            ? `Cadangan ${noteCount} catatan (lengkap dengan gambar/musik) berhasil diunduh.`
+            ? `Cadangan ${noteCount} catatan disimpan (lengkap dengan gambar/musik).`
             : "Belum ada catatan untuk dicadangkan."
         );
       } catch (err) {
