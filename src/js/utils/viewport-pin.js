@@ -19,16 +19,17 @@
  * viewport resize/scroll (mis. keyboard buka/tutup, halaman digeser
  * browser, dsb).
  *
- * Karena topbar sekarang selalu di ATAS (bukan lagi dua elemen terpisah
- * dengan toolbar mengambang dekat keyboard di bawah), modul ini jauh
- * lebih sederhana dari versi sebelumnya — tidak ada lagi logic "dock ke
- * keyboard" untuk toolbar.
+ * Topbar di-pin ke tepi ATAS visual viewport. Block-selection-bar (bottom
+ * bar yang muncul saat ada seleksi teks / mode Select Block) di-pin ke
+ * tepi BAWAH visual viewport — supaya naik di atas keyboard mobile saat
+ * keyboard terbuka, bukan tetap tertanam di bottom:0 layout viewport
+ * (yang sering ketutup keyboard di Android/Capacitor edge-to-edge).
  *
  * Kalau browser tidak dukung visualViewport (sangat jarang), modul ini
  * langsung berhenti dan CSS fallback (posisi fixed statis) yang dipakai.
  */
 
-import { closeAllPanels } from "./dom.js";
+import { closeTransientPickers } from "./dom.js";
 
 const KEYBOARD_THRESHOLD_PX = 120; // di bawah ini dianggap bukan keyboard (mis. cuma toolbar Safari)
 // Topbar sekarang NEMPEL ke tepi (bukan mengambang dengan jarak lagi),
@@ -98,6 +99,9 @@ function setAppHeightVar() {
 function init() {
   const vv = window.visualViewport;
   const topbar = document.querySelector(".note-topbar");
+  // Bottom bar seleksi teks — opsional (cuma ada di editor). Kalau tidak
+  // ada, logic pin bawah di bawah cukup no-op.
+  const selectionBar = document.querySelector(".block-selection-bar");
 
   setAppHeightVar();
   window.addEventListener("resize", setAppHeightVar);
@@ -140,10 +144,13 @@ function init() {
     const keyboardOpen = keyboardInset > KEYBOARD_THRESHOLD_PX;
 
     if (keyboardOpen !== wasKeyboardOpen) {
-      // Trigger dropdown toolbar (mis. Heading/Font Size) akan berpindah
-      // posisi drastis saat topbar/keyboard berubah — tutup panel yang
-      // terbuka biar tidak nyangkut di posisi lama.
-      closeAllPanels();
+      // Tutup panel level-3 saja (dropdown Heading/Font Size, color bar,
+      // font-family bar) yang posisinya bisa nyangkut saat viewport berubah.
+      // JANGAN tutup child group topbar level-2 (Text/Style/List/Block/Insert):
+      // user sering buka menu itu dulu baru keyboard ikut naik (fokus ke
+      // contenteditable) — kalau closeAllPanels() ikut menutup child group,
+      // menu lv2 langsung hilang lagi padahal user baru saja membukanya.
+      closeTransientPickers();
       document.body.classList.toggle("is-keyboard-open", keyboardOpen);
       if (keyboardOpen) topbar.classList.remove("is-hidden"); // butuh toolbar saat lagi ngetik
       wasKeyboardOpen = keyboardOpen;
@@ -183,6 +190,21 @@ function init() {
       (v) => document.documentElement.style.setProperty("--editor-footer-space", v),
       footerSpace
     );
+
+    // --- Block selection bar (bottom bar): pin ke tepi bawah visual
+    // viewport. Saat keyboard terbuka, keyboardInset > 0 → bar naik di
+    // atas keyboard. Saat tertutup, bottom kembali 0 (CSS fallback +
+    // safe-area padding yang sudah ada di block-selection-bar.css).
+    // Tanpa ini, position:fixed; bottom:0 tetap di layout viewport dan
+    // ketutup keyboard di Android Capacitor (edge-to-edge / adjustResize
+    // yang tidak selalu mengecilkan layout viewport).
+    if (selectionBar) {
+      setPxIfChanged(
+        "selectionBar.bottom",
+        (v) => (selectionBar.style.bottom = v),
+        keyboardOpen ? keyboardInset : 0
+      );
+    }
   }
 
   function scheduleUpdate() {
@@ -193,6 +215,17 @@ function init() {
   vv.addEventListener("resize", scheduleUpdate);
   vv.addEventListener("scroll", scheduleUpdate);
   window.addEventListener("orientationchange", scheduleUpdate);
+
+  // Capacitor Keyboard plugin: di beberapa Android WebView, visualViewport
+  // belum sempat update saat IME baru muncul — listener native ini memaksa
+  // recompute supaya block-selection-bar & footer-space langsung ikut naik.
+  const CapKeyboard = window.Capacitor?.Plugins?.Keyboard;
+  if (CapKeyboard?.addListener) {
+    CapKeyboard.addListener("keyboardWillShow", scheduleUpdate);
+    CapKeyboard.addListener("keyboardDidShow", scheduleUpdate);
+    CapKeyboard.addListener("keyboardWillHide", scheduleUpdate);
+    CapKeyboard.addListener("keyboardDidHide", scheduleUpdate);
+  }
 
   // Tinggi topbar (jarang berubah, tapi bisa mis. karena wrap di layar
   // sangat sempit) ikut mempengaruhi header-space; pastikan tetap
