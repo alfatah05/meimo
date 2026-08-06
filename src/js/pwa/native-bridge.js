@@ -112,20 +112,34 @@ function setupStatusBarAndSplash() {
 }
 
 /**
- * Konversi Blob -> base64 murni (tanpa prefix "data:...;base64,") karena
- * itu format yang diminta plugin Filesystem Capacitor.
+ * Nama file aman untuk path Filesystem (tanpa slash/karakter aneh yang
+ * bisa bikin writeFile gagal/crash di Android).
  */
-function blobToBase64(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const result = String(reader.result || "");
-      const commaIdx = result.indexOf(",");
-      resolve(commaIdx === -1 ? result : result.slice(commaIdx + 1));
-    };
-    reader.onerror = () => reject(reader.error || new Error("Gagal membaca file."));
-    reader.readAsDataURL(blob);
-  });
+function sanitizeFsName(fileName) {
+  const base = String(fileName || "download")
+    .replace(/[\\/:*?"<>|\x00-\x1f]+/g, "_")
+    .replace(/\s+/g, " ")
+    .trim();
+  // Batasi panjang — beberapa FS Android sensitif ke path sangat panjang
+  const clipped = base.length > 120 ? base.slice(0, 120) : base;
+  return clipped || "download";
+}
+
+/**
+ * Konversi Blob -> base64 murni (tanpa prefix "data:...;base64,").
+ * Chunked btoa lebih hemat memori daripada FileReader.readAsDataURL
+ * (yang bikin string data-URL sementara = prefix + base64 full).
+ */
+async function blobToBase64(blob) {
+  const buffer = await blob.arrayBuffer();
+  const u8 = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  let binary = "";
+  for (let i = 0; i < u8.length; i += chunkSize) {
+    const slice = u8.subarray(i, i + chunkSize);
+    binary += String.fromCharCode.apply(null, slice);
+  }
+  return btoa(binary);
 }
 
 function classicAnchorDownload(blob, fileName) {
@@ -140,46 +154,114 @@ function classicAnchorDownload(blob, fileName) {
 }
 
 /**
+ * Coba Web Share Level 2 (files[]) dulu — tanpa base64, lebih hemat
+ * memori, dan keyboard/focus aman. Banyak WebView Android modern support.
+ * AbortError = user batal di lembar share (bukan error).
+ */
+async function tryWebShareFiles(blob, fileName) {
+  if (typeof navigator === "undefined" || !navigator.share || !navigator.canShare) {
+    return false;
+  }
+  try {
+    const type = blob.type || "application/octet-stream";
+    const file = new File([blob], fileName, { type });
+    if (!navigator.canShare({ files: [file] })) return false;
+    await navigator.share({ files: [file], title: fileName });
+    return true;
+  } catch (err) {
+    if (err && (err.name === "AbortError" || err.name === "NotAllowedError")) {
+      // User batal / ditolak sistem — anggap selesai, jangan fallback crash
+      return true;
+    }
+    return false;
+  }
+}
+
+/**
  * Simpan/bagikan sebuah Blob sebagai file bernama `fileName`.
  *
- *  - Web/PWA (window.Capacitor tidak ada): perilaku LAMA persis — bikin
- *    <a download> lewat blob: URL, browser yang urus unduhannya sendiri.
- *  - Native (Android via Capacitor): <a download> ke blob: URL TIDAK
- *    berfungsi di WebView (tidak ada UI unduhan bawaan), jadi di sini file
- *    ditulis dulu ke cache app lewat plugin Filesystem, lalu dibuka lewat
- *    lembar "Bagikan" native (plugin Share) supaya user bisa pilih simpan
- *    ke Download/Drive/app lain — ini sengaja TIDAK minta izin storage
- *    (nulis ke direktori Cache milik app sendiri, bukan storage publik).
+ *  - Web/PWA (window.Capacitor tidak ada): <a download> blob URL.
+ *  - Native (Android via Capacitor):
+ *      1) Web Share API files[] kalau tersedia (paling aman, tanpa base64)
+ *      2) Tulis ke Cache lewat Filesystem + Share plugin
+ *      3) Fallback anchor (jarang berhasil di WebView, tapi lebih baik
+ *         daripada silent fail)
  *
- * Dipakai backup-service.js & meimo-export.js menggantikan
- * triggerBlobDownload() versi lama masing-masing, supaya kedua jalur
- * ekspor (per-note & cadangkan-semua) tetap berfungsi utuh di app native.
+ * Dipakai backup-service.js & meimo-export.js.
  */
 export async function saveOrShareBlob(blob, fileName) {
+  if (!blob) throw new Error("File kosong — tidak ada data untuk diunduh.");
+  const safeName = sanitizeFsName(fileName);
+
   if (!isNative()) {
-    classicAnchorDownload(blob, fileName);
+    classicAnchorDownload(blob, safeName);
     return;
   }
+
+  // 1) Web Share dengan File — hindari OOM base64 untuk cadangan besar
+  if (await tryWebShareFiles(blob, safeName)) return;
 
   const Filesystem = plugin("Filesystem");
   const Share = plugin("Share");
   if (!Filesystem) {
-    // Fallback paling aman kalau plugin belum ke-install: tetap coba cara
-    // lama, siapa tahu WebView tertentu mendukungnya sebagian.
-    classicAnchorDownload(blob, fileName);
+    classicAnchorDownload(blob, safeName);
     return;
   }
 
-  const base64Data = await blobToBase64(blob);
-  const written = await Filesystem.writeFile({
-    path: fileName,
-    data: base64Data,
-    directory: "CACHE",
-    recursive: true,
-  });
+  // Path di dalam Cache app — subfolder exports/ + timestamp supaya
+  // tidak bentrok & karakter aneh di judul note tidak merusak path.
+  const path = `exports/${Date.now()}_${safeName}`;
 
-  if (Share?.share) {
-    await Share.share({ title: fileName, url: written.uri });
+  try {
+    const base64Data = await blobToBase64(blob);
+    const written = await Filesystem.writeFile({
+      path,
+      data: base64Data,
+      directory: "CACHE",
+      recursive: true,
+    });
+
+    // Ambil URI content/file yang bisa di-share (lebih andal dari
+    // written.uri di beberapa versi plugin).
+    let uri = written?.uri || null;
+    if (!uri && Filesystem.getUri) {
+      try {
+        const got = await Filesystem.getUri({ path, directory: "CACHE" });
+        uri = got?.uri || null;
+      } catch (_) {
+        /* ignore */
+      }
+    }
+
+    if (Share?.share && uri) {
+      try {
+        await Share.share({
+          title: safeName,
+          url: uri,
+          dialogTitle: safeName,
+        });
+        return;
+      } catch (shareErr) {
+        // User batal share → AbortError / message "Share canceled"
+        const msg = String(shareErr?.message || shareErr || "");
+        if (/cancel|abort/i.test(msg) || shareErr?.name === "AbortError") return;
+        console.error("Share plugin gagal:", shareErr);
+        // Jangan rethrow dulu — coba fallback di bawah
+      }
+    }
+
+    // Fallback terakhir
+    classicAnchorDownload(blob, safeName);
+  } catch (err) {
+    console.error("saveOrShareBlob gagal:", err);
+    // Jangan biarkan exception native menutup WebView tanpa feedback —
+    // lempar ke pemanggil supaya toast error bisa ditampilkan.
+    try {
+      classicAnchorDownload(blob, safeName);
+    } catch (_) {
+      /* ignore */
+    }
+    throw err;
   }
 }
 

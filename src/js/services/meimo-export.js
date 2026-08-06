@@ -124,10 +124,13 @@ export function safeFileNameFromTitle(title) {
 // backup-service.js — triggerBlobDownload() di sini dipertahankan supaya
 // pemanggil di bawah tidak berubah, tapi kini didelegasikan ke
 // saveOrShareBlob() yang otomatis pilih jalur benar (web vs native).
-function triggerBlobDownload(blob, fileName) {
-  saveOrShareBlob(blob, fileName).catch((err) => {
+async function triggerBlobDownload(blob, fileName) {
+  try {
+    await saveOrShareBlob(blob, fileName);
+  } catch (err) {
     console.error("Gagal menyimpan/membagikan file .meimo:", err);
-  });
+    throw err;
+  }
 }
 
 /**
@@ -199,7 +202,7 @@ export async function exportNoteAsMeimo(doc) {
   const zipBlob = new Blob([bytes], { type: MEIMO_MIME_TYPE });
 
   const fileName = `${safeFileNameFromTitle(doc.title)}.meimo`;
-  triggerBlobDownload(zipBlob, fileName);
+  await triggerBlobDownload(zipBlob, fileName);
 
   return { assetCount, fileName };
 }

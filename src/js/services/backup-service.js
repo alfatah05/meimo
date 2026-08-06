@@ -70,10 +70,13 @@ function uniqueZipEntryName(baseName, usedNames) {
 // browser). saveOrShareBlob() di native-bridge.js otomatis pakai jalur
 // yang benar tergantung konteksnya — anchor+blob URL lama di web/PWA,
 // atau tulis-ke-cache + lembar "Bagikan" native kalau di app native.
-function triggerBlobDownload(blob, fileName) {
-  saveOrShareBlob(blob, fileName).catch((err) => {
+async function triggerBlobDownload(blob, fileName) {
+  try {
+    await saveOrShareBlob(blob, fileName);
+  } catch (err) {
     console.error("Gagal menyimpan/membagikan file cadangan:", err);
-  });
+    throw err;
+  }
 }
 
 /**
@@ -115,7 +118,7 @@ export async function exportAllNotes() {
   const zipBlob = buildZipBlob([{ name: "backup-manifest.json", data: manifestBytes }, ...zipEntries], "application/zip");
 
   const dateStr = new Date().toISOString().slice(0, 10);
-  triggerBlobDownload(zipBlob, `catatan-cadangan-${dateStr}.zip`);
+  await triggerBlobDownload(zipBlob, `catatan-cadangan-${dateStr}.zip`);
 
   return { noteCount: notes.length, assetCount: totalAssetCount };
 }
