@@ -14,6 +14,8 @@
    berhubungan.
    ========================================================================== */
 
+/* Opt-in juga di-inline di <head> tiap HTML (lihat komentar di sana).
+   Aturan ini tetap ada sebagai cadangan + tempat animasi di bawah. */
 @view-transition {
   navigation: auto;
 }

@@ -2,7 +2,15 @@
 <html lang="id" data-theme="light">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+<!-- Opt-in Cross-Document View Transition SEDINI mungkin di <head>
+     (bukan cuma di view-transitions.css). Chrome/WebView sering melewati
+     animasi navigasi MAJU kalau @view-transition belum terbaca saat
+     dokumen baru di-parse; back/bfcache tetap jalan karena stylesheet
+     sudah di memori. Lihat Chromium issue 348683476. -->
+<style>
+@view-transition { navigation: auto; }
+</style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content, minimum-scale=1.0">
 <title>Sampah — Catatan</title>
 
 <!-- ============ PWA: Manifest, Theme Color, App Icon, Splash Screen ============ -->

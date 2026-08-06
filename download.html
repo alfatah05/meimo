@@ -2,7 +2,15 @@
 <html lang="id" class="dark scroll-smooth">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Opt-in Cross-Document View Transition SEDINI mungkin di <head>
+     (bukan cuma di view-transitions.css). Chrome/WebView sering melewati
+     animasi navigasi MAJU kalau @view-transition belum terbaca saat
+     dokumen baru di-parse; back/bfcache tetap jalan karena stylesheet
+     sudah di memori. Lihat Chromium issue 348683476. -->
+<style>
+@view-transition { navigation: auto; }
+</style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
     <title>Meimo — Unduh Aplikasi Catatan Modern</title>
 
     <!-- ============ PWA: Manifest & Icon (supaya browser bisa menawarkan

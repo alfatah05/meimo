@@ -108,21 +108,9 @@ export function mountFloatingMenu(root = document) {
     // di sini (TANPA preventDefault, navigasi native tetap jalan seperti
     // biasa) supaya FAB sempat mulai animasi close-nya lebih dulu.
     if (action === "new-note" || action === "trash" || action === "backup" || action === "font-library") {
-      // Tutup FAB dulu, lalu navigasi lewat assign (bukan biarkan <a> default)
-      // supaya snapshot View Transition tidak menangkap menu terbuka, dan
-      // navigasi push tetap dalam user activation (VT ikut terpicu di WebView).
-      el.addEventListener("click", (e) => {
-        const href = el.getAttribute("href");
-        if (!href) return;
-        e.preventDefault();
-        setOpen(false);
-        requestAnimationFrame(() => {
-          if (window.navigation && typeof window.navigation.navigate === "function") {
-            try { window.navigation.navigate(href); return; } catch (_) {}
-          }
-          window.location.assign(href);
-        });
-      });
+      // Tutup FAB tanpa preventDefault — biarkan <a> navigasi native supaya
+      // cross-document View Transition maju terpicu (opt-in inline di <head>).
+      el.addEventListener("click", () => setOpen(false));
       return;
     }
 
