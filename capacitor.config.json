@@ -21,8 +21,9 @@
       "overlaysWebView": true
     },
     "Keyboard": {
-      "resize": "body",
-      "style": "DARK"
+      "resize": "none",
+      "style": "DARK",
+      "resizeOnFullScreen": true
     },
     "NavigationBar": {
       "color": "#1E1E1E",

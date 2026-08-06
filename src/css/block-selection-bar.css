@@ -18,7 +18,9 @@
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;
+  /* --keyboard-inset di-set viewport-pin.js saat IME terbuka (dari plugin
+     Capacitor Keyboard + visualViewport). Default 0 = nempel tepi bawah. */
+  bottom: var(--keyboard-inset, 0px);
   z-index: var(--z-modal);
   display: flex;
   align-items: center;

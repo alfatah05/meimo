@@ -116,6 +116,12 @@ function init() {
   const insets = measureSafeAreaInsets();
   let wasKeyboardOpen = false;
   let rafId = null;
+  // Tinggi keyboard dari plugin native Capacitor. Di Android (terutama
+  // edge-to-edge / API 35+), visualViewport SERING TIDAK mengecil saat
+  // IME muncul — keyboardInset dari VV jadi ~0 dan bottom bar / FAB
+  // outline tetap ketutup keyboard. Plugin Keyboard melaporkan tinggi
+  // sungguhan lewat event will/did show.
+  let nativeKeyboardHeight = 0;
 
   // Nilai px terakhir yang benar-benar ditulis ke DOM. `visualViewport`
   // sering fire event `scroll`/`resize` berkali-kali per detik walau
@@ -140,7 +146,9 @@ function init() {
     const offsetTop = vv.offsetTop;   // seberapa jauh visual viewport turun dari layout viewport
     const offsetLeft = vv.offsetLeft; // dukungan pinch-zoom horizontal
 
-    const keyboardInset = Math.max(0, window.innerHeight - vv.height - offsetTop);
+    // Gabungkan deteksi: VV (iOS / browser) + native plugin height (Android Cap).
+    const vvInset = Math.max(0, window.innerHeight - vv.height - offsetTop);
+    const keyboardInset = Math.max(vvInset, nativeKeyboardHeight);
     const keyboardOpen = keyboardInset > KEYBOARD_THRESHOLD_PX;
 
     if (keyboardOpen !== wasKeyboardOpen) {
@@ -176,6 +184,12 @@ function init() {
     // di bawah, jadi tidak perlu ngukur tinggi toolbar tiap frame). ---
     const topbarHeight = topbar.getBoundingClientRect().height;
     const headerSpace = topbarTop + topbarHeight + CONTENT_GAP_PX;
+
+    // Saat keyboard terbuka: ruang = tinggi keyboard + gap supaya baris
+    // terakhir & FAB outline (.outline-fab pakai --editor-footer-space)
+    // tidak ketutup IME. Tinggi block-selection-bar TIDAK ditambah di sini
+    // karena FAB sudah diangkat lewat translate di outline.css saat bar
+    // terbuka (hindari double-count).
     const footerSpace = keyboardOpen
       ? keyboardInset + KEYBOARD_CONTENT_GAP_PX
       : insets.bottom + FOOTER_CONTENT_GAP_PX;
@@ -190,14 +204,15 @@ function init() {
       (v) => document.documentElement.style.setProperty("--editor-footer-space", v),
       footerSpace
     );
+    setPxIfChanged(
+      "--keyboard-inset",
+      (v) => document.documentElement.style.setProperty("--keyboard-inset", v),
+      keyboardOpen ? keyboardInset : 0
+    );
 
-    // --- Block selection bar (bottom bar): pin ke tepi bawah visual
-    // viewport. Saat keyboard terbuka, keyboardInset > 0 → bar naik di
-    // atas keyboard. Saat tertutup, bottom kembali 0 (CSS fallback +
-    // safe-area padding yang sudah ada di block-selection-bar.css).
-    // Tanpa ini, position:fixed; bottom:0 tetap di layout viewport dan
-    // ketutup keyboard di Android Capacitor (edge-to-edge / adjustResize
-    // yang tidak selalu mengecilkan layout viewport).
+    // --- Block selection bar: angkat di atas keyboard.
+    // Pakai bottom = keyboardInset (tinggi IME). Sumber angka: max(VV,
+    // nativeKeyboardHeight) — di Android native height yang andal.
     if (selectionBar) {
       setPxIfChanged(
         "selectionBar.bottom",
@@ -216,15 +231,25 @@ function init() {
   vv.addEventListener("scroll", scheduleUpdate);
   window.addEventListener("orientationchange", scheduleUpdate);
 
-  // Capacitor Keyboard plugin: di beberapa Android WebView, visualViewport
-  // belum sempat update saat IME baru muncul — listener native ini memaksa
-  // recompute supaya block-selection-bar & footer-space langsung ikut naik.
+  // Capacitor Keyboard plugin: sumber utama tinggi keyboard di Android.
+  // visualViewport di WebView Android edge-to-edge sering TIDAK berubah
+  // saat IME muncul, jadi tanpa angka dari plugin, bottom bar & FAB
+  // outline tetap di bottom:0 dan ketutup keyboard.
   const CapKeyboard = window.Capacitor?.Plugins?.Keyboard;
   if (CapKeyboard?.addListener) {
-    CapKeyboard.addListener("keyboardWillShow", scheduleUpdate);
-    CapKeyboard.addListener("keyboardDidShow", scheduleUpdate);
-    CapKeyboard.addListener("keyboardWillHide", scheduleUpdate);
-    CapKeyboard.addListener("keyboardDidHide", scheduleUpdate);
+    const onShow = (info) => {
+      const h = Number(info?.keyboardHeight) || 0;
+      if (h > 0) nativeKeyboardHeight = h;
+      scheduleUpdate();
+    };
+    const onHide = () => {
+      nativeKeyboardHeight = 0;
+      scheduleUpdate();
+    };
+    CapKeyboard.addListener("keyboardWillShow", onShow);
+    CapKeyboard.addListener("keyboardDidShow", onShow);
+    CapKeyboard.addListener("keyboardWillHide", onHide);
+    CapKeyboard.addListener("keyboardDidHide", onHide);
   }
 
   // Tinggi topbar (jarang berubah, tapi bisa mis. karena wrap di layar
