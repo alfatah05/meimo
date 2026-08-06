@@ -16,14 +16,20 @@
  * Menu di Home).
  */
 
+import { syncCapacitorStatusBar } from "../pwa/capacitor-status-bar.js";
+
 export const THEME_STORAGE_KEY = "notes-app-theme";
 
+// `dark` menentukan warna IKON status bar Android native (lihat
+// applyThemeColorMeta di bawah & capacitor-status-bar.js) — true untuk tema
+// berbackground gelap (perlu ikon terang biar kebaca), false untuk tema
+// berbackground terang (perlu ikon gelap).
 export const THEMES = [
-  { id: "light", label: "Terang", swatch: "#FFFFFF" },
-  { id: "dark", label: "Gelap", swatch: "#17181C" },
-  { id: "sepia", label: "Sepia", swatch: "#F4ECD8" },
-  { id: "paper", label: "Kertas", swatch: "#FBFAF5" },
-  { id: "oled", label: "OLED Hitam", swatch: "#000000" },
+  { id: "light", label: "Terang", swatch: "#FFFFFF", dark: false },
+  { id: "dark", label: "Gelap", swatch: "#17181C", dark: true },
+  { id: "sepia", label: "Sepia", swatch: "#F4ECD8", dark: false },
+  { id: "paper", label: "Kertas", swatch: "#FBFAF5", dark: false },
+  { id: "oled", label: "OLED Hitam", swatch: "#000000", dark: true },
 ];
 
 /** Tema yang sedang aktif di halaman ini. */
@@ -59,4 +65,7 @@ function applyThemeColorMeta(themeId) {
   if (!theme) return;
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute("content", theme.swatch);
+  // Meta tag di atas cuma dibaca browser (address bar) — status bar Android
+  // native (WebView Capacitor) butuh dipanggil terpisah, lihat berkas ini.
+  syncCapacitorStatusBar(theme.swatch, theme.dark);
 }

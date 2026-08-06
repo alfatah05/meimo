@@ -241,7 +241,18 @@
 // logic-nya di backup-import.js, style .export-card* di backup-import.css)
 // — ekspor satu catatan sekarang bisa langsung dari note card di mana pun
 // tampil, tidak perlu lagi buka halaman Cadangkan & Impor dulu.
-const CACHE_VERSION = "v77";
+// v77 -> v78: perbaikan unduhan .meimo/.zip di dalam APK — trik lama
+// `<a download>` + blob: URL tidak berfungsi di WebView Android native.
+// meimo-export.js & backup-service.js sekarang lewat modul baru
+// src/js/utils/save-file.js (ditambahkan ke precache di bawah): di app
+// native, tulis ke cache lalu buka Android Share Sheet; di browser tetap
+// pakai trik blob lama. capacitor-back.js & capacitor-status-bar.js
+// (status bar Android ikut warna tema — lihat theme-manager.js) sengaja
+// TIDAK ditambah ke precache: sama seperti capacitor-back.js, keduanya
+// no-op total di luar app native (Capacitor.isNativePlatform() false), dan
+// service worker ini sendiri tidak pernah aktif di app native (lihat
+// sw-register.js).
+const CACHE_VERSION = "v78";
 const APP_SHELL_CACHE = `meimo-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `meimo-runtime-${CACHE_VERSION}`;
 const FONT_CACHE = `meimo-fonts-${CACHE_VERSION}`;
@@ -360,6 +371,7 @@ const APP_SHELL_FILES = [
   "/src/js/utils/dom.js",
   "/src/js/utils/native-feel.js",
   "/src/js/utils/reload-on-restore.js",
+  "/src/js/utils/save-file.js",
   "/src/js/utils/topbar-autohide.js",
   "/src/js/utils/trap-back-navigation.js",
   "/src/js/utils/uuid.js",

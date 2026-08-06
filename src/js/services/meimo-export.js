@@ -34,6 +34,7 @@
 
 import * as documentService from "./document-service.js";
 import { buildZipBlob } from "../utils/zip-writer.js";
+import { saveFileForUser } from "../utils/save-file.js";
 
 
 // Versi format file .meimo itu sendiri (BEDA dari DOCUMENT_SCHEMA_VERSION
@@ -119,17 +120,6 @@ export function safeFileNameFromTitle(title) {
   return cleaned || "Catatan tanpa judul";
 }
 
-function triggerBlobDownload(blob, fileName) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = fileName;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-}
-
 /**
  * Bangun bytes file `.meimo` (zip) untuk SATU dokumen — TIDAK memicu
  * unduhan apa pun, cuma mengembalikan bytes zip-nya. Diekstrak dari
@@ -199,7 +189,7 @@ export async function exportNoteAsMeimo(doc) {
   const zipBlob = new Blob([bytes], { type: MEIMO_MIME_TYPE });
 
   const fileName = `${safeFileNameFromTitle(doc.title)}.meimo`;
-  triggerBlobDownload(zipBlob, fileName);
+  await saveFileForUser(zipBlob, fileName);
 
   return { assetCount, fileName };
 }

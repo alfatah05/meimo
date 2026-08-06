@@ -27,6 +27,7 @@
 import * as documentService from "./document-service.js";
 import { buildMeimoZipBytes, safeFileNameFromTitle } from "./meimo-export.js";
 import { buildZipBlob } from "../utils/zip-writer.js";
+import { saveFileForUser } from "../utils/save-file.js";
 
 // Versi format file cadangan-semua-catatan ITU SENDIRI (struktur zip
 // terluarnya: daftar entry `*.meimo` + `backup-manifest.json`) — BEDA dari
@@ -62,17 +63,6 @@ function uniqueZipEntryName(baseName, usedNames) {
   }
   usedNames.add(candidate);
   return candidate;
-}
-
-function triggerBlobDownload(blob, fileName) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = fileName;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
 }
 
 /**
@@ -114,7 +104,7 @@ export async function exportAllNotes() {
   const zipBlob = buildZipBlob([{ name: "backup-manifest.json", data: manifestBytes }, ...zipEntries], "application/zip");
 
   const dateStr = new Date().toISOString().slice(0, 10);
-  triggerBlobDownload(zipBlob, `catatan-cadangan-${dateStr}.zip`);
+  await saveFileForUser(zipBlob, `catatan-cadangan-${dateStr}.zip`);
 
   return { noteCount: notes.length, assetCount: totalAssetCount };
 }

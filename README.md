@@ -268,6 +268,34 @@ Setiap ada perubahan yang di-deploy, versi di `manifest.json` (field
 `"version"`) HARUS dinaikkan sesuai aturan di atas, dan ditambahkan satu
 entri baru di bawah ini (versi terbaru paling atas).
 
+### v1.18.1
+- **Perbaikan: unduhan `.meimo`/`.zip` tidak berfungsi di dalam APK.** Trik
+  lama `<a download>` + `blob:` URL cuma jalan di browser — WebView Android
+  native (Capacitor) tidak punya download manager yang memprosesnya, jadi
+  tombol "Download"/"Cadangkan" terasa seperti tidak berbuat apa-apa.
+  - **Modul baru `src/js/utils/save-file.js`** (`saveFileForUser()`): di app
+    native, tulis file ke cache app via `@capacitor/filesystem` lalu buka
+    Android Share Sheet via `@capacitor/share` (user pilih sendiri mau
+    disimpan ke mana — Files, Downloads app pihak ketiga, Drive, dst); di
+    browser tetap pakai trik blob lama. Dipakai oleh `meimo-export.js`
+    (ekspor satu `.meimo`) & `backup-service.js` (cadangan `.zip`),
+    menggantikan `triggerBlobDownload()` yang tadinya digandakan identik di
+    kedua file.
+- **Perbaikan: warna status bar (notification bar) Android sekarang ikut
+  tema aktif.** `<meta name="theme-color">` yang sudah ada cuma dibaca
+  browser (address bar), bukan status bar native WebView.
+  - **Modul baru `src/js/pwa/capacitor-status-bar.js`**
+    (`syncCapacitorStatusBar()`) — pakai `@capacitor/status-bar`, dipanggil
+    dari `theme-manager.js` tiap ganti tema, plus sekali di tiap halaman
+    saat dimuat (cold start) supaya warnanya sudah benar sejak app pertama
+    dibuka. `THEMES` di `theme-manager.js` dapat field baru `dark` (gelap/
+    terang) buat menentukan warna ikon status bar.
+- **Perbaikan konfigurasi build APK (GitHub Actions):** Node 20 → 22, Java
+  17 → 21, `.gitignore` `android/`/`ios/` di-anchor jadi `/android/`/`/ios/`,
+  dan opsi cache Gradle bawaan `setup-java` dihapus (folder `android/`
+  selalu digenerate ulang tiap run lewat `cap add android`, jadi cache
+  Gradle lintas-run lebih rawan bikin build gagal daripada membantu).
+
 ### v1.18.0
 - **Fitur baru: item menu "Download" di menu titik-tiga note card**, buat
   mengekspor satu catatan jadi file `.meimo` (lengkap dengan asset)
