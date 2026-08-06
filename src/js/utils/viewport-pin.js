@@ -122,6 +122,13 @@ function init() {
   // outline tetap ketutup keyboard. Plugin Keyboard melaporkan tinggi
   // sungguhan lewat event will/did show.
   let nativeKeyboardHeight = 0;
+  // Baseline tinggi layout saat keyboard TUTUP. Kalau window.innerHeight
+  // menyusut signifikan saat IME terbuka, berarti WebView/body sudah di-
+  // resize (adjustResize) — elemen position:fixed; bottom:0 sudah berada
+  // di atas keyboard. Menambah nativeKeyboardHeight lagi = dobel tinggi
+  // (bar "melayang" di tengah layar). Hanya angkat fixed elements saat
+  // layout TIDAK menyusut (mode overlay / resize none).
+  let baselineInnerHeight = window.innerHeight;
 
   // Nilai px terakhir yang benar-benar ditulis ke DOM. `visualViewport`
   // sering fire event `scroll`/`resize` berkali-kali per detik walau
@@ -146,10 +153,21 @@ function init() {
     const offsetTop = vv.offsetTop;   // seberapa jauh visual viewport turun dari layout viewport
     const offsetLeft = vv.offsetLeft; // dukungan pinch-zoom horizontal
 
-    // Gabungkan deteksi: VV (iOS / browser) + native plugin height (Android Cap).
+    // vvInset: selisih layout vs visual viewport (andal di iOS / browser).
     const vvInset = Math.max(0, window.innerHeight - vv.height - offsetTop);
-    const keyboardInset = Math.max(vvInset, nativeKeyboardHeight);
-    const keyboardOpen = keyboardInset > KEYBOARD_THRESHOLD_PX;
+
+    // Apakah layout viewport sudah mengecil karena keyboard?
+    // (adjustResize / Keyboard.resize body|native). Kalau ya, fixed bottom:0
+    // sudah di atas IME — JANGAN tambah offset lagi.
+    const layoutShrink = Math.max(0, baselineInnerHeight - window.innerHeight);
+    const layoutAlreadyInset = layoutShrink > KEYBOARD_THRESHOLD_PX;
+
+    // Tinggi IME "mentah" dari sumber mana pun (untuk deteksi buka/tutup
+    // & padding konten). Untuk MENGGESER elemen fixed, pakai liftInset
+    // yang 0 kalau layout sudah inset (hindari dobel).
+    const rawKeyboardInset = Math.max(vvInset, nativeKeyboardHeight, layoutShrink);
+    const keyboardOpen = rawKeyboardInset > KEYBOARD_THRESHOLD_PX;
+    const keyboardInset = layoutAlreadyInset ? 0 : Math.max(vvInset, nativeKeyboardHeight);
 
     if (keyboardOpen !== wasKeyboardOpen) {
       // Tutup panel level-3 saja (dropdown Heading/Font Size, color bar,
@@ -161,6 +179,9 @@ function init() {
       closeTransientPickers();
       document.body.classList.toggle("is-keyboard-open", keyboardOpen);
       if (keyboardOpen) topbar.classList.remove("is-hidden"); // butuh toolbar saat lagi ngetik
+      // Saat keyboard baru tutup, catat ulang tinggi layout penuh supaya
+      // deteksi layoutAlreadyInset di frame berikutnya akurat.
+      if (!keyboardOpen) baselineInnerHeight = window.innerHeight;
       wasKeyboardOpen = keyboardOpen;
     }
 
@@ -185,14 +206,27 @@ function init() {
     const topbarHeight = topbar.getBoundingClientRect().height;
     const headerSpace = topbarTop + topbarHeight + CONTENT_GAP_PX;
 
-    // Saat keyboard terbuka: ruang = tinggi keyboard + gap supaya baris
-    // terakhir & FAB outline (.outline-fab pakai --editor-footer-space)
-    // tidak ketutup IME. Tinggi block-selection-bar TIDAK ditambah di sini
-    // karena FAB sudah diangkat lewat translate di outline.css saat bar
-    // terbuka (hindari double-count).
-    const footerSpace = keyboardOpen
-      ? keyboardInset + KEYBOARD_CONTENT_GAP_PX
-      : insets.bottom + FOOTER_CONTENT_GAP_PX;
+    // Padding bawah konten + acuan FAB outline.
+    // - Overlay (keyboardInset > 0): butuh tinggi IME + gap.
+    // - Layout sudah mengecil (keyboardInset = 0 meski keyboardOpen):
+    //   WebView sudah pendek, cukup gap kecil + raw height agar FAB
+    //   outline yang position:fixed tetap dihitung dari tepi visual —
+    //   pakai rawKeyboardInset agar FAB tidak ketutup setengah.
+    // Tinggi block-selection-bar TIDAK ditambah di sini (FAB sudah
+    // diangkat lewat translate di outline.css saat bar terbuka).
+    let footerSpace;
+    if (!keyboardOpen) {
+      footerSpace = insets.bottom + FOOTER_CONTENT_GAP_PX;
+    } else if (keyboardInset > 0) {
+      // Mode overlay: angkat sejauh tinggi keyboard
+      footerSpace = keyboardInset + KEYBOARD_CONTENT_GAP_PX;
+    } else {
+      // Mode layout-resize: fixed bottom sudah di atas IME, tapi FAB
+      // pakai --editor-footer-space sebagai jarak dari tepi layout yang
+      // sudah pendek — cukup gap konten, jangan tambah rawKeyboardInset
+      // (itu yang bikin dobel di versi sebelumnya).
+      footerSpace = KEYBOARD_CONTENT_GAP_PX + insets.bottom;
+    }
 
     setPxIfChanged(
       "--editor-header-space",
@@ -244,7 +278,11 @@ function init() {
     };
     const onHide = () => {
       nativeKeyboardHeight = 0;
-      scheduleUpdate();
+      // Tunda baseline sampai layout sempat kembali penuh.
+      requestAnimationFrame(() => {
+        baselineInnerHeight = window.innerHeight;
+        scheduleUpdate();
+      });
     };
     CapKeyboard.addListener("keyboardWillShow", onShow);
     CapKeyboard.addListener("keyboardDidShow", onShow);
