@@ -2,7 +2,7 @@
  * topbar-autohide.js
  * Menyembunyikan .note-topbar (back button + floating toolbar) begitu user
  * scroll isi catatan, lalu memunculkannya lagi setelah scroll berhenti
- * ~2 detik. Tujuannya: kasih ruang baca lebih lega selagi scroll, tanpa
+ * ~0.3 detik. Tujuannya: kasih ruang baca lebih lega selagi scroll, tanpa
  * ubah layout — topbar cuma digeser keluar viewport atas (translateY),
  * bukan dihapus dari alur.
  *
@@ -19,7 +19,7 @@
 
 import { closeAllPanels, closeTransientPickers, isChildGroupOpen } from "./dom.js";
 
-const SHOW_AFTER_IDLE_MS = 2000;
+const SHOW_AFTER_IDLE_MS = 300;
 const SCROLL_DELTA_THRESHOLD_PX = 4; // abaikan micro-scroll/rubber-band di ujung
 
 function init() {

@@ -27,11 +27,11 @@ import { createNoteCard } from "./note-card.js";
 import { EDGE_SHAPES, BG_COLOR_PRESETS } from "./card-style-presets.js";
 import { showToast } from "../../components/toast.js";
 
-/** Ambil `id` note dari URL: `card-style.html?id=<id>`. (Dulu ada juga
- * bentuk "cantik" /card-style/<id> lewat rewrite .htaccess saat di-hosting
- * Apache — sudah tidak relevan sejak app ini jadi APK/Capacitor, yang tidak
- * punya rewrite engine sama sekali.) */
+/** Ambil `id` note dari URL: bentuk cantik /card-style/<id> (lihat .htaccess
+ * di root project) atau fallback ?id=... saat dibuka langsung tanpa rewrite. */
 function getNoteIdFromUrl() {
+  const pathMatch = window.location.pathname.match(/\/card-style\/([^/]+)\/?$/i);
+  if (pathMatch) return decodeURIComponent(pathMatch[1]);
   return new URLSearchParams(window.location.search).get("id");
 }
 
@@ -56,7 +56,7 @@ async function boot() {
   const noteId = getNoteIdFromUrl();
   const note = noteId ? await documentService.loadNote(noteId) : null;
   if (!note) {
-    window.location.href = "/index.html";
+    window.location.href = "/library";
     return;
   }
 
@@ -301,7 +301,7 @@ async function boot() {
       const finalCardStyle = { ...draft, bgImageAssetId };
       await documentService.setCardStyle(note.id, finalCardStyle);
       showToast("Tampilan kartu disimpan.");
-      window.location.href = "/index.html";
+      window.location.href = "/library";
     } catch (err) {
       console.error("Gagal menyimpan customisasi kartu:", err);
       showToast("Gagal menyimpan customisasi kartu.", { tone: "danger" });

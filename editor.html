@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Editor Catatan</title>
 
-<!-- ============ Vendor plugin Capacitor & Theme Color ============ -->
-<script src="/vendor/capacitor-plugins.js"></script>
+<!-- ============ PWA: Manifest, Theme Color, App Icon, Splash Screen ============ -->
+<link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#1E1E1E">
 <script>
   // Terapkan tema tersimpan SEBELUM stylesheet dirender, supaya tidak ada
@@ -49,6 +49,8 @@
 <link rel="stylesheet" href="/src/css/scene-sheet.css">
 <link rel="stylesheet" href="/src/css/music.css">
 <link rel="stylesheet" href="/src/css/outline.css">
+<link rel="stylesheet" href="/src/css/block-selection-bar.css">
+<link rel="stylesheet" href="/src/css/block-select-mode.css">
 <link rel="stylesheet" href="/src/css/animations.css">
 <link rel="stylesheet" href="/src/css/view-transitions.css">
 <link rel="stylesheet" href="/src/css/responsive.css">
@@ -70,7 +72,7 @@
     <!-- ============ BARIS 1: TOPBAR — 9 menu, grid rata (1fr masing2),
          icon-only, TIDAK bisa discroll kesamping. ============ -->
     <div class="note-topbar-row">
-      <a href="/index.html" class="note-back-btn" aria-label="Kembali">
+      <a href="/library" class="note-back-btn" aria-label="Kembali">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <line x1="19" y1="12" x2="5" y2="12"></line>
           <polyline points="12 19 5 12 12 5"></polyline>
@@ -87,7 +89,9 @@
       </button>
 
       <!-- Text: Heading, Font, Font Size, Bold, Italic, Underline, Strikethrough -->
-      <button type="button" id="btnGroupText" class="toolbar-btn toolbar-btn--group toolbar-btn--group-text" title="Text" aria-haspopup="true" aria-expanded="false">T</button>
+      <button type="button" id="btnGroupText" class="toolbar-btn toolbar-btn--group toolbar-btn--group-text" title="Text" aria-haspopup="true" aria-expanded="false">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="12" y1="4" x2="12" y2="20"/><line x1="9" y1="20" x2="15" y2="20"/></svg>
+      </button>
 
       <!-- Style: Font Color, Highlight, Align, Line Height, Letter Spacing -->
       <button type="button" id="btnGroupStyle" class="toolbar-btn toolbar-btn--group" title="Style" aria-haspopup="true" aria-expanded="false">
@@ -133,15 +137,30 @@
 
       <!-- --- Text --- -->
       <div class="toolbar-child-group" id="childGroupText" hidden>
-        <button type="button" id="btnHeading" class="toolbar-btn toolbar-btn--heading toolbar-btn--has-dropdown" title="Heading" aria-haspopup="true" aria-expanded="false">H</button>
-        <button type="button" id="btnFontFamily" class="toolbar-btn toolbar-btn--fontfamily toolbar-btn--has-dropdown" title="Font" aria-haspopup="true" aria-expanded="false">Aa</button>
-        <button type="button" id="btnFontSize" class="toolbar-btn toolbar-btn--fontsize-icon toolbar-btn--has-dropdown" title="Font Size" aria-haspopup="true" aria-expanded="false"><span class="fs-lg">A</span><span class="fs-sm">A</span></button>
-        <button type="button" id="btnBold" class="toolbar-btn toolbar-btn--bold" title="Bold" aria-label="Bold" aria-pressed="false">B</button>
-        <button type="button" id="btnItalic" class="toolbar-btn toolbar-btn--italic" title="Italic" aria-label="Italic" aria-pressed="false">I</button>
-        <button type="button" id="btnUnderline" class="toolbar-btn toolbar-btn--underline" title="Underline" aria-label="Underline" aria-pressed="false">U</button>
-        <button type="button" id="btnStrike" class="toolbar-btn toolbar-btn--strike" title="Strikethrough" aria-label="Strikethrough" aria-pressed="false">S</button>
+        <button type="button" id="btnHeading" class="toolbar-btn toolbar-btn--heading toolbar-btn--has-dropdown" title="Heading" aria-haspopup="true" aria-expanded="false">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4v16"/><path d="M18 4v16"/><path d="M6 12h12"/></svg>
+        </button>
+        <button type="button" id="btnFontFamily" class="toolbar-btn toolbar-btn--fontfamily toolbar-btn--has-dropdown" title="Font" aria-haspopup="true" aria-expanded="false">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 18.5L6.5 5.5l4 13"/><path d="M4 14h5"/><circle cx="16.5" cy="14.5" r="3.3"/><path d="M19.8 9v9.5"/></svg>
+        </button>
+        <button type="button" id="btnFontSize" class="toolbar-btn toolbar-btn--fontsize-icon toolbar-btn--has-dropdown" title="Font Size" aria-haspopup="true" aria-expanded="false">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 18L7 5.5l4.5 12.5"/><path d="M4.1 13.5h5.8"/><polyline points="16 10 18.7 7.3 21.4 10"/><polyline points="16 14 18.7 16.7 21.4 14"/></svg>
+        </button>
+        <button type="button" id="btnBold" class="toolbar-btn toolbar-btn--bold" title="Bold" aria-label="Bold" aria-pressed="false">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8a4 4 0 0 1 0 8H6z"/><path d="M6 12h9a4 4 0 0 1 0 8H6z"/></svg>
+        </button>
+        <button type="button" id="btnItalic" class="toolbar-btn toolbar-btn--italic" title="Italic" aria-label="Italic" aria-pressed="false">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>
+        </button>
+        <button type="button" id="btnUnderline" class="toolbar-btn toolbar-btn--underline" title="Underline" aria-label="Underline" aria-pressed="false">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v7a6 6 0 0 0 12 0V3"/><line x1="4" y1="21" x2="20" y2="21"/></svg>
+        </button>
+        <button type="button" id="btnStrike" class="toolbar-btn toolbar-btn--strike" title="Strikethrough" aria-label="Strikethrough" aria-pressed="false">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4H9a3 3 0 0 0-2.83 4"/><path d="M14 12a4 4 0 0 1 0 8H6"/><line x1="4" y1="12" x2="20" y2="12"/></svg>
+        </button>
         <button type="button" id="btnKeepStyleText" class="toolbar-btn toolbar-btn--keep-style" title="Set as Current Style" aria-label="Set as Current Style" aria-pressed="false">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l1.9 5.9L20 9l-4.6 4 1.3 6.1L12 16l-4.7 3.1L8.6 13 4 9l6.1-1.1z"/></svg>
+          <svg class="icon-unlocked" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+          <svg class="icon-locked" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
         </button>
       </div>
 
@@ -165,7 +184,8 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="12" x2="20" y2="12"/><polyline points="8 8 4 12 8 16"/><polyline points="16 8 20 12 16 16"/></svg>
         </button>
         <button type="button" id="btnKeepStyleStyle" class="toolbar-btn toolbar-btn--keep-style" title="Set as Current Style" aria-label="Set as Current Style" aria-pressed="false">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l1.9 5.9L20 9l-4.6 4 1.3 6.1L12 16l-4.7 3.1L8.6 13 4 9l6.1-1.1z"/></svg>
+          <svg class="icon-unlocked" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+          <svg class="icon-locked" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
         </button>
       </div>
 
@@ -218,6 +238,17 @@
          ada picker yang aktif. Baris ini HILANG saat page discroll
          (lihat topbar-autohide.js), beda dengan child bar di atas. -->
     <div class="color-picker-bar" id="colorPickerBar" hidden></div>
+
+    <!-- ============ BARIS 4: FONT FAMILY BAR ============
+         Diisi oleh font-family-dropdown.js lewat openFontFamilyBar() di
+         src/js/utils/dom.js — pola sama dengan color-picker-bar di atas
+         (full-width, menempel jadi bagian topbar, BUKAN floating panel),
+         tapi isinya daftar VERTIKAL (bisa panjang) jadi discroll vertikal
+         dengan max-height 35vh (lihat .font-family-bar, toolbar.css) biar
+         tidak menutupi seluruh area catatan di layar pendek. Kosong &
+         hidden saat tidak ada dropdown Font Family yang aktif — sama
+         seperti color-picker-bar, baris ini HILANG saat page discroll. -->
+    <div class="font-family-bar" id="fontFamilyBar" hidden></div>
   </div>
 
   <!-- ============ AREA MENULIS ============ -->
@@ -242,10 +273,6 @@
           <div class="skeleton-bar editor-skeleton__line editor-skeleton__line--w2"></div>
           <div class="skeleton-bar editor-skeleton__line editor-skeleton__line--w1"></div>
           <div class="skeleton-bar editor-skeleton__line editor-skeleton__line--w3"></div>
-          <div class="editor-skeleton__gap"></div>
-          <div class="skeleton-bar editor-skeleton__line editor-skeleton__line--w1"></div>
-          <div class="skeleton-bar editor-skeleton__line editor-skeleton__line--w2"></div>
-          <div class="skeleton-bar editor-skeleton__line editor-skeleton__line--w4"></div>
         </div>
       </div>
 
@@ -276,10 +303,13 @@
 <script type="module" src="/src/js/utils/topbar-autohide.js"></script>
 <script type="module" src="/src/js/app.js"></script>
 
+<!-- ============ PWA: Service Worker (mode offline) ============ -->
 <!-- Hanya urusan registrasi SW & capture event install, tidak menyentuh
      mesin editor / app.js sama sekali. -->
+<script type="module" src="/src/js/pwa/sw-register.js"></script>
+<script type="module" src="/src/js/pwa/capacitor-back.js"></script>
+<script type="module" src="/src/js/pwa/install-prompt.js"></script>
 <script type="module" src="/src/js/utils/native-feel.js"></script>
-<script type="module" src="/src/js/utils/native-back.js"></script>
 
 </body>
 </html>

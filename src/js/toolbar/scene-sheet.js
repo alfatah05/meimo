@@ -15,24 +15,37 @@
  *      Escape) membatalkan pilihan.
  *   3. Bottom sheet "Customize Scene" (dibuka lewat chip di atas, atau
  *      otomatis begitu selesai menyisipkan Scene baru) — tampilan &
- *      interaksinya sengaja disamakan dengan bottom sheet gambar
+ *      interaksinya SEKARANG disamakan PERSIS dengan bottom sheet gambar
  *      (image-sheet.js): overlay + panel yang naik dari bawah, judul di
- *      atas, tiap pengaturan sebagai section berlabel.
+ *      atas, tiap pengaturan sebagai section berlabel, dan di bagian
+ *      bawah cuma ada dua tombol "Batal"/"Terapkan" (lihat
+ *      image-sheet__actions di image-sheet.css, dipakai bareng di sini).
  *
- * BEDA PENTING dari image-sheet.js: kontrol di sheet ini (warna latar,
- * padding, bentuk tepi) langsung diterapkan ke model SAAT itu juga lewat
- * editor.updateScene() (lihat editor.js) — tidak ada mode "pratinjau lalu
- * Terapkan/Batal". Scene bukan wizard sisip-sekali seperti gambar; ini
- * panel pengaturan yang wajar untuk terus dibuka-tutup kapan saja sambil
- * langsung terlihat hasilnya, dan tiap sentuhan sudah 100% aman/murah
- * (tidak ada upload file/asset seperti pada gambar yang perlu tahap
- * commit terpisah).
+ * SAMA PERSIS pola image-sheet.js: kontrol di sheet ini (warna latar,
+ * padding, bentuk tepi) HANYA memanipulasi elemen DOM Scene secara
+ * LANGSUNG untuk pratinjau (lihat applyScenePreview() di bawah) selama
+ * sheet masih terbuka — model dokumen baru benar-benar dimutasi (lewat
+ * editor.updateScene(), SATU kali, jadi satu langkah undo) begitu tombol
+ * "Terapkan" ditekan.
+ *   - Tombol "Batal" membuang pratinjau: di mode "insert" (baru saja
+ *     disisipkan lewat tombol toolbar), Scene-nya dihapus total dari
+ *     model (commands.js deleteScene) — jadi Scene tidak jadi disisipkan
+ *     sama sekali; di mode "edit" (dibuka lewat chip "Scene" pada Scene
+ *     yang sudah ada), editor cukup di-render ulang dari model yang
+ *     tidak berubah (editor.renderAll()) untuk membuang pratinjau di DOM.
+ *
+ * Tombol "Duplicate Scene"/"Delete Scene" HANYA muncul di mode "edit"
+ * (dibuka lewat chip pada Scene yang sudah ada) — di mode "insert" (baru
+ * saja disisipkan, belum tentu jadi dipakai user) sheet sengaja dibikin
+ * ramping cuma Background/Padding/Edge Style + Batal/Terapkan, konsisten
+ * dengan bottom sheet gambar mode "insert" di image-sheet.js.
  */
 
 import { createEl, qs } from "../utils/dom.js";
-import { insertScene, duplicateScene, deleteScene } from "../editor/commands.js";
+import { insertScene, deleteScene } from "../editor/commands.js";
 import { SCENE_EDGE_STYLES, SCENE_PADDING_PRESETS, DEFAULT_SCENE_META } from "../editor/block-model.js";
-import { buildEdgeClipPath } from "../editor/scene-edges.js";
+import { buildEdgeClipPath, SCENE_EDGE_HEIGHT } from "../editor/scene-edges.js";
+import { registerActiveSheet, closeActiveSheet, clearActiveSheet } from "./active-sheet.js";
 
 // Preset warna latar Scene. `value` BUKAN hex tetap, melainkan referensi ke
 // custom property --scene-bg-* (lihat themes.css) yang isinya rgba tipis —
@@ -47,18 +60,28 @@ import { buildEdgeClipPath } from "../editor/scene-edges.js";
 // Warna Kustom (input type=color, di bawah BG_PRESETS ini) TETAP disimpan
 // sebagai hex literal seperti sebelumnya, karena itu pilihan RGB eksplisit
 // pengguna sendiri yang memang tidak seharusnya ikut berubah-ubah oleh tema.
+// Preset "Tanpa warna" (transparan) SUDAH DIHAPUS — Scene sekarang SELALU
+// berwarna sejak disisipkan (lihat DEFAULT_SCENE_META di block-model.js),
+// jadi tidak ada lagi opsi buat balik ke transparan dari sheet ini.
 const BG_PRESETS = [
-  { hex: null, label: "Tanpa warna" },
   { hex: "var(--scene-bg-rose)", label: "Rose" },
+  { hex: "var(--scene-bg-cherry)", label: "Cherry" },
+  { hex: "var(--scene-bg-coral)", label: "Coral" },
   { hex: "var(--scene-bg-peach)", label: "Peach" },
   { hex: "var(--scene-bg-amber)", label: "Amber" },
+  { hex: "var(--scene-bg-gold)", label: "Gold" },
   { hex: "var(--scene-bg-lime)", label: "Lime" },
+  { hex: "var(--scene-bg-olive)", label: "Olive" },
   { hex: "var(--scene-bg-mint)", label: "Mint" },
+  { hex: "var(--scene-bg-teal)", label: "Teal" },
   { hex: "var(--scene-bg-aqua)", label: "Aqua" },
   { hex: "var(--scene-bg-sky)", label: "Sky" },
+  { hex: "var(--scene-bg-indigo)", label: "Indigo" },
   { hex: "var(--scene-bg-periwinkle)", label: "Periwinkle" },
   { hex: "var(--scene-bg-lavender)", label: "Lavender" },
+  { hex: "var(--scene-bg-plum)", label: "Plum" },
   { hex: "var(--scene-bg-grape)", label: "Grape" },
+  { hex: "var(--scene-bg-slate)", label: "Slate" },
   { hex: "var(--scene-bg-gray)", label: "Abu-abu" },
 ];
 
@@ -106,7 +129,7 @@ function buildCustomizeChip(editor, state, sceneId) {
   chip.addEventListener("click", (e) => {
     e.stopPropagation();
     if (editor.bodyEl.getAttribute("contenteditable") === "false") return; // mode Read Only
-    openSceneSheet({ editor, state, sceneId });
+    openSceneSheet({ editor, state, sceneId, mode: "edit" });
   });
   return chip;
 }
@@ -212,27 +235,91 @@ function buildEdgePreview(style) {
 }
 
 /* -------------------------------------------------------------------- */
-/* Bottom sheet "Customize Scene"                                        */
+/* Pratinjau Scene di DOM (tanpa menyentuh model)                        */
 /* -------------------------------------------------------------------- */
 
-let closeCurrentSheet = null;
-function closeAnyOpenSheet() {
-  if (closeCurrentSheet) {
-    closeCurrentSheet();
-    closeCurrentSheet = null;
+/** Terapkan pengaturan pratinjau (backgroundColor/padding/edgeStyle)
+ * LANGSUNG ke elemen `.editor-scene` di DOM, TANPA menyentuh model — sama
+ * semangatnya dengan applyPreviewToBlockEl() di image-sheet.js. Meniru
+ * ulang logika serializer.js renderSceneWrapper(), tapi mengedit elemen
+ * yang sudah ada di tempat (bar tepi atas/bawah dibongkar-pasang ulang
+ * sesuai kebutuhan) alih-alih membangun ulang seluruh wrapper — supaya
+ * `.editor-scene__body` (yang memuat block-block isi Scene) tidak pernah
+ * ikut terbuang selama pratinjau berlangsung. */
+function applyScenePreview(wrapperEl, settings) {
+  if (!wrapperEl) return;
+  const m = { ...DEFAULT_SCENE_META, ...settings };
+  wrapperEl.dataset.edgeStyle = m.edgeStyle || "straight";
+  const paddingPx = SCENE_PADDING_PRESETS[m.padding] ?? SCENE_PADDING_PRESETS.md;
+  wrapperEl.style.setProperty("--scene-padding", `${paddingPx}px`);
+
+  const hasEdge = m.edgeStyle && m.edgeStyle !== "straight";
+  wrapperEl.style.backgroundColor = hasEdge ? "transparent" : (m.backgroundColor || "transparent");
+
+  // Bar tepi lama (kalau ada) dibuang dulu, dibangun ulang dari nol kalau
+  // masih perlu — lebih sederhana & aman daripada mencoba menimpa
+  // clip-path/posisi bar lama satu-satu.
+  const oldTop = qs(".editor-scene__edge--top", wrapperEl);
+  if (oldTop) oldTop.remove();
+  const oldBottom = qs(".editor-scene__edge--bottom", wrapperEl);
+  if (oldBottom) oldBottom.remove();
+
+  const bodyEl = qs(".editor-scene__body", wrapperEl);
+  if (bodyEl) bodyEl.style.backgroundColor = hasEdge ? (m.backgroundColor || "transparent") : "";
+
+  if (hasEdge) {
+    const topEdge = createEl("div", { className: "editor-scene__edge editor-scene__edge--top" });
+    topEdge.style.backgroundColor = m.backgroundColor || "transparent";
+    topEdge.style.clipPath = buildEdgeClipPath(m.edgeStyle, "top", SCENE_EDGE_HEIGHT);
+    topEdge.style.webkitClipPath = topEdge.style.clipPath;
+    // firstChild pada titik ini sudah pasti bodyEl (bar lama sudah dibuang
+    // di atas), jadi bar baru selalu jatuh persis sebelum bodyEl.
+    wrapperEl.insertBefore(topEdge, wrapperEl.firstChild);
+
+    const bottomEdge = createEl("div", {
+      className: "editor-scene__edge editor-scene__edge--bottom",
+      attrs: { contenteditable: "false" },
+    });
+    bottomEdge.style.backgroundColor = m.backgroundColor || "transparent";
+    bottomEdge.style.clipPath = buildEdgeClipPath(m.edgeStyle, "bottom", SCENE_EDGE_HEIGHT);
+    bottomEdge.style.webkitClipPath = bottomEdge.style.clipPath;
+    // appendChild taruh di paling akhir — aman walau chip "Scene" (kalau
+    // sedang terpasang) sudah lebih dulu ada sebagai child, karena chip
+    // itu position:absolute (lihat scene.css) jadi tidak ikut alur normal
+    // tata letak; urutannya di DOM tidak berpengaruh ke tampilannya.
+    wrapperEl.appendChild(bottomEdge);
   }
 }
+
+/* -------------------------------------------------------------------- */
+/* Bottom sheet "Customize Scene"                                        */
+/* -------------------------------------------------------------------- */
 
 /**
  * @param {object} opts
  * @param {object} opts.editor - instance dari createEditor() (editor.js)
  * @param {object} opts.state - editor state (editor-state.js)
  * @param {string} opts.sceneId
+ * @param {"insert"|"edit"} opts.mode - "insert": Scene baru saja
+ *   disisipkan lewat tombol toolbar (Batal -> Scene dihapus total,
+ *   tidak jadi disisipkan). "edit": Scene lama dibuka lewat chip
+ *   "Scene" (Batal -> pratinjau dibuang, Scene lama tetap seperti semula).
  */
-function openSceneSheet({ editor, state, sceneId }) {
-  closeAnyOpenSheet();
+function openSceneSheet({ editor, state, sceneId, mode }) {
+  // Batalkan & tutup sheet lain (Gambar/Scene/Musik) yang sedang aktif,
+  // kalau ada — lihat active-sheet.js.
+  closeActiveSheet();
   const meta = state.getScene(sceneId);
   if (!meta) return; // Scene sudah tidak ada (mis. dihapus lewat undo di tempat lain)
+
+  const wrapperEl = qs(`.editor-scene[data-scene-id="${sceneId}"]`, editor.bodyEl);
+  if (!wrapperEl) return;
+
+  // Daftarkan `doCancel` (didefinisikan di bawah, aman dirujuk di sini
+  // berkat function hoisting) sebagai sheet aktif SEKARANG (baru setelah
+  // dua guard di atas lolos, supaya tidak ada `doCancel` "cacat" yang
+  // sempat terdaftar untuk sheet yang ternyata gagal dibuka).
+  registerActiveSheet(doCancel);
 
   sheetOpenForSceneId = sceneId;
   const settings = { ...DEFAULT_SCENE_META, ...meta };
@@ -241,7 +328,44 @@ function openSceneSheet({ editor, state, sceneId }) {
   const sheet = createEl("div", { className: "scene-sheet image-sheet" });
   overlay.appendChild(sheet);
 
-  sheet.appendChild(createEl("div", { className: "image-sheet__title", text: "Scene" }));
+  // ---- Judul + tombol Hapus Scene (icon-only, pojok kanan atas) ----
+  // Sebelumnya "Delete Scene" adalah tombol besar berlabel di bagian
+  // bawah sheet (berdampingan dengan "Duplicate Scene", yang sekarang
+  // dihapus total karena sudah tidak kepake). Delete tetap HANYA muncul
+  // di mode "edit" (Scene yang sudah ada, dibuka lewat chip) — di mode
+  // "insert" tombol "Batal" di bawah sudah setara dengan membatalkan/
+  // menghapus Scene yang baru saja disisipkan.
+  const titleRow = createEl("div", { className: "image-sheet__title scene-sheet__title-row" });
+  titleRow.appendChild(createEl("span", { text: "Scene" }));
+  let deleteArmTimer = null;
+  if (mode === "edit") {
+    let deleteArmed = false;
+    const deleteIconBtn = createEl("button", {
+      className: "scene-sheet__delete-icon-btn",
+      attrs: { type: "button", "aria-label": "Hapus Scene" },
+      html:
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+    });
+    deleteIconBtn.addEventListener("click", () => {
+      if (!deleteArmed) {
+        deleteArmed = true;
+        deleteIconBtn.classList.add("is-armed");
+        deleteIconBtn.setAttribute("aria-label", "Ketuk lagi untuk hapus Scene");
+        deleteArmTimer = setTimeout(() => {
+          deleteArmed = false;
+          deleteIconBtn.classList.remove("is-armed");
+          deleteIconBtn.setAttribute("aria-label", "Hapus Scene");
+        }, 3000);
+        return;
+      }
+      clearTimeout(deleteArmTimer);
+      clearSceneSelection();
+      editor.runCommand(deleteScene, sceneId);
+      close();
+    });
+    titleRow.appendChild(deleteIconBtn);
+  }
+  sheet.appendChild(titleRow);
 
   /* ---- Background Color ---- */
   const bgSection = createEl("div", { className: "image-sheet__section" });
@@ -261,7 +385,7 @@ function openSceneSheet({ editor, state, sceneId }) {
     swatch.addEventListener("click", () => {
       settings.backgroundColor = preset.hex;
       markActiveSwatch(preset.hex);
-      editor.updateScene(sceneId, { backgroundColor: preset.hex });
+      applyScenePreview(wrapperEl, settings);
     });
     bgSwatches[key] = swatch;
     bgGrid.appendChild(swatch);
@@ -278,7 +402,7 @@ function openSceneSheet({ editor, state, sceneId }) {
   customInput.addEventListener("input", () => {
     settings.backgroundColor = customInput.value;
     markActiveSwatch(customInput.value);
-    editor.updateScene(sceneId, { backgroundColor: customInput.value });
+    applyScenePreview(wrapperEl, settings);
   });
   customWrap.appendChild(customInput);
   customWrap.appendChild(createEl("span", { text: "Kustom" }));
@@ -301,7 +425,7 @@ function openSceneSheet({ editor, state, sceneId }) {
     btn.addEventListener("click", () => {
       settings.padding = key;
       for (const k in paddingButtons) paddingButtons[k].classList.toggle("is-active", k === key);
-      editor.updateScene(sceneId, { padding: key });
+      applyScenePreview(wrapperEl, settings);
     });
     paddingButtons[key] = btn;
     paddingGroup.appendChild(btn);
@@ -324,7 +448,7 @@ function openSceneSheet({ editor, state, sceneId }) {
     btn.addEventListener("click", () => {
       settings.edgeStyle = style;
       for (const k in edgeButtons) edgeButtons[k].classList.toggle("is-active", k === style);
-      editor.updateScene(sceneId, { edgeStyle: style });
+      applyScenePreview(wrapperEl, settings);
     });
     edgeButtons[style] = btn;
     edgeGrid.appendChild(btn);
@@ -332,63 +456,52 @@ function openSceneSheet({ editor, state, sceneId }) {
   edgeSection.appendChild(edgeGrid);
   sheet.appendChild(edgeSection);
 
-  /* ---- Duplicate / Delete ---- */
-  const actionsSection = createEl("div", { className: "image-sheet__section scene-sheet__actions" });
-  const duplicateBtn = createEl("button", {
-    className: "scene-sheet__action-btn",
+  /* ---- Aksi: Batal / Terapkan (persis pola image-sheet.js) ---- */
+  const actions = createEl("div", { className: "image-sheet__actions" });
+  const cancelBtn = createEl("button", {
+    className: "image-sheet__btn image-sheet__btn--ghost",
     attrs: { type: "button" },
-    html:
-      '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Duplicate Scene</span>',
+    text: "Batal",
   });
-  duplicateBtn.addEventListener("click", () => {
-    const result = editor.runCommand(duplicateScene, sceneId);
-    if (result && result.sceneId) {
-      selectSceneId(editor, state, result.sceneId);
-      openSceneSheet({ editor, state, sceneId: result.sceneId });
-    }
+  const applyBtn = createEl("button", {
+    className: "image-sheet__btn image-sheet__btn--primary",
+    attrs: { type: "button" },
+    text: "Terapkan",
   });
-  actionsSection.appendChild(duplicateBtn);
+  actions.appendChild(cancelBtn);
+  actions.appendChild(applyBtn);
+  sheet.appendChild(actions);
 
-  let deleteArmed = false;
-  let deleteArmTimer = null;
-  const deleteBtn = createEl("button", {
-    className: "scene-sheet__action-btn scene-sheet__action-btn--danger",
-    attrs: { type: "button" },
-  });
-  function renderDeleteLabel() {
-    deleteBtn.innerHTML = deleteArmed
-      ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/></svg><span>Ketuk lagi untuk hapus</span>'
-      : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg><span>Delete Scene</span>';
-  }
-  renderDeleteLabel();
-  deleteBtn.addEventListener("click", () => {
-    if (!deleteArmed) {
-      deleteArmed = true;
-      renderDeleteLabel();
-      deleteBtn.classList.add("is-armed");
-      deleteArmTimer = setTimeout(() => {
-        deleteArmed = false;
-        deleteBtn.classList.remove("is-armed");
-        renderDeleteLabel();
-      }, 3000);
-      return;
+  function doCancel() {
+    if (mode === "insert") {
+      // Scene ini baru saja disisipkan lewat tombol toolbar — Batal berarti
+      // batal sisip sama sekali, bukan cuma buang pratinjau tampilannya.
+      clearSceneSelection();
+      editor.runCommand(deleteScene, sceneId);
+    } else {
+      // Scene lama: buang pratinjau DOM, balik ke nilai model semula.
+      editor.renderAll();
+      // BUG FIX (sama seperti catatan doCancel() di image-sheet.js):
+      // renderAll() di sini dipanggil LANGSUNG (bukan lewat runCommand),
+      // jadi tidak otomatis memicu state.emitChange() — tanpa ini, chip
+      // "Scene" yang tadinya nempel di elemen lama (sudah dibongkar total
+      // oleh renderAll()) tidak akan pernah dipasang ulang ke elemen baru.
+      if (state.emitChange) state.emitChange({ type: "scene-cancel" });
     }
-    clearTimeout(deleteArmTimer);
-    clearSceneSelection();
-    editor.runCommand(deleteScene, sceneId);
     close();
-  });
-  actionsSection.appendChild(deleteBtn);
-  sheet.appendChild(actionsSection);
+  }
 
-  /* ---- Tutup ---- */
-  const doneBtn = createEl("button", {
-    className: "image-sheet__btn image-sheet__btn--primary scene-sheet__done-btn",
-    attrs: { type: "button" },
-    text: "Selesai",
-  });
-  doneBtn.addEventListener("click", () => close());
-  sheet.appendChild(doneBtn);
+  function doApply() {
+    editor.updateScene(sceneId, {
+      backgroundColor: settings.backgroundColor,
+      padding: settings.padding,
+      edgeStyle: settings.edgeStyle,
+    });
+    close();
+  }
+
+  cancelBtn.addEventListener("click", doCancel);
+  applyBtn.addEventListener("click", doApply);
 
   // ---- Kunci area catatan supaya keyboard TIDAK bisa muncul lagi ----
   // Sama persis dengan toolbar/image-sheet.js: pointer-events: none di
@@ -444,6 +557,7 @@ function openSceneSheet({ editor, state, sceneId }) {
     stopReservingSpace();
     unlockNoteContent();
     setTimeout(() => overlay.remove(), 200);
+    clearActiveSheet(doCancel);
   }
 
   if (document.activeElement && typeof document.activeElement.blur === "function") {
@@ -462,12 +576,12 @@ function openSceneSheet({ editor, state, sceneId }) {
     // pengukurannya memakai layout final (bukan di tengah animasi).
     setTimeout(() => {
       startReservingSpace();
-      const wrapperEl = qs(`.editor-scene[data-scene-id="${sceneId}"]`, editor.bodyEl);
-      if (wrapperEl) wrapperEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      wrapperEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }, 200);
   });
 
-  closeCurrentSheet = close;
+  // registerActiveSheet(doCancel) sudah dipanggil di awal fungsi ini —
+  // tidak ada lagi yang perlu didaftarkan ulang di sini.
 }
 
 /* -------------------------------------------------------------------- */
@@ -486,9 +600,12 @@ export function initSceneFeature(button, editor, state) {
     state.onChange(() => {
       ensureSelectionUI(editor, state);
       // Kalau Scene yang sheet-nya lagi terbuka ternyata baru saja hilang
-      // (mis. dihapus lewat undo dari tempat lain), tutup sheet-nya juga.
+      // (mis. dihapus lewat undo dari tempat lain), tutup sheet-nya juga
+      // (lewat coordinator global yang sama — sheet Scene ini pasti sheet
+      // yang aktif kalau sheetOpenForSceneId masih terisi, lihat
+      // active-sheet.js).
       if (sheetOpenForSceneId && !state.getScene(sheetOpenForSceneId)) {
-        closeAnyOpenSheet();
+        closeActiveSheet();
       }
     });
   }
@@ -498,6 +615,6 @@ export function initSceneFeature(button, editor, state) {
     const result = editor.runCommand(insertScene);
     if (!result || !result.sceneId) return;
     selectSceneId(editor, state, result.sceneId);
-    openSceneSheet({ editor, state, sceneId: result.sceneId });
+    openSceneSheet({ editor, state, sceneId: result.sceneId, mode: "insert" });
   });
 }

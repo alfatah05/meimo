@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Kelola Font — Catatan</title>
 
-<!-- ============ Vendor plugin Capacitor & Theme Color ============ -->
-<script src="/vendor/capacitor-plugins.js"></script>
+<!-- ============ PWA: Manifest, Theme Color, App Icon, Splash Screen ============ -->
+<link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#1E1E1E">
 <script>
   // Terapkan tema tersimpan SEBELUM stylesheet dirender, supaya tidak ada
@@ -58,7 +58,7 @@
   <!-- ============ HEADER (Kelola Font) ============ -->
   <header class="home-header">
     <div style="display:flex; align-items:center; gap: var(--space-sm);">
-      <a href="/index.html" class="note-back-btn" aria-label="Kembali">
+      <a href="/library" class="note-back-btn" aria-label="Kembali">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <line x1="19" y1="12" x2="5" y2="12"></line>
           <polyline points="12 19 5 12 12 5"></polyline>
@@ -84,17 +84,34 @@
       <div id="builtinFontList" class="font-manager-list"></div>
     </section>
 
+    <!-- BUGFIX: sebelumnya elemen ini dipasang DI DALAM <section> di bawah
+         (jadi DOM-parent langsungnya .section, bukan .home-content) —
+         `.skeleton-overlay` punya `padding: inherit`, dan `inherit`
+         menyalin nilai padding milik PARENT DI DOM, bukan milik containing
+         block posisinya. `.section` sendiri tidak set padding apa pun
+         (default 0px), jadi overlay ini kepadding 0 alih-alih ikut padding
+         kiri/kanan `.home-content` (var(--space-md)) seperti skeleton
+         sejenis di trash.html/cadangkan.html (yang anak LANGSUNG dari
+         .home-content) — akibatnya baris skeleton nempel ke tepi
+         layar/lebih lebar dari .font-item asli. Sekarang dipindah jadi
+         anak langsung .home-content (sibling dari <section> di bawah,
+         sama seperti pola #exportListSkeleton di cadangkan.html), supaya
+         padding-nya ikut benar. Posisi visualnya tidak berubah (tetap
+         overlay penuh .home-content lewat position:absolute), cuma
+         perhitungan padding-nya yang dibetulkan. -->
+    <div id="libraryFontListSkeleton" class="list-skeleton skeleton-overlay" aria-hidden="true">
+      <div class="skeleton-bar list-skeleton__row"></div>
+      <div class="skeleton-bar list-skeleton__row"></div>
+      <div class="skeleton-bar list-skeleton__row"></div>
+    </div>
+
     <section class="section">
       <div class="section-header">
         <span class="section-title">Font Library</span>
       </div>
       <p class="font-manager-hint">Unduh font tambahan untuk dipakai di editor. Sekali diunduh, font tetap tersimpan di perangkat ini walau offline.</p>
-      <div id="libraryFontListSkeleton" class="list-skeleton skeleton-overlay" aria-hidden="true">
-        <div class="skeleton-bar list-skeleton__row"></div>
-        <div class="skeleton-bar list-skeleton__row"></div>
-        <div class="skeleton-bar list-skeleton__row"></div>
-      </div>
       <div id="libraryFontList" class="font-manager-list" hidden></div>
+      <div id="libraryFontPagination" class="font-manager-pagination" hidden></div>
     </section>
 
     <div id="libraryEmptyState" class="empty-state anim-fade-in" hidden>
@@ -109,14 +126,45 @@
       <p class="empty-state__desc">Belum ada font tambahan yang bisa diunduh. Tambahkan lewat assets/fonts/library/manifest.json.</p>
     </div>
 
+    <!-- ============ FONT KUSTOM (UNGGAH) ============
+         Berbeda dari Font Library (yang isinya dikurasi lewat manifest.json
+         di repo) — section ini untuk font milik user sendiri (.ttf/.otf/
+         .woff/.woff2) yang diunggah langsung dari perangkat. Logic ada di
+         installCustomFont() (src/js/services/font-service.js), dirender
+         font-manager.js. -->
+    <section class="section">
+      <div class="section-header">
+        <span class="section-title">Font Kustom (Unggah)</span>
+      </div>
+      <p class="font-manager-hint">Unggah berkas font sendiri (.ttf, .otf, .woff, .woff2) dari perangkat ini untuk dipakai di editor.</p>
+
+      <button type="button" id="btnUploadFont" class="font-manager-upload-btn">
+        <span class="font-manager-upload-btn__icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V9"/><path d="M7 14l5-5 5 5"/><path d="M4 5h16"/></svg>
+        </span>
+        <span class="font-manager-upload-btn__text">
+          <span class="font-manager-upload-btn__title">Unggah Font</span>
+          <span class="font-manager-upload-btn__desc">Pilih satu atau beberapa berkas .ttf/.otf/.woff/.woff2</span>
+        </span>
+      </button>
+      <input type="file" id="uploadFontInput" accept=".ttf,.otf,.woff,.woff2" multiple hidden>
+
+      <div id="uploadedFontList" class="font-manager-list" hidden></div>
+      <div id="uploadedFontPagination" class="font-manager-pagination" hidden></div>
+      <p id="uploadedFontEmpty" class="font-manager-hint">Belum ada font yang diunggah.</p>
+    </section>
+
   </main>
 
 </div>
 
 <script type="module" src="/src/js/fonts/font-manager.js"></script>
 
+<!-- ============ PWA: Service Worker (mode offline) ============ -->
+<script type="module" src="/src/js/pwa/sw-register.js"></script>
+<script type="module" src="/src/js/pwa/capacitor-back.js"></script>
+<script type="module" src="/src/js/pwa/install-prompt.js"></script>
 <script type="module" src="/src/js/utils/native-feel.js"></script>
-<script type="module" src="/src/js/utils/native-back.js"></script>
 
 </body>
 </html>

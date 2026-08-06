@@ -37,6 +37,7 @@ import {
 } from "../editor/block-model.js";
 import * as musicService from "../services/music-service.js";
 import * as audioPlayerService from "../services/audio-player-service.js";
+import { registerActiveSheet, clearActiveSheet } from "./active-sheet.js";
 
 const PLAY_ICON =
   '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M8 5v14l11-7z"/></svg>';
@@ -204,14 +205,6 @@ function enforceActiveKeyStillValid(state) {
 /* Bottom sheet "Insert Music"                                           */
 /* -------------------------------------------------------------------- */
 
-let closeCurrentSheet = null;
-function closeAnyOpenSheet() {
-  if (closeCurrentSheet) {
-    closeCurrentSheet();
-    closeCurrentSheet = null;
-  }
-}
-
 /**
  * @param {object} opts
  * @param {object} opts.editor - instance dari createEditor() (editor.js)
@@ -220,7 +213,13 @@ function closeAnyOpenSheet() {
  *   lihat block-model.js findMusicTargetAt()/parseMusicKey().
  */
 function openMusicSheet({ editor, state, target }) {
-  closeAnyOpenSheet();
+  // Daftarkan `doCancel` (didefinisikan di bawah, aman dirujuk di sini
+  // berkat function hoisting) sebagai sheet aktif — otomatis membatalkan
+  // & menutup sheet lain (Gambar/Scene/Musik) yang sebelumnya terbuka,
+  // kalau ada. Tidak ada guard early-return di fungsi ini (beda dari
+  // openImageSheet/openSceneSheet), jadi aman didaftarkan langsung di
+  // baris pertama. Lihat active-sheet.js.
+  registerActiveSheet(doCancel);
 
   const key = musicKeyForTarget(target);
   const existing = state.getMusic(key);
@@ -236,15 +235,47 @@ function openMusicSheet({ editor, state, target }) {
   const sheet = createEl("div", { className: "music-sheet image-sheet" });
   overlay.appendChild(sheet);
 
-  // Judul ("Sisipkan Musik"/"Musik") & subjudul ("Menempel di: ...") SENGAJA
-  // dihapus dari sini (beda dari image-sheet.js/scene-sheet.js yang masih
-  // pakai judul) — konteksnya sudah cukup jelas dari tombol yang membuka
-  // sheet ini (label "Berkas Musik" di bawah langsung jadi elemen
-  // pertama), jadi dua baris teks itu cuma makan tempat tanpa nambah info.
-  // Section "Berkas Musik" + tombol "Pilih Lagu" digabung jadi SATU
-  // section (bukan dua section terpisah dengan gap ganda seperti
-  // sebelumnya) supaya keduanya kelihatan sebagai satu kelompok yang
-  // rapat & rapi, bukan dua blok yang mengambang sendiri-sendiri.
+  // ---- Judul "Musik" + tombol Hapus Musik (icon-only, pojok kanan atas,
+  // konsisten dengan scene-sheet.js) — HANYA muncul kalau section ini
+  // SUDAH punya musik (hasMusicAtOpen). Section "Berkas Musik" + tombol
+  // "Pilih Lagu" di bawah digabung jadi SATU section (bukan dua section
+  // terpisah dengan gap ganda seperti sebelumnya) supaya keduanya
+  // kelihatan sebagai satu kelompok yang rapat & rapi, bukan dua blok
+  // yang mengambang sendiri-sendiri.
+  const titleRow = createEl("div", { className: "image-sheet__title scene-sheet__title-row" });
+  titleRow.appendChild(createEl("span", { text: "Musik" }));
+  let deleteArmed = false;
+  let deleteArmTimer = null;
+  let deleteBtn = null;
+  if (hasMusicAtOpen) {
+    deleteBtn = createEl("button", {
+      className: "scene-sheet__delete-icon-btn",
+      attrs: { type: "button", "aria-label": "Hapus Musik" },
+      html:
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+    });
+    deleteBtn.addEventListener("click", () => {
+      if (isBusy) return;
+      if (!deleteArmed) {
+        deleteArmed = true;
+        deleteBtn.classList.add("is-armed");
+        deleteBtn.setAttribute("aria-label", "Ketuk lagi untuk hapus Musik");
+        deleteArmTimer = setTimeout(() => {
+          deleteArmed = false;
+          deleteBtn.classList.remove("is-armed");
+          deleteBtn.setAttribute("aria-label", "Hapus Musik");
+        }, 3000);
+        return;
+      }
+      clearTimeout(deleteArmTimer);
+      if (audioPlayerService.isKeyActive(key)) audioPlayerService.stopAll();
+      editor.removeSectionMusic(target);
+      close();
+    });
+    titleRow.appendChild(deleteBtn);
+  }
+  sheet.appendChild(titleRow);
+
   const infoSection = createEl("div", { className: "image-sheet__section" });
   infoSection.appendChild(createEl("div", { className: "image-sheet__label", text: "Berkas Musik" }));
   const fileLabelEl = createEl("div", { className: "music-sheet__file-label" });
@@ -284,44 +315,6 @@ function openMusicSheet({ editor, state, target }) {
   infoSection.appendChild(uploadBtn);
   infoSection.appendChild(fileInput);
   sheet.appendChild(infoSection);
-
-  /* ---- Hapus Musik (kalau sudah ada) ---- */
-  let deleteArmed = false;
-  let deleteArmTimer = null;
-  let deleteBtn = null;
-  if (hasMusicAtOpen) {
-    const actionsSection = createEl("div", { className: "image-sheet__section scene-sheet__actions" });
-    deleteBtn = createEl("button", {
-      className: "scene-sheet__action-btn scene-sheet__action-btn--danger",
-      attrs: { type: "button" },
-    });
-    function renderDeleteLabel() {
-      deleteBtn.innerHTML = deleteArmed
-        ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/></svg><span>Ketuk lagi untuk hapus</span>'
-        : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg><span>Hapus Musik</span>';
-    }
-    renderDeleteLabel();
-    deleteBtn.addEventListener("click", () => {
-      if (isBusy) return;
-      if (!deleteArmed) {
-        deleteArmed = true;
-        renderDeleteLabel();
-        deleteBtn.classList.add("is-armed");
-        deleteArmTimer = setTimeout(() => {
-          deleteArmed = false;
-          deleteBtn.classList.remove("is-armed");
-          renderDeleteLabel();
-        }, 3000);
-        return;
-      }
-      clearTimeout(deleteArmTimer);
-      if (audioPlayerService.isKeyActive(key)) audioPlayerService.stopAll();
-      editor.removeSectionMusic(target);
-      close();
-    });
-    actionsSection.appendChild(deleteBtn);
-    sheet.appendChild(actionsSection);
-  }
 
   /* ---- Aksi: Batal / Terapkan ---- */
   const actions = createEl("div", { className: "image-sheet__actions" });
@@ -460,7 +453,7 @@ function openMusicSheet({ editor, state, target }) {
     stopReservingSpace();
     unlockNoteContent();
     setTimeout(() => overlay.remove(), 180);
-    if (closeCurrentSheet === close) closeCurrentSheet = null;
+    clearActiveSheet(doCancel);
   }
 
   if (document.activeElement && typeof document.activeElement.blur === "function") {
@@ -474,7 +467,8 @@ function openMusicSheet({ editor, state, target }) {
     setTimeout(() => startReservingSpace(), 200);
   });
 
-  closeCurrentSheet = close;
+  // registerActiveSheet(doCancel) sudah dipanggil di awal fungsi ini —
+  // tidak ada lagi yang perlu didaftarkan ulang di sini.
 }
 
 /* -------------------------------------------------------------------- */

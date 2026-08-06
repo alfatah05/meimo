@@ -130,7 +130,14 @@ export const SCENE_EDGE_STYLES = ["straight", "wave", "torn", "stamp", "zigzag",
 export const SCENE_PADDING_PRESETS = { none: 0, sm: 12, md: 24, lg: 40, xl: 64 };
 
 export const DEFAULT_SCENE_META = Object.freeze({
-  backgroundColor: null, // null = transparan (ikut warna latar catatan)
+  // Default Scene BARU langsung berwarna (bukan transparan lagi) — pilihan
+  // "Tanpa warna" sudah dihapus dari sheet kustomisasi (scene-sheet.js),
+  // jadi Scene baru harus punya warna nyata sejak awal. `null` di sini
+  // TIDAK PERNAH lagi jadi nilai default, tapi tetap ditangani apa adanya
+  // (fallback ke "transparent") di applyScenePreview()/serializer.js untuk
+  // Scene LAMA yang sudah kadung tersimpan dengan backgroundColor null dari
+  // sebelum perubahan ini.
+  backgroundColor: "var(--scene-bg-mint)",
   padding: "md",
   edgeStyle: "straight",
 });
@@ -161,6 +168,50 @@ export function findSceneRangeById(blocks, sceneId) {
   const index = blocks.findIndex((b) => b.sceneId === sceneId);
   if (index === -1) return null;
   return findSceneRangeAt(blocks, index);
+}
+
+/**
+ * Resolusikan rentang block [start, end] MENTAH (mis. rentang block yang
+ * dicakup seleksi teks biasa) jadi rentang FINAL yang menghormati aturan
+ * Scene yang sama dipakai mode Select Block (lihat blok komentar "Aturan
+ * khusus Scene" panjang di block-select-mode.js):
+ *   1. Kalau block paling awal (index terkecil) di rentang adalah anggota
+ *      sebuah Scene -> rentang DIKUNCI ("clamp"), tidak boleh melewati
+ *      batas bawah Scene itu (batas atas otomatis tidak masalah karena
+ *      titik mulainya sendiri sudah di dalam Scene).
+ *   2. Kalau tidak (rentang dimulai di ROOT, di luar Scene mana pun) ->
+ *      tiap Scene yang tersentuh sepanjang rentang ikut diperluas
+ *      ("atomic-expand") sampai mencakup Scene itu UTUH, tidak pernah
+ *      cuma sebagian.
+ *
+ * Fungsi murni (tidak menyentuh DOM sama sekali) — dipakai Copy Block yang
+ * dipencet LANGSUNG dari seleksi teks biasa (belum masuk mode Select Block
+ * sama sekali, lihat block-selection-bar.js), supaya behavior-nya tetap
+ * konsisten dengan aturan Scene yang sama dipakai block-select-mode.js
+ * (yang punya versi setara berbasis DOM untuk kebutuhan drag per-frame).
+ */
+export function resolveBlockRange(blocks, start, end) {
+  if (!blocks || !blocks.length) return { start: 0, end: -1 };
+  const lo = Math.max(0, Math.min(start, end, blocks.length - 1));
+  const hi = Math.min(blocks.length - 1, Math.max(start, end));
+
+  const homeSceneRange = findSceneRangeAt(blocks, lo);
+  if (homeSceneRange) {
+    return { start: lo, end: Math.min(hi, homeSceneRange.end) };
+  }
+
+  let resolvedEnd = hi;
+  let i = lo;
+  while (i <= resolvedEnd) {
+    const sr = findSceneRangeAt(blocks, i);
+    if (sr) {
+      resolvedEnd = Math.max(resolvedEnd, sr.end);
+      i = sr.end + 1;
+    } else {
+      i++;
+    }
+  }
+  return { start: lo, end: resolvedEnd };
 }
 
 // Nilai default block gambar baru (lihat createImageBlock) & dipakai

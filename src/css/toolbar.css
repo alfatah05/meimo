@@ -97,7 +97,7 @@
   pointer-events: none;
 }
 
-.toolbar-btn--group-text { font-weight: var(--weight-bold); }
+.toolbar-btn--group-text { }
 
 /* Sama seperti .toolbar-btn--group::after di atas, versi untuk child bar
    (baris 2): dipasang cuma di tombol yang membuka dropdown lewat openPanel()
@@ -127,19 +127,17 @@
   pointer-events: none;
 }
 
-/* Glyph icon-only untuk Heading / Font Family / Font Size di child bar
-   Text — dulu berupa dropdown berlabel teks ("Paragraf ▾", "Inter ▾",
-   "16 ▾"), sekarang jadi tombol icon saja sama seperti Bold/Italic/dst. */
-.toolbar-btn--heading { font-weight: var(--weight-bold); font-size: var(--text-base); }
-.toolbar-btn--fontfamily { font-weight: var(--weight-semibold); font-size: var(--text-sm); }
-
+/* Icon SVG untuk Heading / Font Family / Font Size di child bar Text —
+   dulu berupa dropdown berlabel teks ("Paragraf ▾", "Inter ▾", "16 ▾"),
+   lalu sempat jadi glyph huruf biasa (H / Aa), sekarang full SVG vector
+   biar konsisten & gampang dikenali lintas device/font. */
+.toolbar-btn--heading,
+.toolbar-btn--fontfamily,
 .toolbar-btn--fontsize-icon {
   display: flex;
-  align-items: baseline;
-  gap: 1px;
+  align-items: center;
+  justify-content: center;
 }
-.toolbar-btn--fontsize-icon .fs-lg { font-size: 15px; font-weight: var(--weight-semibold); }
-.toolbar-btn--fontsize-icon .fs-sm { font-size: 10px; font-weight: var(--weight-semibold); }
 
 .toolbar-btn {
   flex: 0 0 auto;
@@ -174,18 +172,30 @@
   pointer-events: none;
 }
 
-.toolbar-btn--bold   { font-weight: var(--weight-bold); }
-.toolbar-btn--italic { font-style: italic; }
-.toolbar-btn--underline { text-decoration: underline; }
-.toolbar-btn--strike { text-decoration: line-through; }
+/* Bold/Italic/Underline/Strikethrough sekarang icon SVG (bukan glyph huruf
+   B/I/U/S yang di-style pakai font-weight/font-style/text-decoration lagi),
+   jadi tidak perlu styling teks di sini. */
 
 /* Toggle "Set as Current Style" (child bar Text & Style, paling kanan) —
-   icon bintang/pin, cuma outline saat nonaktif, terisi penuh (fill:
-   currentColor menimpa fill="none" bawaan svg-nya) saat aktif supaya beda
-   statusnya kebaca jelas walau tanpa label teks (icon-only). */
-.toolbar-btn--keep-style.is-active svg {
-  fill: currentColor;
+   pakai metafora gembok: kebuka (.icon-unlocked) saat nonaktif, terkunci
+   (.icon-locked) saat style saat ini sedang "dikunci"/dipakai sebagai
+   default. Dua SVG ditumpuk di tombol yang sama, ditukar lewat display —
+   beda dari trik fill-only sebelumnya, sekarang bentuknya sendiri yang
+   berubah supaya statusnya kebaca jelas walau tanpa label teks. */
+.toolbar-btn--keep-style {
+  position: relative;
 }
+.toolbar-btn--keep-style svg {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+.toolbar-btn--keep-style .icon-locked { display: none; }
+.toolbar-btn--keep-style .icon-unlocked { display: block; }
+.toolbar-btn--keep-style.is-active .icon-locked { display: block; }
+.toolbar-btn--keep-style.is-active .icon-unlocked { display: none; }
+.toolbar-btn--keep-style.is-active { color: var(--color-accent); }
 
 /* Dropdown trigger (Heading, Font Family, Font Size, dst.) */
 .toolbar-dropdown {
@@ -494,6 +504,195 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xs);
   cursor: pointer;
+}
+
+/* ==========================================================================
+   Font Family bar (baris keempat .note-topbar) — lihat .font-family-bar
+   di layout.css untuk struktur/scroll-nya (tabs tetap di atas, list yang
+   discroll). Item di sini full-width (beda dari .toolbar-panel__item yang
+   width:max-content di floating panel), dan nama font yang lebih lebar
+   dari layar dipotong ellipsis (bukan wrap ke baris baru ataupun bikin
+   baris ini scroll horizontal) supaya tinggi tiap item tetap konsisten
+   satu baris.
+   ========================================================================== */
+
+/* Toggle Semua Font/Font Favorit/Font Impor — baris PALING ATAS
+   .font-family-bar (lihat layout.css), sengaja di LUAR
+   .font-family-bar__list yang discroll supaya toggle ini selalu kelihatan
+   biarpun daftar font di bawahnya digulir panjang. */
+.font-family-bar__tabs {
+  display: flex;
+  flex: 0 0 auto;
+  gap: var(--space-2xs);
+  padding-bottom: var(--space-xs);
+  margin-bottom: var(--space-2xs);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.font-family-bar__tab {
+  flex: 1 1 0;
+  padding: var(--space-xs) var(--space-2xs);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  text-align: center;
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.font-family-bar__tab:hover {
+  background-color: var(--color-accent-soft);
+}
+
+.font-family-bar__tab.is-active {
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-weight: var(--weight-semibold);
+}
+
+/* Daftar font itu sendiri — SATU-SATUNYA bagian .font-family-bar yang
+   discroll vertikal (dipisah dari .font-family-bar__tabs di atas lewat
+   flex:1 + min-height:0, perlu supaya flex child ini beneran mau
+   menyusut & overflow secara internal, bukan menolak menyusut di bawah
+   tinggi kontennya sendiri — kebiasaan default flexbox). */
+.font-family-bar__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  /* Ruang napas di atas item pertama & di bawah item font terakhir —
+     tanpa ini, konten scroll mepet persis ke tepi area scroll, jadi
+     begitu discroll sampai mentok bawah, item terakhir nempel pas di
+     garis potong .font-family-bar (kadang kelihatan seperti
+     "kepotong"/ketutup, terutama di layar pendek). */
+  padding: var(--space-2xs) 0 var(--space-sm);
+}
+
+/* Satu baris = nama font (button, flex:1) + tombol favorit bintang
+   (flex:0 0 auto) bersebelahan — dua tombol terpisah, bukan satu elemen
+   bertumpuk, supaya area tap keduanya jelas & tidak saling mengganggu. */
+.font-family-bar__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+}
+
+.font-family-bar__item {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: var(--space-sm) var(--space-sm);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  /* Elemen <button> TIDAK ikut inherit line-height dari body
+     (--leading-snug) seperti elemen teks biasa — default UA stylesheet
+     memberi button `line-height: normal` sendiri (~1.15), jadi kotak
+     barisnya jadi lebih pendek dari yang dikira. Untuk item biasa ini
+     nyaris tidak kelihatan, TAPI beberapa font di Font Library/Font
+     Kustom (mis. script/handwriting seperti curlyshirley, olde-english)
+     punya ascender/descender jauh lebih tinggi dari font default —
+     dikombinasikan dengan overflow:hidden di atas (dipakai buat ellipsis
+     horizontal), kelebihan tinggi glyph font-font itu ikut ke-crop
+     vertikal oleh kotak baris yang terlalu pendek. Line-height eksplisit
+     di sini menyamakan dengan --leading-snug (dipakai body & elemen teks
+     lain), ngasih ruang vertikal yang cukup supaya font apa pun tidak
+     kepotong lagi. */
+  line-height: var(--leading-snug);
+  color: var(--color-text-primary);
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.font-family-bar__item:hover {
+  background-color: var(--color-accent-soft);
+}
+
+.font-family-bar__item.is-active {
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-weight: var(--weight-semibold);
+}
+
+/* Tombol bintang favorit di sebelah kanan tiap item — kosong/outline
+   (warna sekunder) saat belum favorit, terisi PENUH warna emas begitu
+   ditandai (lihat --color-star di themes.css). Ukurannya disamakan
+   dengan tombol ikon 28px lain (mis. swatch warna kustom) supaya area
+   tap tetap nyaman di layar sentuh. */
+.font-family-bar__fav-btn {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  transition: color var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out);
+}
+
+.font-family-bar__fav-btn svg {
+  width: var(--icon-md, 20px);
+  height: var(--icon-md, 20px);
+}
+
+.font-family-bar__fav-btn:hover {
+  background-color: var(--color-accent-soft);
+}
+
+.font-family-bar__fav-btn.is-favorite {
+  color: var(--color-star);
+}
+
+.font-family-bar__fav-btn.is-favorite svg {
+  fill: var(--color-star);
+}
+
+.font-family-bar__empty {
+  padding: var(--space-sm);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+/* Tombol ikon "Kelola Font" — di baris .font-family-bar__tabs, sebelah
+   kanan ketiga tab (Semua/Favorit/Impor). Ukuran & pola hover disamakan
+   dengan .font-family-bar__fav-btn (tombol ikon bintang) supaya
+   konsisten dengan tombol ikon lain di bar yang sama. `flex: 0 0 auto`
+   (beda dari tab yang `flex: 1 1 0`) supaya ukurannya tetap kotak/tidak
+   ikut menyusut mengikuti lebar bar. */
+.font-family-bar__manage-btn {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  transition: color var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out);
+}
+
+.font-family-bar__manage-btn svg {
+  width: var(--icon-md, 20px);
+  height: var(--icon-md, 20px);
+}
+
+.font-family-bar__manage-btn:hover {
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent);
 }
 
 /* Panel Hyperlink */

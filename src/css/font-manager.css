@@ -37,6 +37,17 @@
   font-size: var(--text-md);
   font-weight: var(--weight-regular);
   color: var(--color-text-primary);
+  /* Preview tiap font dirender pakai font-family aslinya (lihat
+     nameEl.style.fontFamily di font-manager.js) — jadi kena masalah yang
+     sama kayak judul note-card (lihat catatan panjang di
+     .note-card__title, notes-list.css): line-height numerik dari body
+     gak ngikutin metrik font custom, dan overflow:hidden bikin glyph yang
+     "meluber" (swash, ascender/descender font dekoratif) kepotong atas
+     bawah. line-height: normal + padding-block ngasih napas ekstra biar
+     nama font apa pun (termasuk yang paling dekoratif) tetap kebaca utuh. */
+  line-height: normal;
+  padding-block: 0.15em;
+  margin-block: -0.15em 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -104,4 +115,97 @@
 
 .font-item__btn--danger:hover {
   background-color: var(--color-accent-soft);
+}
+
+/* ---- Tombol "Unggah Font" (section Font Kustom) — pola sama dengan
+   .backup-action-btn di backup-import.css, diduplikasi (bukan di-import)
+   supaya font-manager.html tidak perlu memuat stylesheet halaman lain. ---- */
+
+.font-manager-upload-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  width: 100%;
+  padding: var(--space-md);
+  margin-bottom: var(--space-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text-primary);
+  text-align: left;
+}
+
+.font-manager-upload-btn:hover {
+  background-color: var(--color-accent-soft);
+  border-color: var(--color-accent);
+}
+
+.font-manager-upload-btn:disabled {
+  opacity: 0.6;
+}
+
+.font-manager-upload-btn__icon {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.font-manager-upload-btn__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.font-manager-upload-btn__title {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.font-manager-upload-btn__desc {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+/* ---- Paginasi (Font Library & Font Kustom, 10 item per halaman) ---- */
+
+.font-manager-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+}
+
+.font-manager-pagination__btn {
+  padding: var(--space-xs) var(--space-md);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+  transition: background-color var(--duration-fast) var(--ease-out), opacity var(--duration-fast) var(--ease-out);
+}
+
+.font-manager-pagination__btn:hover:not(:disabled) {
+  background-color: var(--color-accent-soft);
+  border-color: var(--color-accent);
+}
+
+.font-manager-pagination__btn:disabled {
+  opacity: 0.4;
+}
+
+.font-manager-pagination__label {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
 }

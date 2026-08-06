@@ -1,6 +1,6 @@
 # Personal Notes PWA
 
-**Versi: v1.7.1** (lihat [Changelog](#changelog) di bawah untuk riwayat versi)
+**Versi: v1.18.0** (lihat [Changelog](#changelog) di bawah untuk riwayat versi)
 
 Kerangka struktur folder untuk aplikasi PWA pencatatan pribadi (bukan markdown editor),
 dibuat mengikuti `PROJECT_RULES.md`.
@@ -30,20 +30,25 @@ Lihat `docs/ARCHITECTURE.md` untuk penjelasan fungsi setiap file.
 
 ## Halaman Cadangkan & Impor (`cadangkan.html`)
 
-Semua aksi cadangkan/impor/ekspor ada di SATU halaman terpisah dari editor
-(bukan tombol di topbar editor) — diakses dari FAB "Cadangkan & Impor" di
-Home (`index.html`). Isinya 4 hal, masing-masing dijelaskan di bawah:
+Semua aksi cadangkan/impor ada di SATU halaman terpisah dari editor (bukan
+tombol di topbar editor) — diakses dari FAB "Cadangkan & Impor" di Home
+(`index.html`). Isinya 3 hal, masing-masing dijelaskan di bawah:
 1. Tombol "Cadangkan Semua Catatan" (`backup-service.js`) — SEMUA note
    dibungkus jadi satu `.meimo` per note (LENGKAP dengan asset & kustomisasi
-   tampilan, format sama persis dengan poin 4 di bawah), lalu semua
-   `.meimo` itu digabung jadi SATU file `.zip`.
+   tampilan, format sama persis dengan ekspor satu note lewat menu
+   titik-tiga — lihat bagian "Ekspor" di bawah), lalu semua `.meimo` itu
+   digabung jadi SATU file `.zip`.
 2. Tombol "Impor Catatan (.meimo)" (`meimo-import.js`, satu note + asset).
 3. Tombol "Impor Cadangan (.zip)" (`backup-restore.js`) — SEMUA `.meimo`
    di dalam satu file `.zip` cadangan (hasil poin 1) diimpor sekaligus,
    lewat `importMeimoBytes()` yang sama dipakai poin 2. Ditolak tegas kalau
    zip yang dipilih tidak punya satu pun entry `.meimo` di dalamnya.
-4. List semua catatan dengan tombol "Ekspor .meimo" per-baris
-   (`meimo-export.js`, note itu SATU + asset-nya).
+
+Ekspor SATU catatan (sebelumnya tombol "Ekspor .meimo" per-baris di
+halaman ini) sudah DIPINDAH ke item menu "Download" di menu titik-tiga tiap
+note card (Home maupun Arsip) — lihat `src/js/notes/note-card.js` &
+`src/js/notes/download-note.js`, jadi tidak perlu lagi ke halaman ini dulu
+cuma buat mengunduh satu catatan.
 
 Logic render & wiring halaman ini ada di `src/js/notes/backup-import.js`.
 
@@ -123,8 +128,9 @@ satu klik. Unzip manual lalu Impor tiap `.meimo` satu-satu lewat tombol
   sendiri, jadi DEFLATE ulang nyaris tidak menghemat apa-apa, sementara
   STORE jauh lebih sederhana & konsisten lintas browser.
 - Nama file unduhan: `<judul catatan, sudah disanitize>.meimo`.
-- Tombol "Ekspor .meimo" ada per-baris di list catatan halaman Cadangkan &
-  Impor, BUKAN di topbar editor.
+- Item "Download" ada di menu titik-tiga tiap note card (Home maupun
+  Arsip — lihat `src/js/notes/note-card.js` & `download-note.js`), BUKAN
+  di topbar editor & BUKAN lagi di halaman Cadangkan & Impor.
 
 ### 2. Impor — status: ✅ diimplementasikan (`src/js/services/meimo-import.js`)
 
@@ -200,6 +206,55 @@ lewat tombol seperti biasa di `cadangkan.html`.
 
 
 
+## Build APK Native (Capacitor + GitHub Actions)
+
+Project ini bisa dibungkus jadi APK Android native lewat [Capacitor](https://capacitorjs.com/),
+dibuild otomatis lewat GitHub Actions — tidak perlu Android Studio kalau cuma mau
+ambil file APK-nya.
+
+### Build otomatis (GitHub Actions)
+Push ke branch `main` (atau jalankan manual lewat tab **Actions** →
+**Build Android APK** → **Run workflow**). Setelah selesai, unduh APK dari
+bagian **Artifacts** run tersebut (`meimo-debug-apk`).
+
+### Build manual (lokal)
+Butuh Node.js 20+ dan JDK 17.
+
+```bash
+npm ci
+npm run build:www              # nyalin file statis ke www/
+npx cap add android            # generate project android/
+node scripts/apply-native-patches.js   # pasang URL cantik & back button native
+npx cap sync android
+npx capacitor-assets generate --android --assetPath resources \
+  --iconBackgroundColor '#1E1E1E' --iconBackgroundColorDark '#1E1E1E' \
+  --splashBackgroundColor '#1E1E1E' --splashBackgroundColorDark '#1E1E1E'
+cd android && ./gradlew assembleDebug
+```
+APK ada di `android/app/build/outputs/apk/debug/app-debug.apk`.
+
+### Yang disesuaikan untuk versi native
+- **Icon aplikasi**: sumbernya `resources/icon.png` (disalin dari
+  `assets/icons/icon-512.png`) — di-generate otomatis jadi semua ukuran/
+  densitas ikon Android (termasuk adaptive icon) lewat `@capacitor/assets`.
+- **URL cantik** (`/library`, `/editor/<id>`, `/trash`, dst — lihat file
+  `htaccess`) tidak bisa jalan begitu saja di APK karena tidak ada Apache di
+  dalamnya. Diselesaikan lewat `native-patches/android/PrettyUrlWebViewClient.java`,
+  yang meniru rewrite internal Apache tapi baca langsung dari assets APK.
+- **Tombol back hardware Android**: begitu ada listener native `backButton`
+  dipasang (`src/js/pwa/capacitor-back.js`), Capacitor mematikan total
+  perilaku back bawaan WebView — modul ini menyambungkannya balik ke
+  `history.back()`, supaya sistem back yang sudah ada di app (nutup sheet,
+  "mentok" di Home — lihat `utils/trap-back-navigation.js` &
+  `toolbar/active-sheet.js`) tetap jalan sama persis seperti di browser.
+- **Service worker** (`sw-register.js`) tidak didaftarkan sama sekali saat
+  jalan sebagai app native — semua file sudah dibundel langsung ke APK,
+  jadi caching offline ala PWA jadi tidak perlu di sini.
+
+Ganti App ID (`com.meimo.app`) di `capacitor.config.json` sebelum rilis ke
+Play Store kalau perlu — `apply-native-patches.js` otomatis ikut menyesuaikan
+package Java-nya.
+
 ## Changelog
 
 Penomoran versi mengikuti [SemVer](https://semver.org/lang/id/) — format
@@ -212,6 +267,747 @@ Penomoran versi mengikuti [SemVer](https://semver.org/lang/id/) — format
 Setiap ada perubahan yang di-deploy, versi di `manifest.json` (field
 `"version"`) HARUS dinaikkan sesuai aturan di atas, dan ditambahkan satu
 entri baru di bawah ini (versi terbaru paling atas).
+
+### v1.18.0
+- **Fitur baru: item menu "Download" di menu titik-tiga note card**, buat
+  mengekspor satu catatan jadi file `.meimo` (lengkap dengan asset)
+  langsung dari mana pun note card itu tampil — Home (grid & strip Pinned)
+  maupun halaman Arsip — TANPA perlu buka halaman Cadangkan & Impor dulu.
+  - `src/js/notes/note-card.js`: item menu baru "Download"
+    (`DOWNLOAD_MENU_ICON_SVG`, ikon panah-turun-ke-tray yang sama dengan
+    ikon lama tombol "Ekspor .meimo"). `openCardMenu()` dapat parameter
+    baru `onDownload`; `createNoteCard()` & `createPinnedCard()` diteruskan
+    lewat opts baru `onDownload`.
+  - **Modul baru `src/js/notes/download-note.js`** (`downloadNoteAsMeimo(note)`)
+    — logic-nya diekstrak dari tombol "Ekspor .meimo" lama di
+    `backup-import.js`: `loadNote(id)` ulang (supaya isi yang diunduh
+    selalu versi terbaru, bukan objek note yang mungkin sudah agak basi di
+    daftar), lalu `exportNoteAsMeimo()` (`meimo-export.js`, tidak berubah
+    sama sekali), dengan toast sukses/gagal. Dipakai ulang PERSIS SAMA oleh
+    `notes-list.js` (Home) & `arsip.js` (Arsip) — satu sumber logic, tidak
+    digandakan.
+- **Daftar "Ekspor Satu Catatan" di halaman Cadangkan & Impor DIHAPUS** —
+  sudah digantikan sepenuhnya oleh item menu "Download" di atas.
+  - `cadangkan.html`: section `#exportListSection`/`#exportListSkeleton`/
+    `#exportEmptyState` beserta grid `#exportList` dihapus dari markup;
+    `<link>` ke `skeleton.css` ikut dihapus (tidak ada lagi elemen skeleton
+    di halaman ini). Halaman sekarang cuma berisi 3 tombol aksi (Cadangkan
+    Semua Catatan / Impor Catatan .meimo / Impor Cadangan .zip).
+  - `src/js/notes/backup-import.js`: ditulis ulang, seluruh logic daftar
+    (`createExportCard()`, `loadList()`, import `listNotes`/`loadNote`/
+    `getSnippet`/`exportNoteAsMeimo`/`formatRelativeDate`) dihapus. Tiga
+    handler tombol (Cadangkan Semua/Impor .meimo/Impor .zip) tetap sama
+    persis, cuma tidak lagi memanggil `loadList()` setelah impor berhasil
+    (karena daftarnya sudah tidak ada).
+  - `src/css/backup-import.css`: aturan `.export-card__actions`/
+    `.export-card__btn` (khusus kartu di daftar yang dihapus) ikut dibuang.
+  - `src/js/services/meimo-export.js`: komentar dokumentasi konsumen
+    `exportNoteAsMeimo()` diperbarui, menunjuk ke `download-note.js` &
+    menu titik-tiga note card (bukan lagi `backup-import.js`) — fungsi
+    `exportNoteAsMeimo()`/`buildMeimoZipBytes()` itu sendiri TIDAK berubah
+    sama sekali, cuma pemanggilnya yang pindah.
+- `CACHE_VERSION` di `service-worker.js` dinaikkan (v76 -> v77);
+  `src/js/notes/download-note.js` ditambahkan ke `APP_SHELL_FILES`.
+
+### v1.17.0
+- **Fitur baru: Arsip.** Catatan sekarang bisa diarsipkan — hilang dari
+  daftar Home (grid Terbaru/Semua Notes & strip Pinned) tanpa dihapus,
+  dan hanya bisa diakses lagi lewat halaman Arsip baru. Backend-nya
+  (`metadata.archived`, `setArchived()` di `document-service.js`, index
+  `archived` di `db/schema.js`, filter `includeArchived` di `listNotes()`)
+  sebenarnya sudah lama ada tapi belum pernah dipakai UI manapun — rilis
+  ini murni menyambungkan UI ke logic yang sudah tersedia itu.
+  - `src/js/notes/note-card.js`: menu titik-tiga tiap note card (grid
+    maupun strip Pinned) dapat item baru **"Arsipkan"** (ikon kotak-arsip
+    baru, `ARCHIVE_MENU_ICON_SVG`). `openCardMenu()` sekarang menerima
+    parameter `onArchive`/`onUnarchive` opsional; `createNoteCard()` &
+    `createPinnedCard()` diteruskan lewat opts baru `onArchive` (dan
+    `onUnarchive` khusus `createNoteCard()`, dipakai halaman Arsip).
+  - `src/js/notes/notes-list.js`: `handleArchive()` baru (pola sama persis
+    dengan `handleTrash()`) — memanggil `documentService.setArchived(id,
+    true)`, membuang note dari `allNotes` di memori, render ulang, lalu
+    toast "Urungkan" yang memanggil `setArchived(id, false)` balik kalau
+    ditekan.
+  - **Halaman Arsip baru**: `arsip.html` + `src/js/notes/arsip.js` (URL
+    cantik `/arsip`, lihat aturan baru di `htaccess`). Isinya daftar semua
+    note dengan `metadata.archived === true` (dan BUKAN `trashed`, supaya
+    note yang kebetulan diarsipkan lalu dihapus tidak dobel muncul di
+    Arsip & Sampah) — dirender pakai `createNoteCard()` yang SAMA PERSIS
+    dengan Home, jadi kartunya tetap bisa langsung diklik untuk dibuka di
+    editor & tetap menampilkan kustomisasi tampilan kartu
+    (`metadata.cardStyle`). Menu titik-tiga di sini menawarkan **"Batalkan
+    Arsip"** (`onUnarchive` -> `setArchived(id, false)`) dan **"Hapus"**
+    (`onTrash` -> `moveToTrash()`), masing-masing dengan toast "Urungkan".
+    TIDAK ada opsi "Sematkan" di halaman ini — catatan yang masih
+    diarsipkan tidak relevan ditampilkan di strip Pinned Home manapun.
+  - `index.html`: tombol ikon baru (ikon sama dengan menu "Arsipkan" di
+    atas) ditambahkan di header Home, di SEBELAH KIRI tombol About —
+    dibungkus wrapper baru `.home-header-actions` (sebelumnya tombol About
+    langsung jadi anak `.home-greeting-row`). `src/css/layout.css` dapat
+    style wrapper ini; tombol arsip memakai ulang class `.home-about-btn`
+    yang sudah ada (nama class dipertahankan generik, cukup mewakili
+    "tombol ikon bulat di header" — bukan cuma khusus About).
+  - `htaccess`: aturan URL cantik baru `/arsip -> arsip.html` (redirect
+    `arsip.html` lama & rewrite internal), pola sama persis dengan `/trash`.
+- `CACHE_VERSION` di `service-worker.js` dinaikkan (v75 -> v76);
+  `arsip.html` & `src/js/notes/arsip.js` ditambahkan ke `APP_SHELL_FILES`
+  & `resolveShellPath()` (pola sama persis dengan `/trash`), supaya
+  halaman Arsip juga bisa dibuka offline setelah PWA ter-install.
+
+### v1.16.4
+- **Font Family bar: link teks "+ Kelola Font…" di paling bawah daftar
+  dihapus, diganti tombol ikon di sebelah kanan baris tab (Semua Font /
+  Font Favorit / Font Impor).** Sebelumnya link ini nempel di ujung
+  bawah `.font-family-bar__list` (ikut kescroll bareng daftar font,
+  cuma kelihatan kalau discroll sampai mentok), sekarang jadi tombol
+  ikon "T" (`.font-family-bar__manage-btn`, ikon SAMA PERSIS dengan
+  tombol FAB "Font Library" di Home) yang SELALU kelihatan di baris tab
+  paling atas — apa pun tab yang lagi aktif & tanpa perlu discroll dulu.
+  - `font-family-dropdown.js`: `renderTabs()` sekarang menambahkan
+    tombol ini (elemen `<a href="/font-manager">`, navigasi native)
+    sebagai anak terakhir `.font-family-bar__tabs`, setelah ketiga
+    tombol tab. `renderList()` tidak lagi menambahkan elemen "Kelola
+    Font…" apa pun ke `.font-family-bar__list`.
+  - `toolbar.css`: class `.font-family-bar__manage` (link teks lama)
+    dihapus, diganti `.font-family-bar__manage-btn` — ukuran & pola
+    hover disamakan dengan tombol ikon bintang favorit
+    (`.font-family-bar__fav-btn`) di sebelahnya supaya konsisten.
+- `CACHE_VERSION` di `service-worker.js` dinaikkan (v74 -> v75).
+
+### v1.16.3
+- **Fix regresi dari v1.16.2: pilih Font Family (kursor collapsed, tanpa
+  blok teks) saat berada DI DALAM Scene malah keluar dari Scene, kursor
+  melompat ke elemen contenteditable di luar Scene.** Penyebabnya: fix
+  v1.16.2 (lihat entri di bawah) mengembalikan fokus ke `editor.bodyEl`
+  begitu bar Font Family ditutup — tapi isi Scene punya contenteditable
+  "pulau" SENDIRI yang terpisah (`.editor-scene__body`, lihat
+  `serializer.js` `renderSceneWrapper()`, dipisah dari `editor.bodyEl`
+  lewat wrapper `<section>` berstatus `contenteditable="false"` di
+  antara keduanya). Memfokuskan `editor.bodyEl` padahal kursor
+  sebelumnya ada di `.editor-scene__body` sama seperti pindah ke
+  "editing host" yang sama sekali berbeda — hasilnya kursor pindah ke
+  posisi default di `editor.bodyEl` (bukan tetap di dalam Scene).
+  - Fix (`font-family-dropdown.js`): elemen yang perlu difokuskan balik
+    sekarang ditangkap sebagai REFERENSI ELEMEN LANGSUNG (`focusTargetEl`)
+    saat tombol "Font" pertama kali di-tap — bisa `editor.titleEl`,
+    `editor.bodyEl`, ATAU `.editor-scene__body` milik Scene yang sedang
+    aktif — bukan cuma boolean "lagi di judul atau bukan" seperti
+    sebelumnya. Elemen persis itu yang difokuskan ulang setelah bar
+    ditutup, dengan fallback ke `editor.bodyEl` kalau referensinya sudah
+    tidak valid lagi (mis. Scene-nya sempat terhapus di antara waktu bar
+    dibuka & baris font dipilih).
+- `CACHE_VERSION` di `service-worker.js` dinaikkan (v73 -> v74).
+
+### v1.16.2
+- **Fix: pilih Font Family dengan kursor collapsed (TANPA memblok/
+  menyeleksi teks apa pun) tidak pernah benar-benar diterapkan ke ketikan
+  berikutnya** — sebelumnya, font yang dipilih memang sudah tersimpan
+  sebagai "pending mark" (lihat `applyPendingMark()` di `commands.js`,
+  mekanisme yang sama dipakai Bold/Italic/dst.), tapi ketikan berikutnya
+  sama sekali tidak masuk ke catatan. Akar masalahnya: tombol baris font
+  yang barusan di-tap (dan saat itu sedang menerima fokus) langsung ikut
+  dihapus dari DOM begitu bar Font Family ditutup (`closeFontFamilyBar()`
+  di `dom.js` — `barEl.hidden = true` + `clearChildren(barEl)`). Begitu
+  elemen yang fokus hilang dari DOM, browser otomatis melempar fokus ke
+  `<body>` halaman (BUKAN balik ke area catatan), jadi ketikan berikutnya
+  tidak punya elemen contenteditable yang aktif untuk menerimanya — walau
+  seleksi model/kursornya sendiri sebenarnya masih valid. Bug ini tidak
+  kelihatan kalau teksnya diblok/diseleksi dulu, karena di jalur itu
+  formatnya langsung diterapkan ke teks yang sudah ada, tidak perlu
+  menunggu ketikan lanjutan sama sekali — makanya seolah-olah cuma jalur
+  "blok dulu" yang berhasil.
+  - Fix (`font-family-dropdown.js`): setelah `closeTransientPickers()`
+    melepas bar, fokus dikembalikan secara eksplisit ke area yang sedang
+    diedit (`editor.bodyEl.focus()` / `editor.titleEl.focus()`) — Range
+    seleksi yang sudah ada (collapsed atau tidak) tidak ikut disentuh,
+    cuma elemennya yang difokuskan ulang, jadi ketikan berikutnya kembali
+    masuk dengan pending mark (font) yang sudah dipilih.
+  - Sekalian ditemukan & diperbaiki bug turunan dengan akar yang sama:
+    memilih font saat sedang mengedit JUDUL juga tidak pernah nempel ke
+    judul (selalu salah diterapkan ke isi catatan/tidak sama sekali).
+    Penyebabnya deteksi `document.activeElement === editor.titleEl` yang
+    dibaca DI DALAM handler klik baris font — di titik itu
+    `document.activeElement` sudah keburu berubah jadi tombol baris font
+    itu sendiri (ikut menerima fokus saat diklik), bukan `editor.titleEl`
+    lagi. Fix: status "lagi edit judul atau bukan" sekarang ditangkap
+    SEKALI di awal, saat tombol "Font" di topbar pertama kali di-tap
+    (`editingTitle`, disimpan di closure) — sebelum bar terbuka dan
+    sebelum ada elemen lain yang sempat mencuri fokus.
+- `CACHE_VERSION` di `service-worker.js` dinaikkan (v72 -> v73).
+
+### v1.16.1
+- **Fix: tombol "Kelola Font…" di bawah Font Family bar ga keliatan** —
+  `.font-family-bar__list` (`toolbar.css`) sebelumnya tanpa padding sama
+  sekali, jadi konten scroll mepet persis ke tepi area scroll-nya sendiri;
+  begitu discroll sampai mentok bawah, tombol "Kelola Font…" nempel pas di
+  garis potong `.font-family-bar`. Ditambah `padding: var(--space-2xs) 0
+  var(--space-sm)` di `.font-family-bar__list` — ruang napas di atas item
+  pertama & di bawah tombol "Kelola Font…" terakhir.
+- **Fitur: Font Family bar sekarang FLOATING (overlay), tidak lagi
+  mendorong turun konten catatan saat dibuka.** Sebelumnya (`.font-family-bar`
+  di-flow normal sebagai bagian `.note-topbar`, pola sama dengan
+  `.color-picker-bar`) — begitu bar ini terbuka, tinggi `.note-topbar`
+  ikut bertambah, dan `viewport-pin.js` (yang meng-observe tinggi
+  `.note-topbar` lewat `ResizeObserver` untuk hitung
+  `--editor-header-space`) otomatis mendorong turun area catatan
+  mengikuti, sama seperti perilaku Color Picker Bar. Untuk Font Family
+  bar SEKARANG diubah `position: absolute` (`top: 100%`, relatif ke
+  `.note-topbar` yang `position: fixed`) — dilepas dari flow normal,
+  sehingga TIDAK ikut menambah tinggi `.note-topbar` sama sekali; bar
+  ini sekarang MENGAMBANG di atas bagian atas area catatan (overlay,
+  dengan `box-shadow` & `background-color` sendiri supaya kelihatan
+  jelas mengambang), bukan mendorongnya turun. Color Picker Bar (Warna
+  Teks/Highlight) TIDAK ikut berubah — tetap pola lama (di-flow normal,
+  dorong konten), cuma Font Family bar yang diubah sesuai laporan.
+  - `openFontFamilyBar()`/`closeFontFamilyBar()` (`src/js/utils/dom.js`):
+    pemanggilan `flashHeaderSpaceTransition()` dihapus dari keduanya —
+    fungsi itu cuma relevan untuk bar yang mengubah
+    `--editor-header-space` (supaya transisinya halus, bukan "snap"),
+    dan Font Family bar sekarang tidak mengubah nilai itu sama sekali.
+- `CACHE_VERSION` di `service-worker.js` dinaikkan (v71 -> v72).
+
+### v1.16.0
+- **Fitur baru: Font Favorit di Font Family bar (`#fontFamilyBar`).** Tiap
+  baris font sekarang punya ikon bintang di sebelah kanan nama font
+  (`.font-family-bar__fav-btn`) — kosong/outline saat belum favorit,
+  terisi penuh warna emas (`--color-star`, token baru di `themes.css`,
+  SATU warna tetap lintas tema) begitu ditandai. Ketuk bintangnya untuk
+  toggle, tidak ikut memilih/menerapkan font itu ke catatan (event klik
+  bintang dipisah dari klik nama font, dua tombol bersebelahan dalam satu
+  baris `.font-family-bar__row`, bukan satu elemen bertumpuk).
+  - Status favorit disimpan lewat `localStorage`
+    (`meimo:favoriteFontIds` — bukan IndexedDB), karena perlu mencakup 2
+    font BAWAAN (Inter/Georgia) yang memang sengaja tidak punya record di
+    object store `fonts` sama sekali. Fungsi baru `isFontFavorite()` &
+    `toggleFontFavorite()` di `font-service.js`. `getAvailableFonts()`
+    sekarang menyertakan field `favorite` (boolean) & `source`
+    (`"builtin"`/`"library"`/`"upload"`) di tiap entri font — dipakai
+    bareng oleh fitur toggle di bawah.
+- **Fitur baru: toggle "Semua Font / Font Favorit / Font Impor"** di
+  baris PALING ATAS Font Family bar (`.font-family-bar__tabs`) — filter
+  daftar font di bawahnya sesuai tab yang dipilih ("Font Impor" = font
+  hasil Unggah Font Eksternal, `source: "upload"`, BUKAN font Font
+  Library yang diunduh). **Baris toggle ini SENGAJA ditaruh di LUAR area
+  yang discroll** (`.font-family-bar__list`, container terpisah di bawah
+  tabs) — jadi selalu kelihatan biarpun daftar font di bawahnya digulir
+  panjang, tidak ikut hilang ke atas.
+  - `.font-family-bar` (`layout.css`) direstrukturisasi: `overflow-y: auto`
+    yang sebelumnya ada di elemen ini sendiri dipindah ke elemen anak baru
+    `.font-family-bar__list` (`flex: 1 1 auto; min-height: 0`, pola sama
+    dengan fix `.note-scroll-area` di v1.10.0) — `.font-family-bar` sendiri
+    sekarang `overflow: hidden`, cuma jadi wadah luar untuk
+    `.font-family-bar__tabs` (tidak ikut menyusut/scroll) +
+    `.font-family-bar__list` (satu-satunya yang scroll).
+  - Tab aktif dipertahankan di memori sepanjang sesi editor (module-level
+    state di `font-family-dropdown.js`, BUKAN per-buka) — buka lagi bar
+    setelah ditutup tetap di tab yang sama, tidak balik ke "Semua Font"
+    sendiri.
+  - Tiap tab kosong (mis. belum ada font favorit/impor sama sekali) tampil
+    pesan penjelas (`.font-family-bar__empty`) sesuai konteksnya, bukan
+    daftar kosong polos.
+- `src/js/toolbar/dropdowns/font-family-dropdown.js`: `renderBar()`
+  dipecah jadi `renderTabs()` (toggle) + `renderList()` (daftar font
+  sesuai tab aktif, dipanggil ulang tiap tab/status favorit berubah) +
+  `renderRow()` (satu baris = tombol nama font + tombol bintang).
+- `CACHE_VERSION` di `service-worker.js` dinaikkan (v70 -> v71).
+
+### v1.15.3
+- **Bugfix: nama font di Font Family bar (`#fontFamilyBar`) kepotong
+  vertikal (setengah tinggi) untuk sejumlah font dekoratif/tulisan-tangan
+  di Font Library/Font Kustom** (mis. `curlyshirley`, `olde-english`,
+  `drunk-fonts`) — `.font-family-bar__item` (`toolbar.css`) adalah elemen
+  `<button>`, dan `<button>` TIDAK ikut inherit `line-height` dari body
+  (`--leading-snug`, 1.5) seperti elemen teks biasa — default UA
+  stylesheet browser memberi form control `line-height: normal` sendiri
+  (~1.15), jadi kotak barisnya jadi jauh lebih pendek dari yang dikira.
+  Untuk font biasa nyaris tidak kelihatan bedanya, tapi font dengan
+  ascender/descender jauh lebih tinggi dari font default jadi ke-crop
+  vertikal oleh `overflow: hidden` di elemen yang sama (dipakai buat
+  ellipsis horizontal nama font yang kepanjangan). Fix: `line-height:
+  var(--leading-snug)` dipasang eksplisit di `.font-family-bar__item`,
+  menyamakan dengan elemen teks lain, supaya kotak barisnya cukup tinggi
+  untuk font apa pun.
+- **Tweak: `gap` di Font Family bar diturunkan lagi** dari `var(--space-sm)`
+  (8px, hasil tweak v1.15.2) jadi `var(--space-2xs)` (2px,
+  `.font-family-bar` di `layout.css`) — sekarang item-nya sendiri sudah
+  cukup tinggi (lihat fix di atas), gap serapat ini tidak lagi bikin item
+  kelihatan mepet/nabrak seperti sebelum v1.15.2.
+- `CACHE_VERSION` di `service-worker.js` dinaikkan (v69 -> v70).
+
+### v1.15.2
+- **Tweak: jarak antar item di Font Family bar (`#fontFamilyBar`) dirapatkan
+  terlalu mepet di v1.15.1** — `gap` diperbesar dari `2px` jadi
+  `var(--space-sm)` (8px, `.font-family-bar` di `layout.css`), samakan
+  dengan jarak antar kartu di `.font-manager-list` (font-manager.css).
+- `CACHE_VERSION` di `service-worker.js` dinaikkan (v68 -> v69).
+
+### v1.15.1
+- **Tweak: dropdown Font Family di child bar Text (editor) diganti dari
+  floating panel (`openPanel()`) jadi bar full-width yang menyatu dengan
+  topbar** — pola sama seperti Color Picker Bar (Warna Teks/Highlight),
+  bukan lagi kotak mengambang dengan shadow terpisah. Baris baru
+  `#fontFamilyBar` ditambahkan di `editor.html` (baris ke-4 `.note-topbar`,
+  setelah `#colorPickerBar`), dibuka/ditutup lewat fungsi baru
+  `openFontFamilyBar()`/`closeFontFamilyBar()`/`isFontFamilyBarOpen()`
+  (`src/js/utils/dom.js`, pola sama persis dengan `openColorBar()` yang
+  sudah ada) — semua tempat yang sebelumnya menutup color bar/panel
+  (`closeAllPanels()`, `closeTransientPickers()`, `openChildGroup()`/
+  `closeChildGroup()`, `openColorBar()`, `openPanel()`, tombol Escape)
+  ikut ditambah pemanggilan `closeFontFamilyBar()` supaya tetap saling
+  eksklusif dengan panel/bar lv3 lain.
+- **Daftar font di dalamnya (bisa puluhan dari Font Library/Font Kustom)
+  discroll VERTIKAL dengan `max-height: 35vh`** (35% tinggi layar,
+  `.font-family-bar` di `layout.css`) — beda dari Color Picker Bar yang
+  satu baris horizontal — supaya di layar pendek tetap menyisakan ruang
+  untuk area catatan di baliknya, tidak ketutup penuh.
+  `viewport-pin.js` (ResizeObserver yang sudah mengamati `.note-topbar`)
+  otomatis mendorong turun area catatan tanpa perlu kode tambahan, sama
+  seperti saat Color Picker Bar buka.
+- **Nama font yang lebih lebar dari layar dipotong dengan `...`**
+  (`text-overflow: ellipsis` + `white-space: nowrap`,
+  `.font-family-bar__item` di `toolbar.css`) — sebelumnya (di floating
+  panel lama) nama font panjang cuma bikin panelnya melebar mengikuti
+  konten (`width: max-content`), sekarang lebar item selalu 100% bar
+  (full-width) jadi dipotong, bukan melebar/wrap.
+  `attrs: { title: font.name }` ditambahkan di tombol tiap item supaya
+  nama lengkapnya tetap kebaca lewat tooltip native browser saat dipotong.
+- Data font sekarang di-`await` DULU (`getAvailableFonts()`) sebelum bar
+  dibuka — beda dari pola `render(bar)` sinkron di Color Picker Bar —
+  supaya bar tidak sempat muncul kosong sesaat lalu "kedip" terisi.
+- `src/js/toolbar/dropdowns/font-family-dropdown.js`: `buildPanel()`
+  (return elemen `.toolbar-panel__list`) diganti `renderBar()` (mengisi
+  `barEl` yang sudah ada, bukan bikin & return elemen baru) — item
+  sekarang pakai class `.font-family-bar__item`/`.font-family-bar__manage`
+  (bukan `.toolbar-panel__item`/`--manage-fonts`), supaya TIDAK ikut
+  kesenggol perubahan sizing ini kalau suatu saat `.toolbar-panel__item`
+  (dipakai dropdown lain: Heading, Font Size, Align, Hyperlink) diubah.
+  Dropdown lain (Heading, Font Size, dst.) TIDAK ikut berubah — tetap
+  floating panel seperti sebelumnya lewat `openPanel()`.
+- `CACHE_VERSION` di `service-worker.js` dinaikkan (v67 -> v68).
+
+### v1.15.0
+- **Paginasi 10 item/halaman di halaman Kelola Font** (`font-manager.html`),
+  untuk section **Font Library** (66 font di manifest — sebelumnya semua
+  langsung dirender sekaligus dalam satu list panjang) dan **Font Kustom
+  (Unggah)**. Kontrol "‹ Sebelumnya / Halaman X dari Y / Berikutnya ›"
+  muncul di bawah masing-masing list, otomatis disembunyikan kalau isinya
+  cuma 1 halaman atau kurang (termasuk Font Kustom yang masih kosong).
+- Implementasi murni di `src/js/fonts/font-manager.js` (helper
+  `renderPagination()` dipakai bareng oleh kedua section) — TIDAK ada
+  perubahan di Font Service/Repository, karena `getFontLibrary()` &
+  `getUploadedFonts()` tetap mengembalikan array lengkap seperti biasa,
+  slicing per halaman terjadi di sisi render.
+- State halaman aktif per section disimpan di memori (variable lokal
+  `boot()`, bukan URL/localStorage) — bertahan lintas re-render (mis.
+  setelah tombol Unduh/Hapus ditekan) selama masih dalam rentang valid;
+  otomatis mundur ke halaman terakhir yang masih ada isinya kalau halaman
+  saat ini jadi kosong (mis. font terakhir di halaman itu dihapus).
+- `CACHE_VERSION` di `service-worker.js` dinaikkan (v66 -> v67).
+
+### v1.14.0
+- **Fitur baru: Unggah Font Eksternal di halaman Kelola Font
+  (`font-manager.html`)** — section baru "Font Kustom (Unggah)" di bawah
+  Font Library, dengan tombol "Unggah Font" (`<input type="file" multiple>`,
+  terima `.ttf`/`.otf`/`.woff`/`.woff2`). Beda dari Font Library (dikurasi
+  lewat `assets/fonts/library/manifest.json`), font di sini berasal dari
+  berkas milik user sendiri di perangkat.
+- `src/js/services/font-service.js` `installCustomFont()`: baca berkas
+  lewat `file.arrayBuffer()`, validasi dengan benar-benar memuatnya via
+  `FontFace.load()` sebelum disimpan (berkas korup/bukan font ditolak
+  dengan pesan jelas, bukan tersimpan sebagai record rusak). Nama tampilan
+  & `font-family` CSS diturunkan dari nama berkas (tabel nama internal
+  font tidak di-parse) — otomatis diberi suffix `(2)`, `(3)` dst kalau
+  bentrok dengan font yang sudah ada (bawaan/Font Library/upload lain).
+  Disimpan ke IndexedDB lewat record yang sama persis dengan font hasil
+  unduhan Font Library (`fonts-repository.js`/`createFontRecord()`), jadi
+  otomatis ikut muncul di dropdown Font Family editor
+  (`getAvailableFonts()`) tanpa perubahan apa pun di sana.
+- `db/schema.js` `createFontRecord()`: field baru `source` (`"library"`
+  default, `"upload"` untuk font hasil fitur ini) — dipakai
+  `getUploadedFonts()` (font-service.js) untuk memisahkan render section
+  "Font Kustom" dari section Font Library di halaman Kelola Font. Font
+  lama yang sudah tersimpan dari sebelum update ini otomatis diperlakukan
+  sebagai `"library"` (fallback default), tidak perlu migrasi data.
+- Tombol Hapus font kustom yang diunggah memakai `removeFont()` yang
+  sudah ada (Repository-nya generik, tidak beda perlakuan antar source).
+- `CACHE_VERSION` di `service-worker.js` dinaikkan (v65 -> v66).
+
+### v1.13.2
+- **Scrollbar kustom (tipis) di bottom sheet Sisipkan Gambar/Scene/Musik**
+  — ketiganya sama-sama reuse class `.image-sheet` (image-sheet.css) yang
+  scroll vertikal kalau isinya lebih panjang dari `max-height: 40vh`,
+  sebelumnya pakai scrollbar bawaan OS/browser apa adanya (kadang tebal &
+  kurang senada tema app). Sekarang scrollbar lebar 4px, warna senada
+  `--color-border` (gelap dikit saat hover), track transparan — lewat
+  `scrollbar-width: thin`/`scrollbar-color` (Firefox) +
+  `::-webkit-scrollbar*` (Chromium/Safari). Sengaja TETAP ditampilkan
+  (bukan disembunyikan seperti scroll horizontal
+  `.color-picker-bar`/`.scene-sheet__color-strip`) supaya ada isyarat
+  visual masih ada konten lanjutan di bawah.
+- `CACHE_VERSION` di `service-worker.js` dinaikkan (v64 -> v65).
+
+### v1.13.1
+- **Tweak: padding kiri-kanan color bar level-3 topbar editor (Warna
+  Teks/Highlight, `.color-picker-bar`) dinaikkan** dari 5px ke
+  `var(--space-sm)` (8px) — pola yang sama dipakai fix ring
+  `.scene-sheet__color-strip` di v1.13.0. 5px sebelumnya masih terlalu
+  mepet buat ring `.color-bar__swatch.is-active` (outline 2px +
+  outline-offset 2px = menonjol 4px dari tepi swatch): kalau swatch
+  paling pojok (kiri saat scroll ke awal, kanan saat mentok ke swatch/
+  input kustom terakhir) yang dipilih, ring-nya bisa ke-crop 1-2px oleh
+  `overflow-x: auto` elemen ini sendiri. `src/css/layout.css`.
+- **Tweak: FAB Outline diturunkan lebih jauh lagi** — pengurangan dari
+  `--editor-footer-space` dinaikkan dari 24px (v1.12.2) jadi 40px,
+  karena 24px ternyata masih belum cukup turun. `src/css/outline.css`.
+- `CACHE_VERSION` di `service-worker.js` dinaikkan (v63 -> v64).
+
+### v1.13.0
+- **Bottom sheet "Sisipkan Scene": preset "Tanpa warna" (transparan)
+  dihapus total.** Scene sekarang SELALU berwarna sejak disisipkan —
+  `DEFAULT_SCENE_META.backgroundColor` (`block-model.js`) diganti dari
+  `null` jadi `var(--scene-bg-mint)`. Scene LAMA yang sudah kadung
+  tersimpan dengan `backgroundColor: null` (dibuat sebelum update ini)
+  TETAP dirender transparan seperti semula (`applyScenePreview()`/
+  `serializer.js` masih fallback ke `"transparent"` kalau ketemu nilai
+  ini) — cuma tidak bisa dipilih lagi dari sheet buat Scene baru/edit.
+- **Preset warna Background Color diperbanyak** dari 11 jadi 19 warna —
+  8 warna baru ditambahkan (`Cherry`, `Coral`, `Gold`, `Olive`, `Teal`,
+  `Indigo`, `Plum`, `Slate`), diselingi di antara preset lama supaya
+  urutannya mengikuti gradasi hue (merah → oranye → kuning → hijau →
+  biru → ungu → netral) alih-alih menumpuk di belakang. Warna baru
+  didefinisikan sebagai custom property `--scene-bg-*` baru di
+  `themes.css` (`:root`), pola rgba tipis yang sama dengan preset lama
+  (otomatis ikut tema aktif, lihat komentar di situ).
+- **Fix: ring highlight swatch warna aktif (`.is-active`, box-shadow 4px)
+  ke-crop kalau swatch di ujung strip (paling kiri/kanan) yang dipilih**
+  — `.scene-sheet__color-strip` (`scene-sheet.css`) selama ini punya
+  padding kiri-kanan yang dinetralkan habis oleh margin negatif yang
+  sama persis (net 0), jadi tidak ada ruang sama sekali untuk ring di
+  ujung strip begitu di-scroll mentok. Padding kiri-kanan dinaikkan ke
+  `--space-sm` (8px, sebelumnya `--space-2xs`/2px) tanpa dikompensasi
+  penuh oleh margin negatif (tetap `-space-2xs`) — hasilnya ruang napas
+  bersih ~6px di tiap ujung, cukup untuk ring 4px.
+  - `.scene-sheet__swatch--none` (style piring "Tanpa warna" yang lama)
+    dihapus dari CSS karena sudah tidak ada preset yang memakainya.
+- `CACHE_VERSION` di `service-worker.js` dinaikkan (v62 -> v63).
+
+### v1.12.2
+- **Tweak: posisi FAB Outline (halaman editor) diturunkan sedikit.** FAB
+  ini pakai `bottom: var(--editor-footer-space)` — variabel yang sama
+  dipakai jarak bawah konten catatan. Begitu `FOOTER_CONTENT_GAP_PX`
+  dinaikkan ke 56px di v1.12.1 (supaya baris terakhir catatan tidak
+  mepet), FAB Outline ikut naik SETINGGI itu juga, jadi kelihatan
+  kegantung terlalu tinggi dari tepi layar.
+  - `src/css/outline.css`: `.outline-fab` sekarang pakai
+    `bottom: calc(var(--editor-footer-space) - 24px)` — dikurangi 24px
+    supaya FAB turun sedikit tanpa mengubah jarak konten bawah yang
+    sudah sengaja dilebarkan. Tetap otomatis ikut naik ke atas keyboard
+    mobile (masih pakai `--editor-footer-space` yang sama, cuma
+    dikurangi konstanta tetap), dan tetap ikut naik saat
+    `.block-selection-bar` terbuka (translate terpisah, tidak berubah).
+- `CACHE_VERSION` di `service-worker.js` dinaikkan (v61 -> v62).
+
+### v1.12.1
+- **Jarak bawah editor ditambah** supaya baris paling bawah catatan tidak
+  nempel ke tepi layar/bottom bar HP, sepadan dengan jarak di bagian atas
+  (topbar tidak menutupi judul). Sebelumnya begitu `viewport-pin.js`
+  mulai jalan, jarak bawah mengecil drastis jadi cuma safe-area + 16px
+  (jauh lebih sempit dari fallback CSS awal 80px) — sekarang pakai
+  konstanta baru `FOOTER_CONTENT_GAP_PX` (56px) di `viewport-pin.js`,
+  terpisah dari gap header (`CONTENT_GAP_PX`, tetap 16px, tidak ikut
+  berubah).
+- `CACHE_VERSION` di `service-worker.js` dinaikkan (v60 -> v61).
+
+### v1.12.0
+- **Fitur baru: back topbar & back HP/gesture bawaan sekarang "diserap"
+  bottom sheet editor (Gambar/Scene/Musik) dulu, kalau ada yang lagi
+  terbuka.** Sebelumnya back langsung menavigasi ke halaman index sambil
+  sheet masih terbuka (state placeholder mode "insert" yang belum
+  dikonfirmasi bisa nyangkut aneh). Sekarang: back PERTAMA sambil sheet
+  terbuka cuma membatalkan/menutup sheet-nya saja (persis efek tombol
+  "Batal" sheet itu) TANPA ikut menavigasi keluar; back KEDUA (sheet sudah
+  tertutup) baru benar-benar pindah ke halaman index seperti biasa.
+  - `toolbar/active-sheet.js` (koordinator SATU sheet aktif lintas
+    Gambar/Scene/Musik yang sudah ada sebelumnya): ditambah trik
+    `history.pushState()` SATU entry dummy ber-URL sama begitu sheet
+    pertama terbuka (dicabut lagi diam-diam lewat `history.back()` begitu
+    sheet ditutup lewat jalur normalnya sendiri) — back HP/gesture yang
+    "memakan" entry dummy itu memicu `popstate` TANPA navigasi terlihat
+    sama sekali (URL-nya sama), titik itu yang dipakai buat membatalkan
+    sheet yang lagi terbuka. Fungsi baru `hasActiveSheet()` diekspor untuk
+    dipakai `app.js`.
+  - `app.js`: tombol back topbar (`.note-back-btn`) sekarang dicegat kalau
+    `hasActiveSheet()` — `preventDefault()` + `closeActiveSheet()` alih-alih
+    navigasi native ke `/library`.
+- `CACHE_VERSION` di `service-worker.js` dinaikkan (v59 -> v60).
+
+### v1.11.1
+- **Konsistensi tombol Hapus di ketiga bottom sheet editor (Gambar/Scene/
+  Musik)** — semuanya sekarang pakai pola yang sama persis dari
+  v1.11.0: judul sheet di baris atas berdampingan dengan tombol Hapus
+  icon-only (ikon tempat sampah, ketuk-dua-kali untuk konfirmasi) di
+  pojok kanan atas.
+  - `music-sheet.js`: sheet "Insert Music" sekarang punya judul "Musik"
+    (sebelumnya sengaja tanpa judul) berdampingan dengan tombol Hapus
+    Musik icon-only — sebelumnya tombol besar berlabel "Hapus Musik" di
+    bagian bawah.
+  - `image-sheet.js`: judul "Sisipkan Gambar"/"Pengaturan Gambar" (sudah
+    ada sebelumnya) sekarang berdampingan dengan tombol Hapus Gambar
+    icon-only BARU di pojok kanan atas (mode "edit" saja) — sebelumnya
+    sheet gambar SAMA SEKALI tidak punya opsi hapus eksplisit di
+    dalamnya (menghapus gambar cuma bisa lewat jalur lain, mis. hapus
+    block-nya langsung dari body catatan).
+- `CACHE_VERSION` di `service-worker.js` dinaikkan (v58 -> v59).
+
+### v1.11.0
+- **Bottom sheet "Customize Scene" (mode edit, dibuka lewat chip "Scene")**:
+  tombol "Duplicate Scene" **dihapus total** (sudah tidak kepake). Tombol
+  "Delete Scene" **tidak lagi jadi tombol besar berlabel** di bagian bawah
+  sheet — sekarang jadi tombol icon-only (ikon tempat sampah) di pojok
+  kanan atas sheet, sejajar dengan judul "Scene"
+  (`.scene-sheet__title-row`/`.scene-sheet__delete-icon-btn` di
+  `scene-sheet.css`). Perilaku konfirmasi "ketuk lagi untuk hapus" (arm
+  3 detik lalu otomatis batal kalau tidak diketuk ulang) tetap sama
+  persis, cuma pindah wadah. `scene-sheet.js`.
+- `CACHE_VERSION` di `service-worker.js` dinaikkan (v57 -> v58).
+
+### v1.10.3
+- **Tweak: jeda topbar muncul lagi dipercepat lebih jauh**, dari ~1 detik
+  jadi ~0.3 detik (`SHOW_AFTER_IDLE_MS` di `topbar-autohide.js`).
+- **Fix: perubahan v1.10.2 (jeda topbar & ruang ekstra keyboard) tidak
+  kelihatan efeknya di HP** karena service worker masih menyajikan file JS
+  versi lama dari cache (`CACHE_VERSION` belum dinaikkan, jadi
+  `cacheFirstNavigation`/precache tidak menganggap ada file baru untuk
+  di-fetch ulang). `CACHE_VERSION` di `service-worker.js` dinaikkan ke
+  `v57` supaya semua asset yang berubah ke-fetch ulang. Setelah update ini,
+  app perlu ditutup total & dibuka lagi sekali (atau tunggu service worker
+  baru `activate` di kunjungan berikutnya) supaya versi baru dipakai.
+
+### v1.10.2
+- **Tweak: topbar editor muncul lagi lebih cepat setelah scroll berhenti.**
+  Jeda idle sebelum `.note-topbar` (back button + floating toolbar) muncul
+  kembali setelah discroll dipercepat dari ~2 detik jadi ~1 detik
+  (`SHOW_AFTER_IDLE_MS` di `topbar-autohide.js`).
+- **Tweak: ruang ekstra di atas keyboard mobile saat editor aktif.**
+  `viewport-pin.js` sekarang kasih jarak 50px (naik dari 16px) antara
+  baris terakhir konten & tepi atas keyboard saat keyboard terbuka
+  (`KEYBOARD_CONTENT_GAP_PX`, dipakai untuk `--editor-footer-space`),
+  supaya teks tidak mepet banget ke keyboard.
+
+### v1.10.1
+- **Bugfix: editor kelihatan "kecrop" di bagian bawah** (muncul area
+  kosong/hitam nutupin bagian bawah layar) setelah scroll cepat ke
+  bawah lalu balik arah ke atas, dan baru normal lagi kalau discroll
+  sampai benar-benar mentok atas. Ini REGRESI dari fix `height: 100dvh`
+  di `.note-page` (lihat entri di bawah, "auto-scroll Select Block") —
+  ternyata unit CSS `dvh` di sejumlah browser mobile (terutama Chrome
+  Android) TIDAK selalu ter-update instan selagi address bar
+  kolaps/muncul akibat momentum scroll, jadi box `.note-page` bisa
+  "ngotot" pakai tinggi dvh yang sudah basi (lebih pendek dari layar
+  yang sungguhan sudah kelihatan penuh) sampai ada trigger resize lain
+  yang memaksa dihitung ulang.
+  - Fix: `viewport-pin.js` sekarang juga mengukur ULANG tinggi viewport
+    sungguhan lewat JS (`window.innerHeight`, bukan cuma CSS `dvh`) —
+    fungsi baru `setAppHeightVar()`, dipanggil tiap event `resize`
+    window MAUPUN tiap kali `computeAndApply()` jalan (jauh lebih
+    sering fire selagi scroll, termasuk selagi address bar animasi).
+    Ditulis ke custom property `--app-height`, dipasang di
+    `.note-page` (layout.css) sebagai override PALING AKHIR di atas
+    dua fallback `vh`/`dvh` sebelumnya — selalu sinkron ke yang
+    BENERAN kelihatan di layar, tidak pernah basi seperti `dvh` murni.
+  - Diverifikasi lewat simulasi resize viewport (Playwright): box
+    `.note-page` selalu ikut persis ke `window.innerHeight` yang baru
+    di setiap skenario resize naik/turun. CATATAN JUJUR: skenario asli
+    (address bar Chrome Android kolaps/muncul akibat momentum scroll)
+    sendiri tidak bisa direproduksi 1:1 di headless testing (itu
+    perilaku native browser chrome, bukan sesuatu yang bisa disimulasi
+    lewat resize viewport biasa) — fix di atas menyasar akar
+    masalahnya (dvh basi) berdasarkan root-cause yang konsisten dengan
+    gejala di screenshot, tapi tetap perlu dikonfirmasi di HP asli.
+- **Bugfix: view editor "melompat" ~100px pas scroll sampai bawah lalu
+  di-scroll ke atas lagi.** `-webkit-overflow-scrolling: touch` di
+  `.note-scroll-area` (`src/css/layout.css`) dihapus — properti ini
+  legacy/non-standar, dan di WebKit modern dikenal jadi sumber glitch
+  scroll position "snap" begitu arah dibalik persis di ujung elemen
+  (momentum scroll tetap mulus tanpa properti ini di browser modern).
+  Ditambahkan `overscroll-behavior-y: contain` sebagai gantinya, supaya
+  rubber-band/bounce di ujung konten tidak "chaining" ke elemen luar.
+  CATATAN JUJUR: gejala persis ini (lompatan pas reverse-scroll) tidak
+  berhasil direproduksi lewat simulasi otomatis (headless Chromium,
+  wheel scroll biasa — scrollTop & padding tetap linear/konsisten,
+  tidak ada lompatan) karena kemungkinan besar ini perilaku rubber-
+  band/momentum-scroll KHAS WebKit mobile (iOS Safari) yang tidak
+  tereplikasi persis di lingkungan testing ini. Fix di atas menyasar
+  penyebab yang paling umum & well-known untuk gejala seperti ini —
+  perlu dites langsung di HP buat konfirmasi tuntas.
+  - Padding di bagian bawah editor sendiri (ruang kosong yang kelihatan
+    pas scroll sampai mentok bawah) itu MEMANG disengaja (footer safe-
+    area/keyboard space, `--editor-footer-space` di `viewport-pin.js`)
+    — bukan bug, tapi kalau kerasa kegedean/kekecilan, itu beda topik
+    dari fix lompatan di atas, tinggal bilang aja.
+- **Bugfix: auto-scroll di mode "Select Block" (`block-select-mode.js`)
+  yang TIDAK PERNAH benar-benar jalan di praktik**, walau logic-nya
+  (`AUTOSCROLL_EDGE_PX`/`AUTOSCROLL_SPEED_PX`, `autoScrollStep()`) sudah
+  ada sejak v1.10.0. Akar masalahnya bukan di `block-select-mode.js`
+  sama sekali, tapi di `.note-page` (`src/css/layout.css`): dipakai
+  `min-height: 100vh/100dvh`, bukan `height`. `min-height` cuma pasang
+  batas bawah — begitu isi catatan lebih panjang dari layar, box
+  `.note-page` (dan `.note-scroll-area` di dalamnya) malah ikut
+  MEMBESAR mengikuti tinggi konten alih-alih mentok di tinggi layar,
+  jadi `.note-scroll-area` tidak pernah benar-benar overflow secara
+  internal — yang scroll malah dokumen/window-nya, `.scrollTop` elemen
+  itu jadi tidak ngefek. Auto-scroll (yang menghitung batas trigger dari
+  `getBoundingClientRect()` elemen ini & menulis ke `.scrollTop`-nya)
+  jadi tidak pernah kepicu maupun ngefek.
+  - Fix: `.note-page` sekarang pakai `height: 100vh` / `height: 100dvh`
+    (dikunci pas layar, bukan cuma minimal), + `.note-scroll-area`
+    ditambah `min-height: 0` (perlu supaya flex item-nya beneran mau
+    dipepetkan oleh `flex: 1`, bukan menolak menyusut di bawah tinggi
+    kontennya sendiri — kebiasaan default flexbox).
+  - Diverifikasi lewat simulasi drag probe (Playwright, headless): auto-
+    scroll sekarang jalan simetris ke dua arah dengan kecepatan konstan
+    ~16px/frame (~60px per 300ms) persis sesuai `AUTOSCROLL_SPEED_PX`,
+    tidak proporsional ke jarak jari dari tepi.
+  - Dampaknya sebenarnya lebih luas dari sekadar Select Block — beberapa
+    file lain juga sudah mengasumsikan `.note-scroll-area` adalah
+    elemen yang benar-benar scroll secara internal (mis. listener
+    `"scroll"` di `topbar-autohide.js`), yang kemungkinan besar juga
+    ikut normal lagi setelah fix ini.
+
+### v1.10.0
+- **Fitur baru: "Select Block" di `.block-selection-bar` SEKARANG
+  SUNGGUHAN** (sebelumnya placeholder toast doang, lihat v1.9.0). Menekan
+  tombolnya menutup seleksi teks bawaan browser lalu mengaktifkan mode
+  seleksi CUSTOM per-block — bukan seleksi teks bawaan browser sama sekali.
+  - File baru `src/js/editor/block-select-mode.js` (DOM & logic) +
+    `src/css/block-select-mode.css` (styling).
+  - UI-nya satu "probe" (handle bulat) di jalur vertikal yang nempel ke
+    tepi KANAN layar (`.block-select-track`), dari bawah topbar sampai
+    persis di atas `.block-selection-bar` (pakai
+    `--block-selection-bar-lift` yang sudah ada, jadi otomatis pas tanpa
+    angka tebakan). Probe ini bisa digeser naik/turun.
+  - Seleksinya PER-BLOCK, bukan continuous seperti scrollbar biasa: begitu
+    posisi geser probe melewati batas block (tepi ATAS block berikutnya
+    kalau menggeser ke bawah, tepi BAWAH block sebelumnya kalau menggeser
+    ke atas), block itu langsung ke-select UTUH dan probe "snap" (loncat)
+    ke tepi block yang baru ter-cover — bukan mengikuti posisi jari/pointer
+    apa adanya. Batas tiap block dihitung ulang dari DOM
+    (`getBoundingClientRect`) di setiap `pointermove`, bukan cache di awal
+    drag, supaya tetap akurat walau daftar block ikut ter-scroll.
+  - Block awal (anchor) diambil dari rentang block yang sudah tercakup
+    seleksi teks saat tombol ditekan (`getModelSelection`, lihat
+    `selection.js`) — jadi block yang sudah kena select teks langsung ikut
+    terselect utuh, bukan mulai dari nol.
+  - Auto-scroll saat probe digeser mendekati tepi atas/bawah jalurnya
+    sendiri, supaya block di luar layar tetap bisa dijangkau tanpa
+    melepas jari dulu.
+  - Highlight visual block terpilih (`.editor-block.is-block-selected`)
+    dipasang langsung di elemen block-nya (bukan overlay terpisah) lewat
+    `background-color` + `box-shadow` (bukan `padding`, supaya tidak
+    menggeser layout sama sekali) — otomatis ikut bentuk block apa pun
+    (heading/list-item/quote/divider/image).
+  - Copy Block/Paste Block MASIH PLACEHOLDER, menyusul kemudian.
+  - `src/js/editor/block-selection-bar.js`: wiring tombol Select Block
+    (toggle on/off) + bar SEKARANG tetap terbuka selagi mode ini aktif,
+    terlepas dari status seleksi teks bawaan browser saat itu (yang
+    justru sengaja ditutup begitu mode dinyalakan). Tombol batal ("X")
+    ikut membatalkan mode ini kalau sedang aktif.
+  - `src/css/block-selection-bar.css`: state `.is-active` untuk tombol
+    Select Block (latar `var(--color-accent)`) selagi mode menyala, sama
+    polanya dengan `.is-open` di tombol toggle toolbar lain.
+  - `src/css/outline.css`: `.outline-fab` disembunyikan penuh (bukan cuma
+    diangkat) selagi mode ini aktif — posisinya bentrok dengan jalur probe
+    yang sama-sama nempel tepi kanan layar.
+  - `src/js/utils/dom.js`: `.block-select-track` ditambah ke daftar
+    elemen yang mencegah `mousedown` memindahkan fokus (pola sama dengan
+    `.block-selection-bar`, lihat v1.9.0).
+  - `editor.html` menambah `<link>` ke `src/css/block-select-mode.css`.
+  - `src/css/block-select-mode.css` & `src/js/editor/block-select-mode.js`
+    ditambah ke precache list `service-worker.js`.
+- `CACHE_VERSION` di `service-worker.js` dinaikkan (v55 -> v56).
+
+### v1.9.2
+- Tweak tampilan: `.block-selection-bar` disamakan dengan `.note-topbar`
+  supaya lebih senada — `background-color` jadi `var(--color-surface)`
+  (sebelumnya `var(--color-bg)`), padding vertikal disamakan persis 5px
+  (sama seperti `.note-topbar-row`) supaya tinggi total bar ini identik
+  dengan topbar, dan ikon (3 tombol aksi + tombol batal) diperbesar jadi
+  `var(--icon-md)`/20px (sebelumnya 18px/16px, tidak seragam) — hanya
+  `src/css/block-selection-bar.css` yang berubah.
+- `CACHE_VERSION` di `service-worker.js` dinaikkan (v54 -> v55).
+
+### v1.9.1
+- Tweak tampilan: 3 tombol aksi di `.block-selection-bar` (Select
+  Block/Copy Block/Paste Block) jadi ICON-ONLY, label teksnya dilepas —
+  `src/js/editor/block-selection-bar.js` & `src/css/block-selection-bar.css`.
+  Tombolnya sekarang bulat 36x36, senada ukuran tombol batal ("X") di
+  sebelahnya. `aria-label`/`title` tetap dipasang di tiap tombol.
+- `CACHE_VERSION` di `service-worker.js` dinaikkan (v53 -> v54).
+
+### v1.9.0
+- **Fitur baru (placeholder): bottom bar "Select Block / Copy Block /
+  Paste Block".** Muncul otomatis saat user long-press lalu SELECT TEKS di
+  isi catatan (bukan cuma kursor collapsed) — dipantau lewat
+  `selectionchange` dokumen, sama seperti pola `toolbar-state-sync.js`.
+  - File baru `src/js/editor/block-selection-bar.js` (DOM & wiring) +
+    `src/css/block-selection-bar.css` (styling).
+  - Layout: 3 tombol aksi rata KIRI (`.block-selection-bar__actions`) +
+    satu tombol batal ikon "X" rata KANAN sendiri, lewat
+    `justify-content: space-between` di root bar — bukan margin manual.
+  - Ketiga aksi (Select Block/Copy Block/Paste Block) masih PLACEHOLDER,
+    belum tersambung ke `block-model.js`/command sungguhan — cuma
+    menampilkan toast. Tombol batal ("X") mengembalikan kursor & menutup
+    bar.
+  - Animasi muncul/tutup SENGAJA pakai `transform: translateY()` +
+    transition, BUKAN fade opacity (sesuai permintaan) — sama seperti
+    pola `.image-sheet`/`.outline-sidebar`.
+  - `.outline-fab` (`src/css/outline.css`) direvisi: naik sementara
+    selagi bar ini terbuka lewat property CSS `translate` (properti
+    individual, terpisah dari `transform`) supaya DIGABUNG, bukan
+    menimpa, animasi bounce `@keyframes outlineFabIn/outlineFabOut` yang
+    sudah ada. Tinggi naiknya diukur otomatis dari tinggi bar sungguhan
+    (`--block-selection-bar-lift`, termasuk safe-area), bukan angka tetap.
+  - `src/js/utils/dom.js`: `.block-selection-bar` ditambah ke daftar
+    elemen yang mencegah `mousedown` memindahkan fokus, supaya tap
+    tombolnya tidak mengcollapse seleksi teks lebih dulu (pola sama
+    dengan `.toolbar-child-bar`/`.color-picker-bar`).
+  - `src/js/app.js` memanggil `initBlockSelectionBar({ bodyEl })`.
+  - `src/css/block-selection-bar.css` & `src/js/editor/block-selection-bar.js`
+    ditambah ke precache list `service-worker.js`.
+- `CACHE_VERSION` di `service-worker.js` dinaikkan (v52 -> v53).
+
+### v1.8.0
+- **Fitur baru: hanya SATU bottom sheet editor (Sisipkan/Edit Gambar,
+  Scene, Musik) yang boleh aktif dalam satu waktu.** Sebelumnya ketiga
+  bottom sheet ini (`src/js/toolbar/image-sheet.js`/`scene-sheet.js`/
+  `music-sheet.js`) masing-masing punya guard "satu sheet per JENIS"
+  sendiri-sendiri — jadi kalau sedang menyisipkan gambar (sheet-nya masih
+  terbuka) lalu user pindah menekan "Sisipkan Scene", dua overlay bisa
+  numpuk berbarengan tanpa saling mengganggu.
+  - File baru `src/js/toolbar/active-sheet.js` — coordinator global yang
+    dipakai bareng ketiga file: `registerActiveSheet(cancelFn)` dipanggil
+    tiap sebuah sheet dibuka, otomatis memanggil fungsi Batal (`doCancel`)
+    milik sheet lain yang sebelumnya aktif (kalau ada) SEBELUM sheet baru
+    ditampilkan.
+  - Karena yang dipanggil adalah `doCancel` asli tiap sheet (persis yang
+    dijalankan tombol "Batal"-nya sendiri) — bukan cuma menyembunyikan
+    UI — sheet lama yang masih dalam mode "insert" (placeholder gambar
+    yang belum dikonfirmasi, Scene yang baru saja disisipkan lewat tombol
+    toolbar) benar-benar DIBATALKAN: placeholder/Scene-nya dihapus total
+    dari model, bukan nyangkut yatim piatu di dokumen. Sheet mode "edit"
+    (menyunting gambar/Scene/musik yang sudah ada) cukup membuang
+    pratinjau yang belum diterapkan, tanpa menghapus apa pun — sama
+    persis perilaku tombol "Batal" masing-masing sheet itu sendiri.
+  - Berlaku simetris ke SEMUA kombinasi (Gambar -> Scene, Scene -> Musik,
+    Musik -> Gambar, dst.), termasuk kombinasi jenis yang SAMA (mis. buka
+    "Sisipkan Gambar" dua kali berturut-turut) — sebelumnya kasus terakhir
+    ini punya bug laten: placeholder gambar pertama bisa nyangkut di model
+    tanpa pernah dibatalkan kalau sheet-nya "ketutup" begitu saja alih-alih
+    ditekan tombol Batal-nya. Sekarang selalu lewat jalur `doCancel` yang
+    sama, jadi bug itu ikut hilang.
+  - `src/js/toolbar/active-sheet.js` ditambah ke precache list
+    `service-worker.js`.
+- `CACHE_VERSION` di `service-worker.js` dinaikkan (v51 -> v52).
 
 ### v1.7.1
 - **Topbar editor, color bar level-3** (Warna Teks/Highlight,

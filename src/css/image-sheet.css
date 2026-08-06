@@ -41,6 +41,33 @@
   box-shadow: 0 -2px 10px rgba(var(--shadow-color), 0.08);
   transform: translateY(100%);
   transition: transform var(--duration-base) var(--ease-standard);
+  /* Scrollbar kustom (bukan scrollbar default OS/browser yang biasanya
+     lebih tebal & kurang senada) — SENGAJA tetap ditampilkan (bukan
+     scrollbar-width: none seperti .color-picker-bar/.scene-sheet__color-strip
+     yang scroll HORIZONTAL) karena sheet ini scroll VERTIKAL dan bisa lebih
+     panjang dari layar (banyak section), jadi user perlu isyarat visual
+     ada konten lanjutan di bawah — bukan cuma gesture scroll tanpa
+     indikator sama sekali. Tipis (4px) & warna senada border supaya tidak
+     mendominasi, bukan lebar seperti scrollbar bawaan browser. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+.image-sheet::-webkit-scrollbar {
+  width: 4px;
+}
+
+.image-sheet::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.image-sheet::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+  border-radius: var(--radius-full);
+}
+
+.image-sheet::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-text-secondary);
 }
 
 .image-sheet-overlay.is-open .image-sheet {

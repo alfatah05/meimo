@@ -32,11 +32,16 @@
    dari/ke state ini. `bottom` sengaja pakai --editor-footer-space (var
    yang sama dipakai .note-scroll-area, di-update live oleh
    viewport-pin.js) supaya otomatis naik ke atas keyboard mobile saat
-   keyboard terbuka, tanpa logic tambahan di JS. */
+   keyboard terbuka, tanpa logic tambahan di JS. Dikurangi 40px
+   (OUTLINE_FAB_LOWER_PX, dinaikkan dari 24px di v1.12.2 — 24px masih
+   kurang turun) supaya FAB tidak ikut naik SETINGGI jarak konten bawah
+   (--editor-footer-space dinaikkan jadi 56px + safe-area di v1.12.1,
+   lihat viewport-pin.js) — FAB cukup sedikit di atas tepi, tidak perlu
+   sejajar persis dengan baris terakhir catatan. */
 .outline-fab {
   position: fixed;
   right: var(--space-lg);
-  bottom: var(--editor-footer-space, var(--space-lg));
+  bottom: calc(var(--editor-footer-space, var(--space-lg)) - 40px);
   z-index: var(--z-fab);
   width: 52px;
   height: 52px;
@@ -59,6 +64,36 @@
 
 .outline-fab:active {
   transform: scale(0.94);
+}
+
+/* Naik sementara saat .block-selection-bar (lihat block-selection-bar.css)
+   terbuka, supaya FAB tidak nabrak bar itu. SENGAJA pakai property `translate`
+   (bukan `transform` atau `bottom`): `translate` adalah properti individual
+   yang terpisah dari `transform` sejak level CSS Transforms 2, jadi nilainya
+   DIGABUNG (bukan menimpa) dengan `transform: scale()/translateY()` yang
+   sudah dipakai @keyframes outlineFabIn/outlineFabOut di atas — tanpa ini,
+   nambah offset lewat `transform` biasa akan tertimpa/konflik dengan
+   keyframe yang juga menulis `transform`. Juga sengaja BUKAN lewat `bottom`,
+   karena `bottom` punya alasan lain untuk tidak diberi transition (lihat
+   catatan di .outline-fab di atas soal --editor-footer-space per-frame). */
+.outline-fab {
+  translate: 0 0;
+  transition: translate var(--duration-base) var(--ease-standard);
+}
+
+body.is-block-selection-bar-open .outline-fab {
+  translate: 0 calc(-1 * (var(--block-selection-bar-lift, 60px) + var(--space-md)));
+}
+
+/* Selagi mode Select Block aktif, FAB ini bentrok posisi dengan probe
+   kanan-atas/kanan-bawah highlight seleksi (.block-select-handle, lihat
+   block-select-mode.css), jadi disembunyikan sepenuhnya alih-alih cuma
+   diangkat. visibility (bukan opacity/transform) SENGAJA dipakai supaya
+   tidak "berebut" dengan properti yang sama yang dipakai animasi
+   outlineFabIn/Out di bawah. */
+body.is-block-select-mode .outline-fab {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 /* Muncul & hilang "mantul-mantul" lewat keyframes (bukan cuma transition

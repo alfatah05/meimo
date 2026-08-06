@@ -1,14 +1,73 @@
 /**
  * schema.js
- * Definisi bentuk (shape) default record yang disimpan — mengikuti
- * docs/DOCUMENT_MODEL.md. Sejak app ini pindah ke penyimpanan file lewat
- * Capacitor Filesystem (lihat db/fs-storage.js, notes-repository.js,
- * fonts-repository.js), file ini murni definisi bentuk data — tidak ada
- * lagi konsep "database"/"object store" (itu istilah IndexedDB lama).
+ * Definisi struktur/skema penyimpanan dokumen di IndexedDB: nama database,
+ * versi, object store, index, serta bentuk (shape) default record yang
+ * disimpan — mengikuti docs/DOCUMENT_MODEL.md.
+ *
+ * File ini TIDAK membuka koneksi IndexedDB (itu tugas db.js) dan TIDAK
+ * melakukan operasi CRUD (itu tugas notes-repository.js). Ia murni
+ * mendefinisikan "bentuk" penyimpanan.
  */
+
+/** Nama & versi database IndexedDB. */
+export const DB_NAME = "personal-notes-db";
+// v2: tambah object store FONTS (font kustom yang diunduh dari Font Library
+// untuk fitur Font Family di editor — lihat src/js/services/font-service.js).
+export const DB_VERSION = 2;
 
 /** Versi skema dokumen (top-level `schemaVersion`), lihat DOCUMENT_MODEL.md §2. */
 export const DOCUMENT_SCHEMA_VERSION = 1;
+
+/** Nama object store. */
+export const STORES = {
+  NOTES: "notes",
+  ASSETS: "assets",
+  FONTS: "fonts",
+};
+
+/**
+ * Dipanggil dari db.js saat `onupgradeneeded`. Membuat object store & index
+ * bila belum ada. Aman dipanggil berulang antar versi (idempotent per store).
+ */
+export function applyUpgrade(db) {
+  let notesStore;
+  if (!db.objectStoreNames.contains(STORES.NOTES)) {
+    notesStore = db.createObjectStore(STORES.NOTES, { keyPath: "id" });
+  }
+  if (notesStore) {
+    // Index untuk Notes List: sorting (Last Edited/Created/Alphabet) &
+    // filter (Pinned/Archived/Trash) tanpa perlu scan seluruh store.
+    notesStore.createIndex("updatedAt", "updatedAt", { unique: false });
+    notesStore.createIndex("createdAt", "createdAt", { unique: false });
+    notesStore.createIndex("title", "title", { unique: false });
+    notesStore.createIndex("trashed", "metadata.trashed", { unique: false });
+    notesStore.createIndex("pinned", "metadata.pinned", { unique: false });
+    notesStore.createIndex("archived", "metadata.archived", { unique: false });
+  }
+
+  let assetsStore;
+  if (!db.objectStoreNames.contains(STORES.ASSETS)) {
+    assetsStore = db.createObjectStore(STORES.ASSETS, { keyPath: "id" });
+  }
+  if (assetsStore) {
+    // Dipakai untuk menghapus semua asset gambar milik satu note (mis. saat
+    // note dihapus permanen dari Trash).
+    assetsStore.createIndex("noteId", "noteId", { unique: false });
+  }
+
+  let fontsStore;
+  if (!db.objectStoreNames.contains(STORES.FONTS)) {
+    // Font yang sudah diunduh user dari halaman Font Manager (font-manager.html).
+    // Berkas biner font (Blob) disimpan langsung di sini per record — lihat
+    // createFontRecord() di bawah. 2 font bawaan (Inter & Georgia) TIDAK
+    // disimpan di sini — keduanya selalu tersedia lewat kode
+    // (src/js/services/font-service.js `BUILTIN_FONTS`), tidak perlu diunduh.
+    fontsStore = db.createObjectStore(STORES.FONTS, { keyPath: "id" });
+  }
+  if (fontsStore) {
+    fontsStore.createIndex("installedAt", "installedAt", { unique: false });
+  }
+}
 
 /** Metadata default untuk dokumen baru — lihat DOCUMENT_MODEL.md §3. */
 export function createDefaultMetadata() {
@@ -63,10 +122,10 @@ export function createDefaultCardStyle() {
  * terbukti gagal secara intermiten khusus di Chrome Android dengan error
  * "Failed to write blobs (InvalidBlob)" — kemungkinan besar karena referensi
  * file dari native photo picker sudah tidak valid lagi di titik commit
- * transaksi. ArrayBuffer adalah data mentah tersalin penuh ke memori JS,
- * jadi tidak bergantung pada referensi file eksternal apa pun — jauh lebih
- * aman ditulis (baik ke IndexedDB dulu, maupun ke file lewat fs-storage.js
- * sekarang).
+ * transaksi (lihat db/db.js untuk catatan terkait tab backgrounding saat
+ * picker foto terbuka). ArrayBuffer adalah data mentah tersalin penuh ke
+ * memori JS, jadi tidak bergantung pada referensi file eksternal apa pun —
+ * jauh lebih aman ditulis ke IndexedDB di semua browser.
  *
  * `blob` tetap diterima sebagai parameter untuk KOMPATIBILITAS MUNDUR saja
  * (mis. dipanggil dari kode lama / data lama) — pemanggil baru (lihat
@@ -100,7 +159,7 @@ export function createAssetRecord({ id, noteId, bytes, blob, mimeType, createdAt
  * ArrayBuffer adalah data mentah tersalin penuh ke memori JS, jadi jauh
  * lebih aman ditulis ke IndexedDB di semua browser.
  */
-export function createFontRecord({ id, name, family, category, files, installedAt } = {}) {
+export function createFontRecord({ id, name, family, category, files, installedAt, source } = {}) {
   return {
     id,
     name,
@@ -108,5 +167,9 @@ export function createFontRecord({ id, name, family, category, files, installedA
     category: category || null,
     files: files || [],
     installedAt: installedAt || new Date().toISOString(),
+    // "library": diunduh dari Font Library (assets/fonts/library/manifest.json).
+    // "upload": diunggah manual user sendiri dari berkas font eksternal lewat
+    // halaman Kelola Font (lihat font-service.js installCustomFont()).
+    source: source || "library",
   };
 }

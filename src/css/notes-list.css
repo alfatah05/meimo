@@ -131,8 +131,18 @@
      setinggi 1.5x font-size + overflow:hidden, bagian atas/bawahnya
      kepotong. line-height: normal balik ke metrik BAWAAN font yang lagi
      dipakai (dari font file itu sendiri), jadi tinggi barisnya otomatis
-     pas buat font apa pun yang dipilih user. */
+     pas buat font apa pun yang dipilih user.
+     Tapi "normal" doang kadang masih belum cukup: banyak font dekoratif
+     (terutama tulisan-tangan/script) glyph-nya ("g", "y", swash huruf
+     kapital, dst) SECARA VISUAL melebihi metrik ascent/descent yang
+     dilaporkan font file-nya sendiri — jadi walau kotaknya sudah "pas"
+     menurut CSS, tinta glyph-nya tetap nongol keluar kotak & kena potong
+     overflow:hidden. padding-block di bawah ini kasih ruang napas ekstra
+     di atas & bawah SEBELUM overflow:hidden motong, jadi overshoot kayak
+     gitu masih ke-cover. */
   line-height: normal;
+  padding-block: 0.15em;
+  margin-block: -0.15em 0;
   overflow-wrap: anywhere;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -230,11 +240,16 @@
   font-size: var(--text-md);
   font-weight: var(--weight-regular);
   letter-spacing: var(--tracking-tight);
-  /* Lihat catatan panjang di .pinned-card__title (di atas) — alasan sama:
-     line-height numerik yang ke-inherit gak ngikutin metrik font custom
-     yang dipilih user, jadi font dekoratif yang lebih "besar" secara
-     visual kepotong atas/bawahnya oleh overflow:hidden. */
+  /* Lihat catatan panjang di .pinned-card__title (notes-list.css, atas) —
+     alasan & fix sama persis: line-height: normal supaya tinggi baris
+     ngikutin metrik font custom yang dipilih user (bukan angka tetap
+     1.5x dari body), lalu padding-block sebagai "napas" ekstra karena
+     banyak font dekoratif glyph-nya melebihi metrik ascent/descent yang
+     dilaporkan font file-nya sendiri — tanpa napas ini, overflow:hidden
+     tetap motong atas/bawah huruf meski kotaknya sudah dihitung "pas". */
   line-height: normal;
+  padding-block: 0.15em;
+  margin-block: -0.15em 0;
   margin-bottom: var(--space-xs);
   overflow-wrap: anywhere;
   display: -webkit-box;

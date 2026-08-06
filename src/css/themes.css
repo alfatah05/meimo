@@ -14,6 +14,14 @@
   --color-accent: #4A55C7;
   --color-accent-soft: rgba(74, 85, 199, 0.12);
   --color-danger: #E5484D;
+  /* Warna ikon bintang favorit (Font Family bar) — SATU warna gold tetap,
+     sengaja TIDAK ikut berubah per tema seperti --color-accent, karena
+     "bintang emas" itu sendiri metafora universal (dipakai app lain juga
+     selalu warna gold/amber, lepas dari tema terang/gelap/sepia). Cukup
+     didefinisikan sekali di sini — blok tema lain (dark/sepia/dst di
+     bawah) sengaja tidak menimpanya lagi, jadi otomatis tetap sama di
+     semua tema. */
+  --color-star: #F5B400;
 
   --glass-bg: rgba(255, 255, 255, 0.65);
   --glass-border: rgba(255, 255, 255, 0.25);
@@ -103,14 +111,22 @@
    menutupi area Scene yang jauh lebih luas. */
 :root {
   --scene-bg-rose: rgba(245, 135, 154, 0.20);
+  --scene-bg-cherry: rgba(224, 74, 94, 0.20);
+  --scene-bg-coral: rgba(230, 126, 96, 0.20);
   --scene-bg-peach: rgba(245, 165, 120, 0.20);
   --scene-bg-amber: rgba(245, 200, 66, 0.20);
+  --scene-bg-gold: rgba(224, 178, 40, 0.20);
   --scene-bg-lime: rgba(163, 214, 84, 0.18);
+  --scene-bg-olive: rgba(138, 148, 60, 0.18);
   --scene-bg-mint: rgba(95, 217, 166, 0.18);
+  --scene-bg-teal: rgba(50, 168, 158, 0.18);
   --scene-bg-aqua: rgba(94, 214, 214, 0.18);
   --scene-bg-sky: rgba(111, 182, 245, 0.18);
+  --scene-bg-indigo: rgba(84, 96, 214, 0.18);
   --scene-bg-periwinkle: rgba(120, 140, 240, 0.18);
   --scene-bg-lavender: rgba(183, 156, 240, 0.20);
+  --scene-bg-plum: rgba(158, 84, 168, 0.18);
   --scene-bg-grape: rgba(196, 120, 214, 0.18);
+  --scene-bg-slate: rgba(96, 116, 138, 0.16);
   --scene-bg-gray: rgba(120, 120, 132, 0.16);
 }

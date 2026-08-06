@@ -51,6 +51,17 @@
   gap: var(--space-sm);
 }
 
+/* Wrapper tombol ikon kanan header Home (Arsip + About) — dua tombol
+   `.home-about-btn` (dipakai ulang sebagai style ikon generik, bukan cuma
+   About) berjejer dengan jarak kecil, sebelum tadinya cuma ada satu tombol
+   langsung sebagai anak `.home-greeting-row`. */
+.home-header-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
 .home-about-btn {
   flex: 0 0 auto;
   padding: 5px;
@@ -87,9 +98,34 @@
 .note-page {
   /* dvh (dynamic viewport height) dipakai agar tinggi menyesuaikan saat
      address bar / keyboard mobile muncul-hilang. vh dipertahankan sebagai
-     fallback untuk browser lama. */
-  min-height: 100vh;
-  min-height: 100dvh;
+     fallback untuk browser lama.
+     BUGFIX (auto-scroll Select Block tidak jalan): SEBELUMNYA dipakai
+     `min-height` di sini, bukan `height`. `min-height` cuma pasang batas
+     BAWAH — begitu isi catatan lebih tinggi dari layar, box `.note-page`
+     ini (dan `.note-scroll-area` di dalamnya, lihat `flex: 1` +
+     `min-height: 0` di bawah) malah ikut MEMBESAR mengikuti tinggi
+     konten, bukan mentok di tinggi layar. Akibatnya `.note-scroll-area`
+     tidak pernah benar-benar overflow secara internal — yang scroll
+     malah dokumen/window-nya sendiri, `.note-scroll-area.scrollTop`
+     jadi tidak ngefek sama sekali. Ini yang bikin auto-scroll di
+     `block-select-mode.js` (& listener "scroll" ke `.note-scroll-area`
+     di `topbar-autohide.js`) tidak pernah kepicu — batas trigger-nya
+     dihitung dari `getBoundingClientRect()` element ini, yang jadi jauh
+     lebih tinggi dari layar sungguhan, sehingga pointer di tepi LAYAR
+     tidak pernah dianggap "dekat tepi" element ini. `height` (bukan
+     `min-height`) mengunci tinggi box ini PERSIS setinggi layar, jadi
+     `.note-scroll-area` beneran overflow & scroll sendiri di dalamnya.
+     BUGFIX LANJUTAN (editor kelihatan "kecrop" di bagian bawah pas
+     scroll cepat lalu balik arah — kotak `.note-page` ketinggalan
+     ukuran dari layar sungguhan karena `dvh` sempat basi selagi address
+     bar Chrome Android animasi kolaps/muncul): `--app-height` (diukur &
+     di-refresh oleh `viewport-pin.js` lewat `window.innerHeight`, jauh
+     lebih sering & akurat ketimbang `dvh` murni) dipasang PALING AKHIR
+     supaya jadi prioritas di atas dua fallback `vh`/`dvh` sebelumnya —
+     lihat komentar lengkap `setAppHeightVar()` di viewport-pin.js. */
+  height: 100vh;
+  height: 100dvh;
+  height: var(--app-height, 100dvh);
   background-color: var(--color-bg);
   display: flex;
   flex-direction: column;
@@ -176,8 +212,16 @@
      memaksa overflow-y ikut ke-clip (bukan lagi "visible"), jadi
      potongan ring itu ke-crop habis oleh baris ini sendiri, kelihatan
      seperti "ketutup"/menyatu dengan baris lv2 (.toolbar-child-bar) di
-     atasnya, padahal sebenarnya bukan ketutup, cuma ke-clip. */
-  padding: var(--space-xs) 5px var(--space-sm);
+     atasnya, padahal sebenarnya bukan ketutup, cuma ke-clip.
+     Padding kiri-kanan sama alasannya (bukan cuma atas): dinaikkan dari
+     5px ke var(--space-sm) (8px, pola sama dipakai
+     .scene-sheet__color-strip di scene-sheet.css) supaya ring 4px pada
+     swatch paling pojok (kiri saat scroll ke awal, kanan saat mentok ke
+     swatch/input kustom terakhir) juga punya ruang mendarat penuh —
+     sebelumnya 5px sudah lumayan tapi masih terlalu mepet ke tepi
+     overflow-x:auto ini, ring bisa ke-crop 1-2px kalau swatch pojok itu
+     yang aktif. */
+  padding: var(--space-xs) var(--space-sm) var(--space-sm);
   overflow-x: auto;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
@@ -196,6 +240,65 @@
 @keyframes colorBarIn {
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Baris keempat topbar: Font Family (lihat font-family-dropdown.js +
+   openFontFamilyBar() di dom.js). Full-width & menyatu dengan topbar
+   sama seperti .color-picker-bar di atas — BUKAN floating panel — tapi
+   bedanya isinya daftar VERTIKAL (nama font, bisa puluhan item dari Font
+   Library/Font Kustom), jadi arah scroll-nya vertikal dengan tinggi
+   dibatasi max-height: 35vh (35% tinggi layar) supaya di layar pendek
+   tetap menyisakan ruang buat area catatan di baliknya, tidak menutupinya
+   penuh. border-top dipasang di sini (bukan di .color-picker-bar, yang
+   sudah punya divider dari .toolbar-child-bar::before di atasnya) karena
+   baris ini bisa muncul langsung di bawah baris pertama topbar juga
+   (kalau child bar/color bar sedang tidak terbuka). */
+/* Baris keempat topbar: Font Family (lihat font-family-dropdown.js +
+   openFontFamilyBar() di dom.js). Daftarnya VERTIKAL (nama font, bisa
+   puluhan item dari Font Library/Font Kustom), jadi arah scroll-nya
+   vertikal dengan tinggi dibatasi max-height: 35vh (35% tinggi layar)
+   supaya di layar pendek tetap menyisakan ruang buat area catatan di
+   baliknya, tidak menutupinya penuh.
+   BEDA dari .toolbar-child-bar/.color-picker-bar (baris 1-3, semuanya
+   di-flow NORMAL di dalam .note-topbar sehingga ikut menambah tinggi
+   topbar begitu terbuka — lihat viewport-pin.js yang meng-observe tinggi
+   .note-topbar lewat ResizeObserver untuk hitung --editor-header-space):
+   bar ini SENGAJA `position: absolute` (dilepas dari flow), jadi TIDAK
+   ikut menambah tinggi .note-topbar sama sekali. Efeknya bar ini
+   mengambang/overlay MENUTUPI bagian atas area catatan di baliknya
+   (bukan mendorongnya turun) — floating, persis seperti dropdown/panel
+   lain (.toolbar-panel), bukan bar yang menyatu penuh dengan topbar
+   seperti .color-picker-bar. `top: 100%` mengacu ke tinggi
+   .note-topbar SENDIRI (containing block-nya, position:fixed) yang
+   cuma dihitung dari baris-baris yang masih di-flow normal (baris
+   1-3) — jadi bar ini otomatis nempel persis di bawah baris paling
+   bawah yang lagi kelihatan, apa pun kombinasi baris yang lagi
+   terbuka. */
+.font-family-bar {
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: var(--z-dropdown);
+  /* Overflow di baris ini sendiri sengaja "hidden" — yang discroll cuma
+     .font-family-bar__list di dalamnya (lihat toolbar.css), sementara
+     .font-family-bar__tabs (toggle Semua Font/Font Favorit/Font Impor)
+     selalu ikut ditampilkan di baris paling atas, tidak ikut tergulir
+     bersama daftar font di bawahnya. */
+  max-height: 35vh;
+  overflow: hidden;
+  padding: var(--space-xs) var(--space-sm) var(--space-sm);
+  border-top: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  box-shadow: 0 10px 24px rgba(var(--shadow-color), 0.16);
+}
+
+.font-family-bar[hidden] { display: none; }
+
+.font-family-bar {
+  animation: colorBarIn var(--anim-scale) var(--ease-standard) both;
 }
 
 /* Class sementara (ditambah/dilepas oleh openColorBar()/closeColorBar() di
@@ -229,14 +332,45 @@
 
 .note-scroll-area {
   flex: 1;
+  /* BUGFIX (satu paket sama fix `height` di .note-page di atas): flex
+     item secara default punya `min-height: auto`, yang artinya elemen
+     ini TETAP akan menolak menyusut lebih kecil dari tinggi konten
+     aslinya walau parent-nya (`.note-page`) sudah dikunci `height`
+     penuh layar — flex:1 doang tidak cukup. `min-height: 0` di sini
+     yang bikin elemen ini benar-benar mau dipepetkan pas-layar oleh
+     flex:1, sehingga isinya yang lebih tinggi dari itu baru overflow
+     & discroll oleh `overflow-y: auto` di bawah (bukan malah mendorong
+     tinggi elemen ini sendiri membesar). */
+  min-height: 0;
   overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  /* BUGFIX (view "melompat" ~100px pas reverse-scroll dekat batas bawah):
+     `-webkit-overflow-scrolling: touch` SEBELUMNYA dipasang di sini buat
+     momentum scroll ala native di iOS — tapi properti ini LEGACY/non-
+     standar, dan di WebKit modern (Safari sudah momentum-scroll mulus
+     secara default TANPA properti ini) properti ini justru dikenal jadi
+     sumber glitch rendering: scroll position bisa "snap"/melompat begitu
+     arah scroll dibalik persis di ujung (atas/bawah) elemen, apalagi
+     dikombinasi overflow:hidden di ancestor (.note-page) & konten yang
+     tinggi/padding-nya berubah dinamis (padding-bottom dari
+     --editor-footer-space, lihat di bawah). Dihapus, momentum scroll
+     tetap jalan mulus tanpa properti ini di browser modern.
+     `overscroll-behavior-y: contain` ditambah supaya rubber-band/bounce
+     pas mentok di ujung konten tidak "chaining" ke elemen luar (yang
+     sekarang toh sudah tidak scroll sama sekali sejak fix `height` di
+     .note-page di atas) — mengurangi potensi lompatan visual yang sama. */
+  overscroll-behavior-y: contain;
   /* padding-top diberi ruang ekstra agar konten tidak tertutup topbar
      (back button + floating toolbar, sekarang jadi satu baris di ATAS).
-     padding-bottom cuma perlu ruang aman untuk safe-area & keyboard mobile
-     (tidak ada lagi elemen mengambang di bawah). Nilai persisnya
-     (--editor-header-space, --editor-footer-space) dihitung & di-set oleh
-     viewport-pin.js; nilai di bawah cuma fallback awal. */
+     Nilai shorthand `padding-bottom` di bawah ini cuma placeholder awal —
+     langsung ditimpa deklarasi `padding-bottom` terpisah beberapa baris
+     di bawah (CSS cascade, deklarasi belakangan menang), yang sekarang
+     juga diberi ruang "napas" yang sepadan (bukan cuma safe-area mepet)
+     supaya baris paling bawah catatan tidak nempel ke tepi layar/bottom
+     bar HP, walau tidak ada elemen toolbar mengambang di bawah lagi —
+     lihat komentarnya & FOOTER_CONTENT_GAP_PX di viewport-pin.js. Nilai
+     persis header/footer (--editor-header-space, --editor-footer-space)
+     dihitung & di-set oleh viewport-pin.js; nilai di sini cuma fallback
+     awal sebelum JS itu sempat jalan. */
   padding: var(--editor-header-space, 80px) var(--space-md) var(--space-5xl);
   /* BUGFIX v1.3.19: containing block untuk overlay skeleton
      (.editor-skeleton.skeleton-overlay, position:absolute; inset:0) HARUS
@@ -257,7 +391,11 @@
      olehnya. Ketiganya dijumlahkan (bukan salah satu) karena masing-masing
      sheet punya var sendiri; dalam praktiknya cuma satu yang pernah
      non-zero di saat bersamaan (sheet lain sudah ditutup duluan lewat
-     closeAnyOpenSheet() masing-masing modul). */
+     coordinator satu-sheet-aktif global, lihat toolbar/active-sheet.js).
+     `--editor-footer-space` sendiri (dari viewport-pin.js) SUDAH termasuk
+     ruang "napas" ekstra (FOOTER_CONTENT_GAP_PX) di luar cuma safe-area —
+     bukan lagi mepet ke tepi, supaya baris terakhir catatan sepadan
+     jaraknya dengan judul di atas topbar. */
   padding-bottom: calc(var(--editor-footer-space, calc(var(--space-5xl) + env(safe-area-inset-bottom, 0px))) + var(--image-sheet-space, 0px) + var(--scene-sheet-space, 0px) + var(--music-sheet-space, 0px));
   /* SENGAJA tanpa transition di sini. viewport-pin.js sudah menulis ulang
      --editor-footer-space lewat requestAnimationFrame yang di-sync ke

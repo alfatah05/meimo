@@ -12,6 +12,7 @@ import * as documentService from "../services/document-service.js";
 import { debounce } from "../utils/debounce.js";
 import { createNoteCard, createPinnedCard } from "./note-card.js";
 import { toggleNotePin } from "./pin.js";
+import { downloadNoteAsMeimo } from "./download-note.js";
 import { filterNotes } from "./search.js";
 import { SORT_OPTIONS, getSort, setSort, sortNotes } from "./sorting.js";
 import { openPanel, closeAllPanels } from "../utils/dom.js";
@@ -99,6 +100,23 @@ async function boot() {
     render(searchInput.value);
   }
 
+  /** Arsipkan satu catatan (hilang dari Home, tetap ada di halaman Arsip
+   * lewat /arsip), lalu render ulang list dengan Undo — pola sama persis
+   * dengan handleTrash() di atas. */
+  async function handleArchive(note) {
+    await documentService.setArchived(note.id, true);
+    allNotes = allNotes.filter((n) => n.id !== note.id);
+    render(searchInput.value);
+    showToast(`"${note.title || "Catatan"}" dipindahkan ke Arsip.`, {
+      actionLabel: "Urungkan",
+      onAction: async () => {
+        await documentService.setArchived(note.id, false);
+        allNotes = await documentService.listNotes({ includeTrashed: false, includeArchived: false });
+        render(searchInput.value);
+      },
+    });
+  }
+
   function render(query) {
     // FIX v1.3.8: sebelumnya skeleton (#homeSkeleton) baru disembunyikan
     // SETELAH `Promise.all([ensureInstalledFontsLoaded(), refreshData()])`
@@ -126,7 +144,7 @@ async function boot() {
     pinnedStrip.innerHTML = "";
     if (pinned.length) {
       pinnedSection.hidden = false;
-      for (const note of pinned) pinnedStrip.appendChild(createPinnedCard(note, { onTrash: handleTrash, onTogglePin: handleTogglePin }));
+      for (const note of pinned) pinnedStrip.appendChild(createPinnedCard(note, { onTrash: handleTrash, onTogglePin: handleTogglePin, onArchive: handleArchive, onDownload: downloadNoteAsMeimo }));
     } else {
       pinnedSection.hidden = true;
     }
@@ -135,7 +153,7 @@ async function boot() {
     recentSectionTitle.textContent = trimmed ? "Hasil Pencarian" : "Terbaru";
     if (others.length) {
       recentSection.hidden = false;
-      for (const note of others) notesGrid.appendChild(createNoteCard(note, { onTrash: handleTrash, onTogglePin: handleTogglePin }));
+      for (const note of others) notesGrid.appendChild(createNoteCard(note, { onTrash: handleTrash, onTogglePin: handleTogglePin, onArchive: handleArchive, onDownload: downloadNoteAsMeimo }));
     } else {
       recentSection.hidden = true;
     }

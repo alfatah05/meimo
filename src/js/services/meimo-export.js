@@ -7,8 +7,10 @@
  *
  * Dua konsumen modul ini:
  *   - exportNoteAsMeimo(doc): ekspor SATU note, langsung memicu unduhan
- *     `.meimo`-nya sendiri — dipakai tombol "Ekspor .meimo" per-baris di
- *     `cadangkan.html` (lihat backup-import.js).
+ *     `.meimo`-nya sendiri — dipakai item menu "Download" di menu
+ *     titik-tiga note card (Home maupun Arsip), lihat notes/download-note.js
+ *     & notes/note-card.js openCardMenu(). Sebelumnya ini tombol "Ekspor
+ *     .meimo" per-baris di cadangkan.html, sudah dipindah ke sini.
  *   - buildMeimoZipBytes(doc): versi "mentah" (bytes zip-nya saja, TANPA
  *     memicu unduhan) yang dipakai ULANG oleh backup-service.js
  *     (exportAllNotesAsMeimoZip) untuk membungkus SEMUA note, satu

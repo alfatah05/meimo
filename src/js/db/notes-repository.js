@@ -1,125 +1,89 @@
 /**
  * notes-repository.js
- * Repository layer — SATU-SATUNYA tempat operasi CRUD mentah ke penyimpanan
- * file (lewat helper di fs-storage.js) untuk data note & asset gambar/musik.
+ * Repository layer — SATU-SATUNYA tempat operasi CRUD mentah ke IndexedDB
+ * untuk data note & asset gambar dijalankan (lewat helper di db.js).
  *
- * Sama seperti sebelumnya (versi IndexedDB): file ini sengaja "bodoh" (tidak
- * tahu aturan bisnis seperti wordCount, Pin/Archive/Trash, dsb) — itu tugas
- * Document Service (src/js/services/document-service.js). SIGNATURE setiap
- * fungsi di sini SENGAJA dipertahankan sama persis dengan versi IndexedDB
- * lama, supaya document-service.js tidak perlu diubah sama sekali.
- *
- * Layout di disk (di dalam Directory.External — lihat fs-storage.js):
- *   meimo-data/notes/<noteId>.json      - satu file JSON per note
- *   meimo-data/assets/<assetId>.json    - metadata satu asset (noteId, mimeType, dst)
- *   meimo-data/assets/<assetId>.bin     - bytes biner asset itu
- *
- * Assets SENGAJA disimpan flat (bukan per-folder-note) karena
- * getAssetById()/deleteAsset() dipanggil hanya dengan `assetId` (tanpa
- * `noteId`) dari document-service.js — persis seperti object store `assets`
- * flat dengan index `noteId` di versi IndexedDB dulu.
+ * Repository sengaja "bodoh": tidak tahu aturan bisnis (pin/archive/trash,
+ * hitung wordCount, default metadata, dsb) — itu tugas Document Service.
+ * Repository hanya menyimpan & mengambil apa yang diberikan padanya.
  *
  * Arsitektur:
- *   Editor -> Document Service -> Repository (file ini) -> fs-storage.js
+ *   Editor -> Document Service -> Repository (file ini) -> IndexedDB (db.js)
+ *
+ * Modul lain (editor, toolbar, notes list, dst) DILARANG mengimpor file ini
+ * secara langsung — semua akses lewat document-service.js.
  */
 
-import * as fs from "./fs-storage.js";
-
-const NOTES_DIR = "meimo-data/notes";
-const ASSETS_DIR = "meimo-data/assets";
-
-function notePath(id) {
-  return `${NOTES_DIR}/${id}.json`;
-}
-function assetMetaPath(id) {
-  return `${ASSETS_DIR}/${id}.json`;
-}
-function assetBinPath(id) {
-  return `${ASSETS_DIR}/${id}.bin`;
-}
+import { withStore, requestToPromise } from "./db.js";
+import { STORES } from "./schema.js";
 
 /* ------------------------------------------------------------------ */
-/* Notes                                                                */
+/* Notes                                                               */
 /* ------------------------------------------------------------------ */
 
-/** Simpan (buat baru atau timpa) satu note. */
+/** Simpan (buat baru atau timpa) satu dokumen note. */
 export async function putNote(note) {
-  await fs.writeJSON(notePath(note.id), note);
+  await withStore(STORES.NOTES, "readwrite", (store) => requestToPromise(store.put(note)));
   return note;
 }
 
-/** Ambil satu note berdasarkan id. `undefined` bila tidak ada. */
+/** Ambil satu dokumen note berdasarkan id. `undefined` bila tidak ada. */
 export async function getNoteById(id) {
-  return fs.readJSON(notePath(id));
+  return withStore(STORES.NOTES, "readonly", (store) => requestToPromise(store.get(id)));
 }
 
-/** Ambil SEMUA note (dipakai Notes List untuk sorting/filter di JS). */
+/** Ambil seluruh dokumen note. */
 export async function getAllNotes() {
-  const files = await fs.listDir(NOTES_DIR);
-  const notes = [];
-  for (const file of files) {
-    if (!file.endsWith(".json")) continue;
-    const note = await fs.readJSON(`${NOTES_DIR}/${file}`);
-    if (note) notes.push(note);
-  }
-  return notes;
+  return withStore(STORES.NOTES, "readonly", (store) => requestToPromise(store.getAll()));
 }
 
-/** Hapus satu note (bukan asset-nya — lihat deleteAssetsByNoteId()). */
+/** Hapus satu note secara permanen (hard delete). */
 export async function deleteNote(id) {
-  await fs.remove(notePath(id));
+  await withStore(STORES.NOTES, "readwrite", (store) => requestToPromise(store.delete(id)));
 }
 
 /* ------------------------------------------------------------------ */
-/* Assets (gambar & musik)                                             */
+/* Assets (gambar) — lihat DOCUMENT_MODEL.md §6.3                      */
 /* ------------------------------------------------------------------ */
 
-/** Simpan (buat baru atau timpa) satu asset. Terima `asset.bytes`
- * (ArrayBuffer) sesuai createAssetRecord() di db/schema.js. */
+/** Simpan (buat baru atau timpa) satu asset gambar. */
 export async function putAsset(asset) {
-  const { bytes, blob, ...meta } = asset;
-  await fs.writeJSON(assetMetaPath(asset.id), meta);
-  const binBytes = bytes || (blob && (await blob.arrayBuffer())) || null;
-  if (binBytes) await fs.writeBinary(assetBinPath(asset.id), binBytes);
+  await withStore(STORES.ASSETS, "readwrite", (store) => requestToPromise(store.put(asset)));
   return asset;
 }
 
-/** Ambil satu asset (berisi `bytes`) berdasarkan id. `undefined` bila
- * tidak ada. */
+/** Ambil satu asset gambar berdasarkan id. `undefined` bila tidak ada. */
 export async function getAssetById(id) {
-  const meta = await fs.readJSON(assetMetaPath(id));
-  if (!meta) return undefined;
-  const bytes = await fs.readBinary(assetBinPath(id));
-  return { ...meta, bytes };
+  return withStore(STORES.ASSETS, "readonly", (store) => requestToPromise(store.get(id)));
 }
 
-/** Ambil semua asset milik satu note (scan linear seluruh folder assets —
- * cukup cepat untuk skala note-taking app personal). */
+/** Ambil semua asset milik satu note (mis. untuk preload gambar). */
 export async function getAssetsByNoteId(noteId) {
-  const files = await fs.listDir(ASSETS_DIR);
-  const result = [];
-  for (const file of files) {
-    if (!file.endsWith(".json")) continue;
-    const meta = await fs.readJSON(`${ASSETS_DIR}/${file}`);
-    if (meta && meta.noteId === noteId) {
-      const bytes = await fs.readBinary(assetBinPath(meta.id));
-      result.push({ ...meta, bytes });
-    }
-  }
-  return result;
+  return withStore(STORES.ASSETS, "readonly", (store) =>
+    requestToPromise(store.index("noteId").getAll(noteId))
+  );
 }
 
-/** Hapus satu asset (metadata + bytes-nya) berdasarkan id. */
+/** Hapus satu asset gambar. */
 export async function deleteAsset(id) {
-  await fs.remove(assetMetaPath(id));
-  await fs.remove(assetBinPath(id));
+  await withStore(STORES.ASSETS, "readwrite", (store) => requestToPromise(store.delete(id)));
 }
 
-/** Hapus SEMUA asset milik satu note (dipanggil sebelum deleteNote() saat
- * hapus permanen dari Trash). */
+/** Hapus semua asset milik satu note (dipakai saat note dihapus permanen). */
 export async function deleteAssetsByNoteId(noteId) {
-  const assets = await getAssetsByNoteId(noteId);
-  for (const asset of assets) {
-    await deleteAsset(asset.id);
-  }
+  await withStore(STORES.ASSETS, "readwrite", (store) => {
+    return new Promise((resolve, reject) => {
+      const request = store.index("noteId").openCursor(IDBKeyRange.only(noteId));
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (cursor) {
+          cursor.delete();
+          cursor.continue();
+        } else {
+          resolve();
+        }
+      };
+      request.onerror = () => reject(request.error);
+    });
+  });
 }

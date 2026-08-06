@@ -58,7 +58,17 @@
   100% { background-position: 0% 50%; }
 }
 
-/* ---- Home skeleton (index.html) ---- */
+/* ---- Home skeleton (index.html) ----
+   REDESIGN v2: sebelumnya tiap kartu (pinned & grid) adalah kotak
+   ".home-skeleton__pinned-card"/".home-skeleton__card" — kotak itu SENDIRI
+   tidak shimmer (cuma background-color:var(--color-surface) polos),
+   isinya baru beberapa .skeleton-bar terpisah (title, menu, body,
+   footer) yang shimmer di DALAM kotak itu. Efeknya kelihatan seperti
+   "skeleton di dalam skeleton" (kotak card + bar-bar shimmer bertumpuk
+   di dalamnya). Sekarang tiap kartu cukup SATU lapis: kartu itu SENDIRI
+   yang jadi .skeleton-bar (langsung shimmer, bentuk & ukurannya
+   menyerupai kartu asli), tanpa elemen anak apa pun di dalamnya — sama
+   persis prinsipnya dengan .card-style-skeleton__preview-card. */
 
 .home-skeleton__pinned {
   display: flex;
@@ -67,41 +77,15 @@
   margin-bottom: var(--space-lg);
 }
 
+/* Satu lapis: langsung dipasangkan bareng class .skeleton-bar di HTML.
+   Tinggi kira-kira menutup area judul + cuplikan 2 baris + padding
+   kartu pin asli (lihat .pinned-card, notes-list.css). */
 .home-skeleton__pinned-card {
   flex: 0 0 auto;
   width: 160px;
+  height: 84px;
   border-radius: var(--radius-lg);
-  padding: var(--space-md);
-  background-color: var(--color-surface);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
 }
-
-/* Meniru .pinned-card__header (title-wrap + tombol menu titik-tiga di
-   kanan, lihat createPinnedCard() di note-card.js) — sebelumnya cuma 2
-   skeleton-bar polos (:first-child/:last-child) tanpa representasi tombol
-   menu, jadi lebar judulnya "nabrak" area yang di kartu asli ditempati
-   tombol tersebut. */
-.home-skeleton__pinned-card-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-2xs);
-}
-
-.home-skeleton__pinned-card-title { width: 70%; height: 12px; }
-
-/* Ukuran & posisi sama persis dengan .pinned-card__menu-btn (notes-list.css). */
-.home-skeleton__pinned-card-menu {
-  flex-shrink: 0;
-  width: 22px;
-  height: 22px;
-  margin: -2px -4px 0 0;
-  border-radius: var(--radius-full);
-}
-
-.home-skeleton__pinned-card-snippet { width: 95%; height: 10px; }
 
 .home-skeleton__section-title {
   width: 90px;
@@ -123,52 +107,13 @@
   .home-skeleton__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
+/* Satu lapis: langsung dipasangkan bareng class .skeleton-bar di HTML.
+   Tinggi kira-kira menutup area judul + cuplikan 3 baris + footer +
+   padding kartu asli (lihat .note-card, notes-list.css). */
 .home-skeleton__card {
+  height: 150px;
   border-radius: var(--radius-lg);
-  padding: var(--space-md);
-  background-color: var(--color-surface);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
 }
-
-/* Meniru .note-card__header (title-wrap + tombol menu titik-tiga di
-   kanan, SELALU dirender karena notes-list.js selalu memberi
-   onTrash/onTogglePin ke createNoteCard(), lihat note-card.js) —
-   sebelumnya judul skeleton polos memanjang sampai ke tepi kartu, padahal
-   di kartu asli ada tombol bulat 28px yang "memakan" ruang di kanan. */
-.home-skeleton__card-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-sm);
-}
-
-.home-skeleton__card-title { height: 16px; width: 65%; }
-
-/* Ukuran sama persis dengan .note-card__menu-btn (components.css). */
-.home-skeleton__card-menu {
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-full);
-}
-
-.home-skeleton__card-line { height: 11px; }
-.home-skeleton__card-line--w1 { width: 100%; }
-.home-skeleton__card-line--w2 { width: 88%; }
-.home-skeleton__card-line--w3 { width: 45%; margin-bottom: var(--space-2xs); }
-
-/* .note-card__footer aslinya cuma berisi SATU <span> (tanggal "Diubah
-   ..."), rata kiri — sebelumnya skeleton ini punya 2 bar dengan
-   justify-content:space-between, seolah-olah ada 2 potong info sejajar
-   kiri-kanan di footer, padahal tidak. */
-.home-skeleton__card-footer {
-  display: flex;
-  margin-top: var(--space-2xs);
-}
-
-.home-skeleton__card-footer .skeleton-bar { width: 88px; height: 9px; }
 
 /* Stagger halus, senada dengan .notes-grid > .note-card di animations.css */
 .home-skeleton__card:nth-child(1),
@@ -181,7 +126,12 @@
 .home-skeleton__card:nth-child(5) { animation-delay: 120ms; }
 .home-skeleton__card:nth-child(6) { animation-delay: 150ms; }
 
-/* ---- Editor skeleton (editor.html) ---- */
+/* ---- Editor skeleton (editor.html) ----
+   REDESIGN: sebelumnya 7 baris skeleton-bar dibagi 2 "paragraf" (dipisah
+   .editor-skeleton__gap) — kelihatan terlalu padat/menumpuk buat cuma
+   sekadar placeholder loading. Sekarang cukup 4 baris tanpa jeda ganda,
+   tetap kebaca sebagai "judul + isi paragraf" (bentuk area yang sama
+   dengan #editorTitle/#editorBody asli) tapi jauh lebih ringan. */
 
 .editor-skeleton {
   display: none;
@@ -234,9 +184,6 @@
 .editor-skeleton__line--w1 { width: 100%; }
 .editor-skeleton__line--w2 { width: 96%; }
 .editor-skeleton__line--w3 { width: 89%; }
-.editor-skeleton__line--w4 { width: 60%; }
-
-.editor-skeleton__gap { height: var(--space-md); }
 
 /* ---- List skeleton generik (font-manager.html "Font Library",
    cadangkan.html "Ekspor Satu Catatan", trash.html) ----

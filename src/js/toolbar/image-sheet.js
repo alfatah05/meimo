@@ -24,6 +24,7 @@ import { insertImagePlaceholder, updateImageBlock, removeImageBlock } from "../e
 import { IMAGE_DEFAULTS } from "../editor/block-model.js";
 import * as imageService from "../services/image-service.js";
 import { IMAGE_CLIP_SHAPES, ensureClipDefsInjected, getClipPathCssValue } from "../editor/image-clip-shapes.js";
+import { registerActiveSheet, closeActiveSheet, clearActiveSheet } from "./active-sheet.js";
 
 const WIDTH_RANGE = { min: 10, max: 640 };
 const HEIGHT_RANGE = { min: 10, max: 640 };
@@ -71,15 +72,8 @@ const ALIGN_OPTIONS = [
   },
 ];
 
-// Cuma satu bottom sheet gambar yang boleh terbuka dalam satu waktu.
-let closeCurrentSheet = null;
-
-function closeAnyOpenSheet() {
-  if (closeCurrentSheet) {
-    closeCurrentSheet();
-    closeCurrentSheet = null;
-  }
-}
+// Cuma satu bottom sheet (Gambar/Scene/Musik, lintas file) yang boleh
+// terbuka dalam satu waktu — lihat active-sheet.js untuk koordinatornya.
 
 /** Terapkan pengaturan pratinjau (align/wrap/ukuran/radius) langsung ke
  * elemen block gambar di DOM, TANPA menyentuh model — dipakai selama sheet
@@ -159,11 +153,21 @@ function makeSlider(labelText, range, initial, onInput) {
  * @param {"insert"|"edit"} opts.mode
  */
 function openImageSheet({ editor, state, blockId, mode }) {
-  closeAnyOpenSheet();
+  // Batalkan & tutup sheet lain (Gambar/Scene/Musik) yang sedang aktif,
+  // kalau ada — SEBELUM guard di bawah, sama seperti perilaku lama
+  // (closeAnyOpenSheet() dulu dipanggil tanpa syarat di titik ini juga).
+  closeActiveSheet();
 
   const blockEl = qs(`[data-block-id="${blockId}"]`, editor.bodyEl);
   const existingBlock = state.getDocument().blocks.find((b) => b.id === blockId);
   if (!blockEl || !existingBlock) return;
+
+  // Daftarkan `doCancel` (didefinisikan di bawah, tapi function declaration
+  // sudah di-hoisting jadi aman dirujuk di sini) sebagai sheet aktif — kalau
+  // ada sheet lain yang berhasil dibuka duluan tepat di antara baris ini &
+  // closeActiveSheet() di atas (async tidak mungkin di sini, tapi jaga-jaga
+  // konsistensi), registerActiveSheet() akan membatalkannya juga dulu.
+  registerActiveSheet(doCancel);
 
   const settings = {
     align: existingBlock.align === "left" || existingBlock.align === "right" ? existingBlock.align : IMAGE_DEFAULTS.align,
@@ -211,12 +215,47 @@ function openImageSheet({ editor, state, blockId, mode }) {
   const sheet = createEl("div", { className: "image-sheet" });
   overlay.appendChild(sheet);
 
-  sheet.appendChild(
-    createEl("div", {
-      className: "image-sheet__title",
-      text: mode === "edit" ? "Pengaturan Gambar" : "Sisipkan Gambar",
-    })
+  // ---- Judul + tombol Hapus Gambar (icon-only, pojok kanan atas,
+  // konsisten dengan scene-sheet.js/music-sheet.js) — HANYA muncul di
+  // mode "edit" (block gambar yang sudah ada, dibuka lewat tap). Di mode
+  // "insert" tombol "Batal" di bawah sudah setara dengan menghapus
+  // placeholder yang baru saja disisipkan (lihat doCancel()).
+  const titleRow = createEl("div", { className: "image-sheet__title scene-sheet__title-row" });
+  titleRow.appendChild(
+    createEl("span", { text: mode === "edit" ? "Pengaturan Gambar" : "Sisipkan Gambar" })
   );
+  let deleteArmed = false;
+  let deleteArmTimer = null;
+  let deleteBtn = null;
+  if (mode === "edit") {
+    deleteBtn = createEl("button", {
+      className: "scene-sheet__delete-icon-btn",
+      attrs: { type: "button", "aria-label": "Hapus Gambar" },
+      html:
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+    });
+    deleteBtn.addEventListener("click", () => {
+      if (isBusy) return;
+      if (!deleteArmed) {
+        deleteArmed = true;
+        deleteBtn.classList.add("is-armed");
+        deleteBtn.setAttribute("aria-label", "Ketuk lagi untuk hapus Gambar");
+        deleteArmTimer = setTimeout(() => {
+          deleteArmed = false;
+          deleteBtn.classList.remove("is-armed");
+          deleteBtn.setAttribute("aria-label", "Hapus Gambar");
+        }, 3000);
+        return;
+      }
+      clearTimeout(deleteArmTimer);
+      if (pendingPreviewUrl) URL.revokeObjectURL(pendingPreviewUrl);
+      if (pendingBytesPromise) pendingBytesPromise.catch(() => {});
+      editor.runCommand(removeImageBlock, blockId);
+      close();
+    });
+    titleRow.appendChild(deleteBtn);
+  }
+  sheet.appendChild(titleRow);
 
   /* ---- Posisi (align) ---- */
   const alignSection = createEl("div", { className: "image-sheet__section" });
@@ -603,12 +642,13 @@ function openImageSheet({ editor, state, blockId, mode }) {
   }
 
   function close() {
+    clearTimeout(deleteArmTimer);
     sheetClosed = true;
     overlay.classList.remove("is-open");
     stopReservingSpace();
     unlockNoteContent();
     setTimeout(() => overlay.remove(), 180);
-    if (closeCurrentSheet === close) closeCurrentSheet = null;
+    clearActiveSheet(doCancel);
   }
 
   function doCancel() {
@@ -639,6 +679,7 @@ function openImageSheet({ editor, state, blockId, mode }) {
   function setBusy(busy) {
     isBusy = busy;
     cancelBtn.disabled = busy;
+    if (deleteBtn) deleteBtn.disabled = busy;
     applyBtn.disabled = busy || (mode === "insert" && !hasImage);
     applyBtn.textContent = busy ? "Menyimpan…" : "Terapkan";
   }
@@ -761,7 +802,8 @@ function openImageSheet({ editor, state, blockId, mode }) {
     }, 200);
   });
 
-  closeCurrentSheet = close;
+  // registerActiveSheet(doCancel) sudah dipanggil di awal fungsi ini — tidak
+  // ada lagi yang perlu didaftarkan ulang di sini.
 }
 
 /**

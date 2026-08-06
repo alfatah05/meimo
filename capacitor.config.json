@@ -1,8 +1,12 @@
 {
-  "appId": "id.meimo.notes",
+  "appId": "com.meimo.app",
   "appName": "Meimo",
   "webDir": "www",
+  "backgroundColor": "#1E1E1E",
   "android": {
-    "allowMixedContent": false
+    "backgroundColor": "#1E1E1E"
+  },
+  "server": {
+    "androidScheme": "https"
   }
 }

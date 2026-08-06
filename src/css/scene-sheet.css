@@ -1,21 +1,27 @@
 /* ==========================================================================
    scene-sheet.css
-   Bottom sheet kustomisasi Scene (Background Color / Padding / Edge Style /
-   Duplicate / Delete) — dibuka dari toolbar/scene-sheet.js. Struktur dasar
-   overlay & sheet (posisi, animasi naik dari bawah, judul, section, label,
-   tombol) SENGAJA dipakai bareng dari image-sheet.css lewat class ganda
-   (mis. `class="scene-sheet-overlay image-sheet-overlay"`), persis seperti
-   yang diminta spec ("tampilan & interaksi sama seperti Bottom Sheet
-   gambar") — file ini HANYA berisi bagian yang khas Scene: preset warna
-   tambahan, grup preset Padding, grid preview Edge Style, dan tombol
-   Duplicate/Delete/Selesai.
+   Bottom sheet kustomisasi Scene (Background Color / Padding / Edge Style)
+   — dibuka dari toolbar/scene-sheet.js. Struktur dasar overlay & sheet
+   (posisi, animasi naik dari bawah, judul, section, label, tombol
+   Batal/Terapkan) SENGAJA dipakai bareng dari image-sheet.css lewat class
+   ganda (mis. `class="scene-sheet-overlay image-sheet-overlay"`), persis
+   seperti bottom sheet gambar — file ini HANYA berisi bagian yang khas
+   Scene: preset warna tambahan, grup preset Padding, grid preview Edge
+   Style.
    ========================================================================== */
 
 /* ---- Background Color: strip yang bisa digeser horizontal ----
    Dulu dipakai grid 4-kolom yang bisa "makan tempat" vertikal begitu
    presetnya banyak — sekarang satu baris flex, scroll ke samping, sama
    semangatnya dengan .color-bar__swatch (topbar) supaya konsisten dan
-   preset boleh terus ditambah tanpa mendorong bagian sheet di bawahnya. */
+   preset boleh terus ditambah tanpa mendorong bagian sheet di bawahnya.
+   Padding kiri-kanan SENGAJA `--space-sm` (8px, bukan cuma `--space-2xs`
+   2px seperti sebelumnya) dan TIDAK dikompensasi habis oleh margin negatif
+   (cuma `-space-2xs`) — swatch paling pojok (kiri saat scroll ke awal,
+   kanan saat scroll mentok ke swatch/input warna kustom terakhir) jadi
+   punya ruang napas ~6px, cukup untuk ring `.is-active` (box-shadow 4px,
+   lihat di bawah) supaya tidak ke-crop `overflow-x: auto` di elemen yang
+   sama saat swatch di ujung itu yang aktif. */
 .scene-sheet__color-strip {
   display: flex;
   align-items: center;
@@ -24,7 +30,7 @@
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  padding: var(--space-2xs) var(--space-2xs) var(--space-xs);
+  padding: var(--space-2xs) var(--space-sm) var(--space-xs);
   margin: 0 calc(var(--space-2xs) * -1);
 }
 
@@ -44,11 +50,6 @@
 
 .scene-sheet__swatch:hover {
   transform: scale(1.08);
-}
-
-.scene-sheet__swatch--none {
-  background-color: transparent;
-  background-image: linear-gradient(45deg, transparent 45%, var(--color-danger) 45%, var(--color-danger) 55%, transparent 55%);
 }
 
 .scene-sheet__swatch.is-active {
@@ -165,7 +166,13 @@
   opacity: 0.3;
 }
 
-/* ---- Duplicate / Delete: berjejer sejajar, hemat tempat vertikal ---- */
+/* ---- Baris tombol aksi gaya "kartu" (ikon + label, berjejer sejajar) —
+   nama class-nya historis dari sheet Scene, TAPI class ini sekarang
+   dipakai HANYA oleh toolbar/music-sheet.js (tombol "Hapus Musik" dkk.) —
+   JANGAN dihapus/direname tanpa mengecek music-sheet.js. Sheet Scene
+   sendiri sudah tidak pakai lagi sama sekali (Duplicate Scene dihapus
+   total, Delete Scene pindah jadi icon button di title row — lihat
+   .scene-sheet__title-row / .scene-sheet__delete-icon-btn di bawah). ---- */
 .scene-sheet__actions {
   display: flex;
   flex-direction: row;
@@ -204,7 +211,32 @@
   background-color: rgba(var(--shadow-color), 0.04);
 }
 
-.scene-sheet__done-btn {
-  width: 100%;
-  margin-top: var(--space-xs);
+/* ---- Title row sheet Scene: judul "Scene" + tombol Hapus Scene
+   icon-only di pojok kanan atas (mode "edit" saja, lihat scene-sheet.js).
+   Reset margin-bottom bawaan .image-sheet__title karena di sini
+   dibungkus flex row, bukan teks polos lagi. ---- */
+.scene-sheet__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+}
+
+.scene-sheet__delete-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background-color: transparent;
+  color: var(--color-text-secondary);
+}
+
+.scene-sheet__delete-icon-btn.is-armed {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+  background-color: rgba(var(--shadow-color), 0.04);
 }

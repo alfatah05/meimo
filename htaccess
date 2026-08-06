@@ -1,0 +1,122 @@
+# ==========================================================================
+# .htaccess — URL cantik untuk SEMUA halaman (tidak ada lagi ".html" yang
+# tampil di address bar untuk halaman mana pun di project ini)
+#
+#   Sebelum : https://domain/editor.html?id=<uuid>   https://domain/index.html      https://domain/download.html
+#             https://domain/cadangkan.html          https://domain/trash.html      https://domain/font-manager.html
+#             https://domain/about.html              https://domain/card-style.html?id=<uuid>  https://domain/arsip.html
+#   Sesudah : https://domain/editor/<uuid>            https://domain/library         https://domain/Download
+#             https://domain/cadangkan               https://domain/trash           https://domain/font-manager
+#             https://domain/about                   https://domain/card-style/<uuid>          https://domain/arsip
+#
+# Semua file *.html tetap file ASLI yang dipakai (isinya tidak berubah) —
+# yang berubah cuma bentuk URL yang tampil di browser. app.js & card-style.js
+# sudah dibikin baca id note dari path /editor/<uuid> & /card-style/<uuid>
+# ini, bukan lagi dari query string ?id=. Semua path CSS/JS & link antar
+# halaman di semua file HTML juga sudah dibikin absolut (diawali "/"),
+# supaya tetap ketemu walau diakses lewat URL cantik yang levelnya lebih
+# dalam dari file aslinya (kasus /editor/<uuid> & /card-style/<uuid>).
+#
+# CATATAN DEPLOY:
+# - File ini HARUS ditaruh di folder yang sama dengan editor.html (root
+#   project). Kalau project ini di-deploy di subfolder (mis.
+#   https://domain/meimo/editor/<uuid>), ganti semua "/editor" di bawah
+#   jadi "/meimo/editor" (dan begitu juga untuk path lain di bawah).
+# - Butuh module mod_rewrite aktif & "AllowOverride All" (atau minimal
+#   "AllowOverride FileInfo") di konfigurasi Apache/vhost hosting kamu.
+#   Kalau .htaccess ini tidak berefek sama sekali, ini penyebab paling
+#   umum — biasanya perlu diaktifkan dari panel hosting / minta admin.
+# - Semua RewriteCond %{THE_REQUEST} di bawah SENGAJA dipakai (bukan cuma
+#   cek RewriteRule terhadap URI) supaya redirect "*.html lama -> URL
+#   cantik" cuma nyala kalau BROWSER SENDIRI yang minta *.html itu.
+#   THE_REQUEST selalu berisi request asli dari browser, tidak pernah ikut
+#   berubah oleh rewrite INTERNAL (mis. /library -> index.html di aturan
+#   nomor 3 di bawah) — tanpa penjaga ini, rewrite internal balik-baliknya
+#   /library <-> index.html bisa saling memicu aturan redirect satu sama
+#   lain (infinite redirect loop).
+# ==========================================================================
+
+RewriteEngine On
+RewriteBase /
+
+# 1) URL lama (editor.html?id=<uuid>) -> redirect ke URL baru /editor/<uuid>.
+#    301 permanen karena skema URL cantik ini sudah final (bukan trial lagi).
+RewriteCond %{QUERY_STRING} ^id=([^&]+)$
+RewriteRule ^editor\.html$ /editor/%1? [R=301,L]
+
+# 1b) Akses langsung ke card-style.html?id=<uuid> -> /card-style/<uuid>.
+RewriteCond %{QUERY_STRING} ^id=([^&]+)$
+RewriteRule ^card-style\.html$ /card-style/%1? [R=301,L]
+
+# 1c) Akses langsung ke *.html lain (index/download/cadangkan/trash/
+#     font-manager/about) -> bentuk cantiknya. Dijaga oleh THE_REQUEST
+#     (lihat CATATAN DEPLOY di atas) supaya tidak bentrok dengan rewrite
+#     INTERNAL di aturan nomor 3 dst di bawah.
+RewriteCond %{THE_REQUEST} \s/index\.html[\s?] [NC]
+RewriteRule ^ /library [R=301,L]
+
+RewriteCond %{THE_REQUEST} \s/download\.html[\s?] [NC]
+RewriteRule ^ /Download [R=301,L]
+
+RewriteCond %{THE_REQUEST} \s/cadangkan\.html[\s?] [NC]
+RewriteRule ^ /cadangkan [R=301,L]
+
+RewriteCond %{THE_REQUEST} \s/trash\.html[\s?] [NC]
+RewriteRule ^ /trash [R=301,L]
+
+RewriteCond %{THE_REQUEST} \s/arsip\.html[\s?] [NC]
+RewriteRule ^ /arsip [R=301,L]
+
+RewriteCond %{THE_REQUEST} \s/font-manager\.html[\s?] [NC]
+RewriteRule ^ /font-manager [R=301,L]
+
+RewriteCond %{THE_REQUEST} \s/about\.html[\s?] [NC]
+RewriteRule ^ /about [R=301,L]
+
+# 2) URL cantik /editor/<uuid> -> isinya disajikan dari editor.html (rewrite
+#    INTERNAL, alamat di address bar browser TIDAK berubah).
+RewriteRule ^editor/([^/]+)/?$ /editor.html [L]
+
+# 2b) URL cantik /editor (TANPA id, dipakai tombol "Catatan Baru") -> juga
+#     dari editor.html. app.js yang akan membuatkan id baru & menuliskannya
+#     balik ke URL (jadi /editor/<uuid>) lewat history.replaceState.
+RewriteRule ^editor/?$ /editor.html [L]
+
+# 3) URL cantik /library -> isinya disajikan dari index.html (rewrite
+#    INTERNAL). Beda dengan /editor/<uuid>, index.html & /library sama-sama
+#    satu level di root, jadi asset CSS/JS di dalamnya tetap ketemu — tapi
+#    sudah tetap kami pakai path absolut (/src/...) di semua halaman supaya
+#    konsisten & aman dari kasus serupa di masa depan.
+RewriteRule ^library/?$ /index.html [L]
+
+# 3b) URL cantik /card-style/<uuid> -> isinya disajikan dari card-style.html
+#     (rewrite INTERNAL, sama persis polanya dengan /editor/<uuid> di atas).
+#     Dipakai oleh menu titik-tiga "Customisasi" di tiap note card (lihat
+#     src/js/notes/note-card.js & src/js/notes/card-style.js).
+RewriteRule ^card-style/([^/]+)/?$ /card-style.html [L]
+
+# 3c) URL cantik /Download -> isinya disajikan dari download.html (rewrite
+#     INTERNAL, sama polanya dengan /library di atas). Flag [NC] supaya
+#     /download, /Download, /DOWNLOAD dst semua tetap kena rule yang sama.
+RewriteRule ^Download/?$ /download.html [NC,L]
+
+# 3d) URL cantik /cadangkan -> isinya disajikan dari cadangkan.html (halaman
+#     Cadangkan & Impor), sama polanya dengan /library di atas.
+RewriteRule ^cadangkan/?$ /cadangkan.html [NC,L]
+
+# 3e) URL cantik /trash -> isinya disajikan dari trash.html (halaman Sampah).
+RewriteRule ^trash/?$ /trash.html [NC,L]
+
+# 3e2) URL cantik /arsip -> isinya disajikan dari arsip.html (halaman Arsip,
+#     daftar catatan yang diarsipkan lewat menu titik-tiga note card /
+#     tombol ikon arsip di header Home — lihat src/js/notes/note-card.js &
+#     src/js/notes/notes-list.js). Sama polanya persis dengan /trash di atas.
+RewriteRule ^arsip/?$ /arsip.html [NC,L]
+
+# 3f) URL cantik /font-manager -> isinya disajikan dari font-manager.html
+#     (halaman Font Library / Kelola Font).
+RewriteRule ^font-manager/?$ /font-manager.html [NC,L]
+
+# 3g) URL cantik /about -> isinya disajikan dari about.html (halaman Tentang
+#     aplikasi).
+RewriteRule ^about/?$ /about.html [NC,L]

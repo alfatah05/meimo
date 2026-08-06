@@ -648,6 +648,57 @@ export function toggleChecklistItem(state, bodyEl, selectionApi, blockIndex) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Copy/Paste Block — lihat services/block-clipboard-service.js untuk    */
+/* seluruh alur (serialisasi clipboard ke sessionStorage & resolusi      */
+/* assetId/sceneId saat paste). Command di sini SENGAJA cuma bagian      */
+/* MUTASI MODEL yang murni sinkron: seluruh kerja async (baca/tulis      */
+/* IndexedDB utk asset gambar/musik) sudah kelar duluan di layer service */
+/* SEBELUM command ini dipanggil (pola yang sama dengan toolbar/         */
+/* image-sheet.js -> updateImageBlock: await dulu di luar, baru          */
+/* editor.runCommand() dengan hasil yang sudah jadi). Copy sendiri tidak */
+/* butuh command sama sekali (tidak memutasi dokumen apa pun).           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Sisipkan hasil Paste Block (`insertion.insertBlocks` — sudah di-remap
+ * id/sceneId/assetId oleh block-clipboard-service.js) di posisi kursor.
+ * Polanya sama seperti insertDivider/insertScene (split block di titik
+ * kursor, sisipkan di antaranya) — bedanya `cursorSel` diterima sebagai
+ * parameter eksplisit alih-alih dibaca ulang dari DOM lewat `selectionApi`,
+ * supaya posisi kursor yang dipakai PERSIS sama dengan yang dipakai
+ * block-clipboard-service.js menentukan target (Scene/root) sebelum await
+ * asset selesai — DOM selection bisa saja sudah berubah/hilang selama
+ * jeda async itu.
+ */
+export function pasteBlockClipboard(state, bodyEl, selectionApi, insertion, cursorSel) {
+  if (!insertion || !insertion.insertBlocks || !insertion.insertBlocks.length) return null;
+  const sel = clampRange(state, cursorSel);
+
+  const index = sel.startBlockIndex;
+  const block = state.getBlock(index);
+  if (!block) return null;
+  const offset = sel.collapsed ? sel.startOffset : blockTextLength(block);
+
+  const [left, right] = splitBlockAt(block, offset);
+  const { insertBlocks, scenesPatch, musicPatch } = insertion;
+
+  state.replaceBlocks(index, index, [left, ...insertBlocks, right]);
+  for (const [sceneId, meta] of Object.entries(scenesPatch || {})) state.setScene(sceneId, meta);
+  for (const [key, meta] of Object.entries(musicPatch || {})) state.setMusic(key, meta);
+
+  const landIndex = index + 1 + insertBlocks.length;
+  return {
+    fullRerender: true,
+    selection: {
+      startBlockIndex: landIndex,
+      startOffset: 0,
+      endBlockIndex: landIndex,
+      endOffset: 0,
+    },
+  };
+}
+
+/* ------------------------------------------------------------------ */
 /* Scene — lihat blok komentar panjang di block-model.js untuk kenapa    */
 /* Scene direpresentasikan sebagai "sceneId bersama pada sederet block   */
 /* bersambung" + `document.scenes[sceneId]` metadata, bukan block        */

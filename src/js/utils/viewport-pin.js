@@ -35,6 +35,20 @@ const KEYBOARD_THRESHOLD_PX = 120; // di bawah ini dianggap bukan keyboard (mis.
 // jadi tidak ada gap dari tepi area yang terlihat.
 const EDGE_GAP_PX = 0;
 const CONTENT_GAP_PX = 16;         // jarak ekstra antara topbar & konten catatan
+const KEYBOARD_CONTENT_GAP_PX = 50; // ekstra ruang di atas keyboard supaya baris terakhir tidak mepet
+// BUGFIX: sebelum ini footer cuma dapat `insets.bottom + CONTENT_GAP_PX`
+// (16px + safe-area) begitu viewport-pin.js mulai jalan — jauh lebih
+// SEMPIT dari fallback CSS awal (`--space-5xl` = 80px, lihat
+// `padding-bottom` fallback di layout.css `.note-scroll-area`), jadi
+// begitu JS ini nyala, jarak baris paling bawah ke tepi layar/bottom bar
+// HP malah MENGECIL drastis dibanding sekilas sebelum JS jalan — beda
+// jauh dari header yang memang selalu lega (topbarHeight + 16px, gampang
+// >80px). Konstanta baru ini dipakai KHUSUS untuk footer (bukan
+// CONTENT_GAP_PX yang tetap dipakai apa adanya untuk header) supaya baris
+// terakhir catatan punya jarak "napas" yang sepadan dengan judul di atas,
+// tidak mepet ke tepi/bottom bar walau tidak ada toolbar mengambang di
+// bawah lagi.
+const FOOTER_CONTENT_GAP_PX = 56;
 
 // env(safe-area-inset-*) tidak bisa dibaca langsung lewat JS, jadi diukur
 // sekali lewat elemen bantu yang paddingnya di-set pakai env().
@@ -52,12 +66,47 @@ function measureSafeAreaInsets() {
   return insets;
 }
 
+/**
+ * BUGFIX: `.note-page` (layout.css) dikunci `height: 100dvh` supaya
+ * `.note-scroll-area` di dalamnya beneran overflow & scroll secara
+ * internal (lihat BUGFIX di layout.css soal auto-scroll Select Block).
+ * Masalahnya, unit CSS `dvh` di beberapa browser mobile (terutama
+ * Chrome Android) TIDAK selalu ter-update instan selagi address bar
+ * kolaps/muncul akibat momentum scroll — ada jeda sampai browser
+ * benar-benar selesai animasi & fire ulang layout. Selama jeda itu,
+ * box `.note-page` bisa "ngotot" pakai tinggi dvh yang SUDAH BASI
+ * (lebih pendek dari layar yang sungguhan sudah kelihatan penuh),
+ * dan karena `.note-page` juga `overflow: hidden`, sisa area di bawah
+ * box yang kepotong itu cuma nampilin background kosong (kelihatan
+ * seperti editor "kecrop" di bagian bawah) — sampai ada trigger resize
+ * lain (mis. scroll balik ke atas) yang memaksa dvh dihitung ulang.
+ *
+ * Fix-nya: JANGAN cuma andalkan CSS `dvh`, ukur ULANG tinggi viewport
+ * sungguhan lewat JS (`window.innerHeight`, di-refresh tiap event
+ * `resize` window MAUPUN tiap kali `computeAndApply()` di bawah jalan
+ * — yang jauh lebih sering fire selagi scroll, termasuk pas address
+ * bar sedang animasi kolaps/muncul) lalu tulis ke custom property
+ * `--app-height`, yang di CSS jadi override PALING AKHIR (paling
+ * diutamakan) dari `height: 100dvh` — lihat `.note-page` di
+ * layout.css. Nilai dari JS ini selalu sinkron ke apa yang BENERAN
+ * kelihatan di layar, tidak pernah basi seperti `dvh` murni.
+ */
+function setAppHeightVar() {
+  document.documentElement.style.setProperty("--app-height", `${window.innerHeight}px`);
+}
+
 function init() {
   const vv = window.visualViewport;
   const topbar = document.querySelector(".note-topbar");
+
+  setAppHeightVar();
+  window.addEventListener("resize", setAppHeightVar);
+
   if (!topbar) return;
 
-  // Tanpa visualViewport, biarkan CSS fallback (fixed statis) yang jalan.
+  // Tanpa visualViewport, biarkan CSS fallback (fixed statis) yang jalan
+  // untuk posisi topbar — --app-height di atas tetap jalan terlepas dari
+  // ini (listener window resize sudah cukup untuknya).
   if (!vv) return;
 
   const insets = measureSafeAreaInsets();
@@ -82,6 +131,7 @@ function init() {
 
   function computeAndApply() {
     rafId = null;
+    setAppHeightVar();
 
     const offsetTop = vv.offsetTop;   // seberapa jauh visual viewport turun dari layout viewport
     const offsetLeft = vv.offsetLeft; // dukungan pinch-zoom horizontal
@@ -120,8 +170,8 @@ function init() {
     const topbarHeight = topbar.getBoundingClientRect().height;
     const headerSpace = topbarTop + topbarHeight + CONTENT_GAP_PX;
     const footerSpace = keyboardOpen
-      ? keyboardInset + CONTENT_GAP_PX
-      : insets.bottom + CONTENT_GAP_PX;
+      ? keyboardInset + KEYBOARD_CONTENT_GAP_PX
+      : insets.bottom + FOOTER_CONTENT_GAP_PX;
 
     setPxIfChanged(
       "--editor-header-space",

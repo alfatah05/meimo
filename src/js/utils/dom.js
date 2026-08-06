@@ -48,7 +48,18 @@ document.addEventListener("mousedown", (e) => {
     e.target.closest(".note-topbar-row") ||
     e.target.closest(".toolbar-child-bar") ||
     e.target.closest(".toolbar-panel") ||
-    e.target.closest(".color-picker-bar")
+    e.target.closest(".color-picker-bar") ||
+    // block-selection-bar.js: menekan Select/Copy/Paste Block atau tombol
+    // batal (X) TIDAK BOLEH memindahkan fokus browser — kalau fokus
+    // pindah, seleksi teks yang lagi ditampilkan bar ini langsung collapse
+    // sebelum tombolnya sempat diproses (sama alasannya dengan tombol
+    // toolbar lain di atas).
+    e.target.closest(".block-selection-bar") ||
+    // block-select-mode.js: drag di probe (pojok kanan-atas/kanan-bawah
+    // highlight) juga tidak boleh memindahkan fokus browser ke luar
+    // #editorBody selagi mode Select Block aktif (sama alasannya seperti
+    // .block-selection-bar di atas).
+    e.target.closest(".block-select-handle")
   ) {
     e.preventDefault();
   }
@@ -80,6 +91,7 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     closeActivePanel();
     closeColorBar();
+    closeFontFamilyBar();
     closeChildGroup();
   }
 });
@@ -129,6 +141,7 @@ export function openColorBar(trigger, render) {
   }
   closeActivePanel();
   closeColorBar();
+  closeFontFamilyBar();
 
   flashHeaderSpaceTransition();
   clearChildren(barEl);
@@ -166,6 +179,79 @@ document.addEventListener("pointerdown", (e) => {
 });
 
 /* ---------------------------------------------------------------------- */
+/* Font Family bar — full-width, menempel visual di bawah .note-topbar    */
+/* (#fontFamilyBar), TAPI beda dari color bar di atas: `position:         */
+/* absolute` (lihat .font-family-bar di layout.css) supaya TIDAK ikut     */
+/* menambah tinggi .note-topbar sama sekali begitu terbuka — floating/    */
+/* overlay MENUTUPI bagian atas area catatan di baliknya, bukan           */
+/* mendorongnya turun (beda dari color bar yang masih di-flow normal &    */
+/* ikut mendorong konten). Isinya daftar VERTIKAL (bisa panjang, puluhan  */
+/* font), jadi discroll VERTIKAL (bukan horizontal) dengan max-height     */
+/* dibatasi lewat CSS (.font-family-bar, layout.css) supaya tidak         */
+/* menutupi seluruh area catatan di layar pendek. Dipakai oleh            */
+/* font-family-dropdown.js.                                                */
+/* ---------------------------------------------------------------------- */
+
+let activeFontFamilyBar = null; // { trigger }
+
+/**
+ * Buka Font Family bar untuk sebuah tombol trigger. `render(barEl)` mengisi
+ * konten bar (daftar font + link "Kelola Font"). Klik trigger yang sama
+ * saat bar sudah terbuka untuknya akan menutupnya (toggle), sama seperti
+ * openColorBar()/openPanel().
+ */
+export function openFontFamilyBar(trigger, render) {
+  const barEl = qs("#fontFamilyBar");
+  if (!barEl) return;
+
+  if (activeFontFamilyBar && activeFontFamilyBar.trigger === trigger) {
+    closeFontFamilyBar();
+    return;
+  }
+  closeActivePanel();
+  closeColorBar();
+  closeFontFamilyBar();
+
+  // BEDA dari openColorBar()/openPanel() child bar lain: bar ini sekarang
+  // floating (position:absolute, lihat .font-family-bar di layout.css) —
+  // TIDAK ikut menambah tinggi .note-topbar sama sekali, jadi tidak ada
+  // --editor-header-space yang berubah untuk di-animasikan halus di sini
+  // (beda dari color bar yang masih dorong konten turun). Makanya TIDAK
+  // ada flashHeaderSpaceTransition() lagi di sini.
+  clearChildren(barEl);
+  render(barEl);
+  barEl.hidden = false;
+  trigger.classList.add("is-open");
+  if (trigger.hasAttribute("aria-expanded")) trigger.setAttribute("aria-expanded", "true");
+  activeFontFamilyBar = { trigger };
+}
+
+export function closeFontFamilyBar() {
+  if (!activeFontFamilyBar) return;
+  const { trigger } = activeFontFamilyBar;
+  const barEl = qs("#fontFamilyBar");
+  trigger.classList.remove("is-open");
+  if (trigger.hasAttribute("aria-expanded")) trigger.setAttribute("aria-expanded", "false");
+  if (barEl) {
+    barEl.hidden = true;
+    clearChildren(barEl);
+  }
+  activeFontFamilyBar = null;
+}
+
+export function isFontFamilyBarOpen() {
+  return activeFontFamilyBar !== null;
+}
+
+document.addEventListener("pointerdown", (e) => {
+  if (!activeFontFamilyBar) return;
+  const barEl = qs("#fontFamilyBar");
+  const { trigger } = activeFontFamilyBar;
+  if ((barEl && barEl.contains(e.target)) || (trigger && trigger.contains(e.target))) return;
+  closeFontFamilyBar();
+});
+
+/* ---------------------------------------------------------------------- */
 /* Child bar — baris KEDUA di .note-topbar (#toolbarChildBar). Menampilkan */
 /* isi salah satu menu kelompok (Text/Style/List/Block/Insert) yang lagi  */
 /* aktif. Beda dari color bar di atas: baris ini SENGAJA tidak ikut       */
@@ -196,6 +282,7 @@ export function openChildGroup(trigger, groupEl) {
 
   closeActivePanel();
   closeColorBar();
+  closeFontFamilyBar();
 
   if (activeChildGroup) {
     activeChildGroup.trigger.classList.remove("is-open");
@@ -220,6 +307,7 @@ export function closeChildGroup() {
 
   closeActivePanel();
   closeColorBar();
+  closeFontFamilyBar();
 
   trigger.classList.remove("is-open");
   if (trigger.hasAttribute("aria-expanded")) trigger.setAttribute("aria-expanded", "false");
@@ -244,6 +332,7 @@ export function isChildGroupOpen() {
 export function closeTransientPickers() {
   closeActivePanel();
   closeColorBar();
+  closeFontFamilyBar();
 }
 
 // Child bar SENGAJA tidak punya listener "tutup kalau tap di luar".
@@ -274,6 +363,7 @@ export function openPanel(trigger, panelEl, opts = {}) {
     return;
   }
   closeActivePanel();
+  closeFontFamilyBar();
 
   panelEl.classList.add("toolbar-panel");
   document.body.appendChild(panelEl);
@@ -329,5 +419,6 @@ export function openPanel(trigger, panelEl, opts = {}) {
 export function closeAllPanels() {
   closeActivePanel();
   closeColorBar();
+  closeFontFamilyBar();
   closeChildGroup();
 }

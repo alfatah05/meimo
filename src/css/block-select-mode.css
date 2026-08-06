@@ -1,0 +1,125 @@
+/* ==========================================================================
+   block-select-mode.css
+   Styling untuk mode "Select Block" (lihat src/js/editor/block-select-mode.js
+   untuk DOM & wiring-nya) — SATU overlay highlight yang menyatu (bukan per
+   block lagi) + dua probe kecil nempel di pojok kanan-atas & kanan-bawah
+   overlay itu, masing-masing menggeser batas atas/bawah seleksi. Pola sama
+   dengan file css lain di proyek ini (JS urus DOM/logic, file ini KHUSUS
+   styling).
+   ========================================================================== */
+
+/* Selagi mode Select Block aktif, seleksi teks bawaan browser dimatikan di
+   seluruh isi catatan — mode ini murni digerakkan lewat probe, bukan drag
+   teks lagi (lihat block-select-mode.js: seleksi teks yang sedang aktif
+   ditutup PERSIS saat mode ini dinyalakan). */
+.note-body-field.is-block-select-mode {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Block yang lagi masuk rentang seleksi TIDAK diberi styling visual di sini
+   lagi (highlight-nya sekarang satu overlay menyatu, lihat
+   .block-select-overlay di bawah) — class ini murni penanda STATE di DOM,
+   dipertahankan supaya modul lain (mis. Copy/Paste Block) bisa query block
+   mana saja yang terpilih lewat `.is-block-selected` kalau perlu. */
+.editor-block.is-block-selected {
+  position: relative;
+}
+
+/* ---- Overlay highlight (menyatu) ----
+   position:fixed, satu rect meng-cover dari tepi atas block PALING ATAS
+   sampai tepi bawah block PALING BAWAH dalam rentang seleksi — dihitung &
+   ditulis oleh updateOverlay() di block-select-mode.js lewat
+   getBoundingClientRect() tiap block, BUKAN dipecah per-block, makanya
+   highlight-nya terlihat menyatu jadi satu blok utuh walau rentangnya
+   mencakup beberapa block/tipe block sekaligus (heading, paragraf, list,
+   dst). border-radius SENGAJA 0 (tanpa sudut membulat), beda dari
+   highlight-highlight lain di app ini.
+   z-index SENGAJA di BAWAH .note-topbar (var(--z-toolbar)) & di bawah
+   .block-selection-bar (var(--z-modal)) — keduanya elemen fixed opaque
+   yang selalu nempel di tepi atas/bawah layar, jadi begitu block yang lagi
+   ke-highlight ke-scroll sampai masuk area yang ketutup salah satu bar
+   itu, highlight-nya ikut "masuk ke bawah" bar (ketutup), BUKAN malah
+   nutupin bar itu sendiri. */
+.block-select-overlay {
+  position: fixed;
+  z-index: var(--z-sticky);
+  background-color: var(--color-accent-soft);
+  border-radius: 0;
+  pointer-events: none;
+  display: none;
+}
+
+.block-select-overlay.is-visible {
+  display: block;
+}
+
+/* ---- Probe (handle) ----
+   Dua bulatan kecil, position:fixed, masing-masing ditaruh PERSIS di
+   pojok kanan-atas / kanan-bawah overlay (lihat updateOverlay() di
+   block-select-mode.js — top/left ditulis lewat getBoundingClientRect(),
+   viewport-relative, dipakai apa adanya). translate dipakai (bukan
+   margin/offset manual) supaya titik pojoknya sendiri jadi titik jangkar
+   (anchor point) bulatan, terlepas dari ukuran bulatannya.
+   z-index sedikit di atas overlay (supaya selalu tampak di atas
+   highlight-nya sendiri) tapi TETAP di bawah .note-topbar & .block-
+   selection-bar, alasan sama seperti .block-select-overlay di atas —
+   probe yang posisinya kebetulan nempel di tepi block paling atas/bawah
+   ikut "terbenam" di belakang bar itu alih-alih menutupinya. */
+.block-select-handle {
+  position: fixed;
+  z-index: var(--z-fab);
+  width: 26px;
+  height: 26px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 3px solid var(--color-surface);
+  border-radius: var(--radius-full);
+  background-color: var(--color-accent);
+  color: #FFFFFF;
+  box-shadow: 0 3px 10px rgba(var(--shadow-color), 0.3);
+  cursor: grab;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.block-select-handle.is-visible {
+  display: flex;
+}
+
+/* Probe atas nempel di pojok KANAN ATAS overlay -> titik jangkarnya pojok
+   kiri-bawah bulatan sendiri, supaya bulatan "menggantung" di atas & kanan
+   titik itu (mengarah ke luar highlight, tidak menutupinya). Ikonnya
+   diputar 180° dari default (lihat ICON_HANDLE) supaya panahnya menunjuk
+   ke ATAS, senada arah expand-nya. */
+.block-select-handle--top {
+  transform: translate(-100%, -100%);
+}
+
+.block-select-handle--top svg {
+  transform: rotate(180deg);
+}
+
+/* Probe bawah nempel di pojok KANAN BAWAH overlay -> titik jangkarnya
+   pojok kiri-atas bulatan sendiri. */
+.block-select-handle--bottom {
+  transform: translate(-100%, 0);
+}
+
+.block-select-handle.is-dragging {
+  cursor: grabbing;
+}
+
+.block-select-handle--top.is-dragging {
+  transform: translate(-100%, -100%) scale(1.15);
+  box-shadow: 0 4px 14px rgba(var(--shadow-color), 0.4);
+}
+
+.block-select-handle--bottom.is-dragging {
+  transform: translate(-100%, 0) scale(1.15);
+  box-shadow: 0 4px 14px rgba(var(--shadow-color), 0.4);
+}
