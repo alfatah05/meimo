@@ -24,18 +24,6 @@
       var meta = document.querySelector('meta[name="theme-color"]');
       if (meta) meta.setAttribute("content", THEME_COLORS[t] || THEME_COLORS.light);
     } catch (e) {}
-
-    // Fallback animasi transisi halaman (lihat src/js/pwa/capacitor-page-
-    // transition.js) — kalau halaman sebelumnya nyimpan flag "lagi pindah
-    // ke sini", pasang class animasi masuk SEBELUM paint pertama di sini
-    // juga (bukan nunggu module script di bawah dimuat), supaya tidak ada
-    // kedip konten statis dulu baru animasi jalan.
-    try {
-      if (sessionStorage.getItem("meimo-page-transition-enter") === "1") {
-        sessionStorage.removeItem("meimo-page-transition-enter");
-        document.documentElement.classList.add("meimo-page-enter");
-      }
-    } catch (e) {}
   })();
 </script>
 <link rel="icon" href="/assets/icons/favicon.ico" sizes="any">
@@ -73,14 +61,14 @@
     <div class="home-greeting-row">
       <div class="home-greeting">Catatan Saya</div>
       <div class="home-header-actions">
-        <a href="/arsip" class="home-about-btn" aria-label="Buka Arsip">
+        <a href="arsip.html" class="home-about-btn" aria-label="Buka Arsip">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="21 8 21 21 3 21 3 8"></polyline>
             <rect x="1" y="3" width="22" height="5"></rect>
             <line x1="10" y1="12" x2="14" y2="12"></line>
           </svg>
         </a>
-        <a href="/about" class="home-about-btn" aria-label="Tentang aplikasi">
+        <a href="about.html" class="home-about-btn" aria-label="Tentang aplikasi">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="9"></circle>
             <line x1="12" y1="11" x2="12" y2="16.5"></line>
@@ -189,7 +177,7 @@
     <div class="fab-menu__actions" data-fab-actions hidden>
       <div class="fab-action-item">
         <span class="fab-action__label" aria-hidden="true">Cadangkan &amp; Impor</span>
-        <a href="/cadangkan" class="fab-action" data-fab-action="backup" aria-label="Buka halaman Cadangkan &amp; Impor">
+        <a href="cadangkan.html" class="fab-action" data-fab-action="backup" aria-label="Buka halaman Cadangkan &amp; Impor">
           <span class="fab-action__icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 3v12"></path>
@@ -202,7 +190,7 @@
 
       <div class="fab-action-item">
         <span class="fab-action__label" aria-hidden="true">Sampah</span>
-        <a href="/trash" class="fab-action" data-fab-action="trash" aria-label="Buka Sampah">
+        <a href="trash.html" class="fab-action" data-fab-action="trash" aria-label="Buka Sampah">
           <span class="fab-action__icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="3 6 5 6 21 6"></polyline>
@@ -243,7 +231,7 @@
 
       <div class="fab-action-item">
         <span class="fab-action__label" aria-hidden="true">Font Library</span>
-        <a href="/font-manager" class="fab-action" data-fab-action="font-library" aria-label="Buka Font Library">
+        <a href="font-manager.html" class="fab-action" data-fab-action="font-library" aria-label="Buka Font Library">
           <span class="fab-action__icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="4 7 4 4 20 4 20 7"></polyline>
@@ -256,7 +244,7 @@
 
       <div class="fab-action-item">
         <span class="fab-action__label" aria-hidden="true">Catatan Baru</span>
-        <a href="/editor" class="fab-action fab-action--primary" data-fab-action="new-note" aria-label="Buat catatan baru">
+        <a href="editor.html" class="fab-action fab-action--primary" data-fab-action="new-note" aria-label="Buat catatan baru">
           <span class="fab-action__icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -292,11 +280,8 @@
 
 <!-- ============ PWA: Service Worker (mode offline) ============ -->
 <script type="module" src="/src/js/pwa/sw-register.js"></script>
-<script type="module" src="/src/js/pwa/capacitor-back.js"></script>
-<script type="module" src="/src/js/pwa/capacitor-status-bar.js"></script>
 <script type="module" src="/src/js/pwa/install-prompt.js"></script>
 <script type="module" src="/src/js/utils/native-feel.js"></script>
-<script type="module" src="/src/js/pwa/capacitor-page-transition.js"></script>
 
 </body>
 </html>

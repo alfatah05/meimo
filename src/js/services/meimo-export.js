@@ -34,7 +34,7 @@
 
 import * as documentService from "./document-service.js";
 import { buildZipBlob } from "../utils/zip-writer.js";
-import { saveFileForUser } from "../utils/save-file.js";
+import { saveOrShareBlob } from "../utils/native-share.js";
 
 
 // Versi format file .meimo itu sendiri (BEDA dari DOCUMENT_SCHEMA_VERSION
@@ -120,6 +120,12 @@ export function safeFileNameFromTitle(title) {
   return cleaned || "Catatan tanpa judul";
 }
 
+function triggerBlobDownload(blob, fileName) {
+  // Native (APK): Filesystem+Share. Web: Blob+<a download> seperti
+  // sebelumnya. Lihat utils/native-share.js untuk detail & alasannya.
+  return saveOrShareBlob(blob, fileName);
+}
+
 /**
  * Bangun bytes file `.meimo` (zip) untuk SATU dokumen — TIDAK memicu
  * unduhan apa pun, cuma mengembalikan bytes zip-nya. Diekstrak dari
@@ -178,21 +184,19 @@ export async function buildMeimoZipBytes(doc) {
  * Ekspor satu catatan (berdasarkan model dokumen yang SEDANG ada di memori
  * editor — bukan baca ulang dari IndexedDB, supaya perubahan yang belum
  * sempat di-autosave tetap ikut terekspor) jadi file `.meimo`, lalu langsung
- * memicu unduhan lewat browser.
+ * memicu unduhan (web) atau Share sheet native (APK) lewat
+ * utils/native-share.js.
  *
  * @param {object} doc - hasil state.getDocument() dari editor-state.js
  *   (schemaVersion, id, title, blocks, scenes, music, dst).
- * @returns {Promise<{assetCount: number, fileName: string, savedTo: object}>}
- *   `savedTo` adalah hasil saveFileForUser() apa adanya (method: "documents"
- *   | "share" | "browser" | "failed"), dipropagate biar pemanggil bisa
- *   menyesuaikan teks toast konfirmasi.
+ * @returns {Promise<{assetCount: number, fileName: string}>}
  */
 export async function exportNoteAsMeimo(doc) {
   const { bytes, assetCount } = await buildMeimoZipBytes(doc);
   const zipBlob = new Blob([bytes], { type: MEIMO_MIME_TYPE });
 
   const fileName = `${safeFileNameFromTitle(doc.title)}.meimo`;
-  const savedTo = await saveFileForUser(zipBlob, fileName);
+  const { shared } = await triggerBlobDownload(zipBlob, fileName);
 
-  return { assetCount, fileName, savedTo };
+  return { assetCount, fileName, shared };
 }

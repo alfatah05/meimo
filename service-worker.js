@@ -241,26 +241,7 @@
 // logic-nya di backup-import.js, style .export-card* di backup-import.css)
 // — ekspor satu catatan sekarang bisa langsung dari note card di mana pun
 // tampil, tidak perlu lagi buka halaman Cadangkan & Impor dulu.
-// v77 -> v78: perbaikan unduhan .meimo/.zip di dalam APK — trik lama
-// `<a download>` + blob: URL tidak berfungsi di WebView Android native.
-// meimo-export.js & backup-service.js sekarang lewat modul baru
-// src/js/utils/save-file.js (ditambahkan ke precache di bawah): di app
-// native, tulis ke cache lalu buka Android Share Sheet; di browser tetap
-// pakai trik blob lama. capacitor-back.js & capacitor-status-bar.js
-// (status bar Android ikut warna tema — lihat theme-manager.js) sengaja
-// TIDAK ditambah ke precache: sama seperti capacitor-back.js, keduanya
-// no-op total di luar app native (Capacitor.isNativePlatform() false), dan
-// service worker ini sendiri tidak pernah aktif di app native (lihat
-// sw-register.js).
-// v78 -> v79: dua bugfix status bar Android (isi filenya sudah ada di
-// precache dari v78, dinaikkan di sini semata supaya klien lama ikut ambil
-// isi terbaru): capacitor-status-bar.js — setBackgroundColor & setStyle
-// dipisah try/catch (setBackgroundColor gagal di Android 15+ dulu ikut
-// menggagalkan setStyle, bikin ikon status bar nyangkut putih di tema
-// terang); layout.css — .home-header dapat padding-top: env(safe-area-
-// inset-top) (dulu cuma .note-topbar/editor.html yang punya), supaya
-// header Home/Sampah/Arsip/dll tidak ketutup status bar edge-to-edge.
-const CACHE_VERSION = "v79";
+const CACHE_VERSION = "v77";
 const APP_SHELL_CACHE = `meimo-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `meimo-runtime-${CACHE_VERSION}`;
 const FONT_CACHE = `meimo-fonts-${CACHE_VERSION}`;
@@ -379,7 +360,6 @@ const APP_SHELL_FILES = [
   "/src/js/utils/dom.js",
   "/src/js/utils/native-feel.js",
   "/src/js/utils/reload-on-restore.js",
-  "/src/js/utils/save-file.js",
   "/src/js/utils/topbar-autohide.js",
   "/src/js/utils/trap-back-navigation.js",
   "/src/js/utils/uuid.js",
@@ -583,24 +563,6 @@ function resolveShellPath(pathname) {
     pathname.startsWith("/about/")
   ) {
     return "/about.html";
-  }
-  // BUGFIX v36 -> v37: /Download (URL cantik halaman instalasi PWA, lihat
-  // htaccess rule 3c) SENGAJA tidak dimasukkan ke APP_SHELL_FILES/precache
-  // — halaman ini cuma didatangi orang yang BELUM install app alias pasti
-  // online, jadi tidak butuh dukungan offline. TAPI shellPath-nya tetap
-  // harus dikenali di sini, karena cacheFirstNavigation() cek cache
-  // SEBELUM ke jaringan sama sekali (lihat komentar di atas fungsi itu) —
-  // tanpa ini, /Download ikut jatuh ke default "/index.html", dan begitu
-  // index.html kepasang di cache (hampir pasti, dari kunjungan pertama ke
-  // situs ini), /Download langsung disajikan sebagai Home yang SALAH walau
-  // sedang online, bukan cuma pas offline. download.html memang tidak ada
-  // di cache manapun (sesuai niatnya) — begitu shellPath-nya benar,
-  // cache.match akan MISS, dan cacheFirstNavigation otomatis lanjut fetch
-  // ke jaringan lalu menyajikan download.html yang sungguhan. Dicek
-  // case-insensitive (regex /i) karena htaccess rule 3c juga pakai flag
-  // [NC] (menerima /download, /Download, /DOWNLOAD, dst).
-  if (/^\/download\/?$/i.test(pathname) || pathname === "/download.html") {
-    return "/download.html";
   }
   return "/index.html";
 }

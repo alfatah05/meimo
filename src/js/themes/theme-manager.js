@@ -16,21 +16,23 @@
  * Menu di Home).
  */
 
-import { syncCapacitorStatusBar } from "../pwa/capacitor-status-bar.js";
+import { isNativePlatform, getNativePlugin } from "../utils/capacitor-env.js";
 
 export const THEME_STORAGE_KEY = "notes-app-theme";
 
-// `dark` menentukan warna IKON status bar Android native (lihat
-// applyThemeColorMeta di bawah & capacitor-status-bar.js) — true untuk tema
-// berbackground gelap (perlu ikon terang biar kebaca), false untuk tema
-// berbackground terang (perlu ikon gelap).
 export const THEMES = [
-  { id: "light", label: "Terang", swatch: "#FFFFFF", dark: false },
-  { id: "dark", label: "Gelap", swatch: "#17181C", dark: true },
-  { id: "sepia", label: "Sepia", swatch: "#F4ECD8", dark: false },
-  { id: "paper", label: "Kertas", swatch: "#FBFAF5", dark: false },
-  { id: "oled", label: "OLED Hitam", swatch: "#000000", dark: true },
+  { id: "light", label: "Terang", swatch: "#FFFFFF" },
+  { id: "dark", label: "Gelap", swatch: "#17181C" },
+  { id: "sepia", label: "Sepia", swatch: "#F4ECD8" },
+  { id: "paper", label: "Kertas", swatch: "#FBFAF5" },
+  { id: "oled", label: "OLED Hitam", swatch: "#000000" },
 ];
+
+// Tema mana yang backgroundnya GELAP -> status bar butuh ikon TERANG
+// (Style.Light) supaya tetap kebaca; sisanya (background terang) butuh
+// ikon GELAP (Style.Dark). Cuma "dark" & "oled" yang gelap di antara
+// THEMES di atas.
+const DARK_BACKGROUND_THEME_IDS = new Set(["dark", "oled"]);
 
 /** Tema yang sedang aktif di halaman ini. */
 export function getTheme() {
@@ -65,7 +67,15 @@ function applyThemeColorMeta(themeId) {
   if (!theme) return;
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute("content", theme.swatch);
-  // Meta tag di atas cuma dibaca browser (address bar) — status bar Android
-  // native (WebView Capacitor) butuh dipanggil terpisah, lihat berkas ini.
-  syncCapacitorStatusBar(theme.swatch, theme.dark);
+
+  // [Native/APK saja] status bar overlay (lihat native-feel.js) transparan
+  // & warnanya sudah otomatis "ikut" background halaman lewat CSS — yang
+  // TETAP perlu disinkron manual di sini cuma WARNA IKON status bar
+  // (jam, baterai, sinyal), supaya tetap kebaca di atas background gelap
+  // maupun terang tiap tema.
+  if (isNativePlatform()) {
+    const StatusBar = getNativePlugin("StatusBar");
+    const style = DARK_BACKGROUND_THEME_IDS.has(theme.id) ? "LIGHT" : "DARK";
+    StatusBar?.setStyle({ style }).catch(() => {});
+  }
 }

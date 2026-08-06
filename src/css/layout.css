@@ -16,14 +16,15 @@
   top: 0;
   z-index: var(--z-sticky);
   background-color: var(--color-bg);
-  /* padding-top pakai env(safe-area-inset-top) supaya header ini (dipakai
-     Home, Sampah, Font Manager, Cadangkan, Arsip, Tentang, Gaya Kartu) tidak
-     ketutup status bar Android saat dibungkus Capacitor — sejak Android 15
-     WebView-nya digambar edge-to-edge di belakang status bar (lihat juga
-     src/js/pwa/capacitor-status-bar.js utk warna & ikon status bar-nya).
-     Pola yang sama persis (padding-top + safe-area) sudah lama dipakai di
-     .note-topbar (editor.html) di bawah — cuma di sini belum sempat ikut
-     ditambahkan sebelumnya. */
+  /* Safe-area status bar: sebelumnya cuma .note-topbar (editor.html) yang
+     punya padding-top env(safe-area-inset-top) — .home-header dipakai 7
+     dari 8 halaman (index, arsip, trash, cadangkan, font-manager, about,
+     card-style) dan sebelumnya TIDAK punya sama sekali, jadi konten
+     ketutup status bar overlay di APK Capacitor (lihat StatusBar overlay
+     di src/js/utils/native-feel.js). Ditambahkan ke padding-top yang
+     sudah ada (bukan menggantinya) supaya jarak visual dari konten ke
+     status bar tetap konsisten dengan sebelumnya di web/browser biasa
+     (env() resolve ke 0px di sana). */
   padding: calc(var(--space-xl) + env(safe-area-inset-top, 0px)) var(--space-md) var(--space-md);
   display: flex;
   flex-direction: column;
@@ -40,13 +41,7 @@
      pendek/kosong. Dipakai index.html, trash.html, font-manager.html,
      cadangkan.html — SEMUA halaman yang pakai class .home-content ini. */
   position: relative;
-  /* BUGFIX: sebelumnya cuma --space-5xl (padding statis), tidak
-     memperhitungkan env(safe-area-inset-bottom) — di HP dengan navigation
-     bar Android (baik gesture-nav pill maupun 3-tombol lama), konten
-     paling bawah (mis. item terakhir notes list) bisa ketutup separuh
-     oleh nav bar itu. Ditambahkan (bukan diganti) supaya jarak "napas"
-     yang sudah ada tetap sama di HP tanpa nav bar/gesture nav minimal. */
-  padding: 0 var(--space-md) calc(var(--space-5xl) + env(safe-area-inset-bottom, 0px));
+  padding: 0 var(--space-md) var(--space-5xl);
   max-width: var(--container-max-width);
   width: 100%;
   margin: 0 auto;
@@ -486,10 +481,7 @@
 .fab {
   position: fixed;
   right: var(--space-lg);
-  /* BUGFIX: ditambah env(safe-area-inset-bottom) — sebelumnya tombol ini
-     bisa separuh ketutup/kepepet navigation bar Android (gesture pill atau
-     3-tombol), terutama di HP dengan inset bawah yang tinggi. */
-  bottom: calc(var(--space-lg) + env(safe-area-inset-bottom, 0px));
+  bottom: var(--space-lg);
   z-index: var(--z-fab);
   width: 56px;
   height: 56px;

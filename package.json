@@ -1,25 +1,23 @@
 {
   "name": "meimo",
-  "version": "1.18.4",
-  "description": "Meimo — Catatan Pribadi. Dibungkus jadi APK Android lewat Capacitor.",
+  "version": "1.18.0",
+  "description": "Meimo — Catatan Pribadi",
   "private": true,
   "scripts": {
-    "build:www": "node scripts/build-www.js",
-    "cap:add:android": "cap add android",
     "cap:sync": "cap sync android",
-    "assets:generate": "capacitor-assets generate --android",
-    "android:open": "cap open android"
+    "cap:open": "cap open android",
+    "cap:add:android": "cap add android"
   },
   "dependencies": {
-    "@capacitor/android": "^7.0.0",
-    "@capacitor/app": "^7.0.0",
-    "@capacitor/core": "^7.0.0",
-    "@capacitor/filesystem": "^7.0.0",
-    "@capacitor/share": "^7.0.0",
-    "@capacitor/status-bar": "^7.0.0"
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/app": "^6.0.1",
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/filesystem": "^6.0.1",
+    "@capacitor/share": "^6.0.2",
+    "@capacitor/status-bar": "^6.0.1"
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
-    "@capacitor/cli": "^7.0.0"
+    "@capacitor/cli": "^6.1.2"
   }
 }

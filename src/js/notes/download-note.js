@@ -17,7 +17,8 @@ import { showToast } from "../../components/toast.js";
 
 /**
  * Ekspor satu catatan sebagai file `.meimo` (lengkap dengan asset) & langsung
- * memicu unduhannya lewat browser, dengan toast konfirmasi/kegagalan.
+ * memicu unduhannya (web) atau Share sheet native (APK), dengan toast
+ * konfirmasi/kegagalan.
  * @param {object} note - item note dari daftar (Home/Arsip); cuma `note.id`
  *   & `note.title` yang dipakai di sini.
  */
@@ -32,16 +33,8 @@ export async function downloadNoteAsMeimo(note) {
       showToast("Catatan tidak ditemukan (mungkin sudah dihapus).", { tone: "danger" });
       return;
     }
-    const { fileName, savedTo } = await exportNoteAsMeimo(freshDoc);
-    if (savedTo?.method === "documents") {
-      showToast(`Diunduh ke folder Documents sebagai ${fileName}`);
-    } else if (savedTo?.method === "share") {
-      showToast(`${fileName} dibagikan lewat sheet — pilih tempat menyimpannya.`);
-    } else if (savedTo?.method === "failed") {
-      showToast("Gagal mengunduh catatan. Coba lagi.", { tone: "danger" });
-    } else {
-      showToast(`Diunduh sebagai ${fileName}`);
-    }
+    const { fileName, shared } = await exportNoteAsMeimo(freshDoc);
+    showToast(shared ? `Siap disimpan/dibagikan: ${fileName}` : `Diunduh sebagai ${fileName}`);
   } catch (err) {
     console.error("Gagal mengunduh catatan:", err);
     showToast("Gagal mengunduh catatan. Coba lagi.", { tone: "danger" });

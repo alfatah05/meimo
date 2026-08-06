@@ -2,10 +2,10 @@
 # .htaccess — URL cantik untuk SEMUA halaman (tidak ada lagi ".html" yang
 # tampil di address bar untuk halaman mana pun di project ini)
 #
-#   Sebelum : https://domain/editor.html?id=<uuid>   https://domain/index.html      https://domain/download.html
+#   Sebelum : https://domain/editor.html?id=<uuid>   https://domain/index.html
 #             https://domain/cadangkan.html          https://domain/trash.html      https://domain/font-manager.html
 #             https://domain/about.html              https://domain/card-style.html?id=<uuid>  https://domain/arsip.html
-#   Sesudah : https://domain/editor/<uuid>            https://domain/library         https://domain/Download
+#   Sesudah : https://domain/editor/<uuid>            https://domain/library
 #             https://domain/cadangkan               https://domain/trash           https://domain/font-manager
 #             https://domain/about                   https://domain/card-style/<uuid>          https://domain/arsip
 #
@@ -55,9 +55,6 @@ RewriteRule ^card-style\.html$ /card-style/%1? [R=301,L]
 RewriteCond %{THE_REQUEST} \s/index\.html[\s?] [NC]
 RewriteRule ^ /library [R=301,L]
 
-RewriteCond %{THE_REQUEST} \s/download\.html[\s?] [NC]
-RewriteRule ^ /Download [R=301,L]
-
 RewriteCond %{THE_REQUEST} \s/cadangkan\.html[\s?] [NC]
 RewriteRule ^ /cadangkan [R=301,L]
 
@@ -94,11 +91,6 @@ RewriteRule ^library/?$ /index.html [L]
 #     Dipakai oleh menu titik-tiga "Customisasi" di tiap note card (lihat
 #     src/js/notes/note-card.js & src/js/notes/card-style.js).
 RewriteRule ^card-style/([^/]+)/?$ /card-style.html [L]
-
-# 3c) URL cantik /Download -> isinya disajikan dari download.html (rewrite
-#     INTERNAL, sama polanya dengan /library di atas). Flag [NC] supaya
-#     /download, /Download, /DOWNLOAD dst semua tetap kena rule yang sama.
-RewriteRule ^Download/?$ /download.html [NC,L]
 
 # 3d) URL cantik /cadangkan -> isinya disajikan dari cadangkan.html (halaman
 #     Cadangkan & Impor), sama polanya dengan /library di atas.

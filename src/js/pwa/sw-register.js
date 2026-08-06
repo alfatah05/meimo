@@ -8,18 +8,21 @@
  * Juga menyiarkan event kecil `meimo:sw-update-ready` di window supaya
  * bagian lain (mis. toast) bisa memberi tahu user ada versi baru siap
  * dipakai setelah reload, tanpa modul ini perlu tahu soal UI toast.
- *
- * TIDAK didaftarkan sama sekali saat app jalan dibungkus Capacitor (APK
- * native) — semua file sudah dibundel langsung ke dalam app, jadi caching
- * offline ala PWA ini jadi lapisan ganda yang tidak perlu, dan berpotensi
- * baku-rebut dengan skema pemuatan aset native (WebViewClient).
  */
+
+import { isNativePlatform } from "../utils/capacitor-env.js";
 
 const SW_URL = "/service-worker.js";
 
 async function register() {
-  if (window.Capacitor?.isNativePlatform?.()) return;
   if (!("serviceWorker" in navigator)) return;
+
+  // Di build APK Capacitor, tidak ada konsep "Service Worker offline app
+  // shell" seperti di browser — app-nya sendiri sudah dibundle utuh ke
+  // dalam APK (lihat capacitor.config.ts webDir), jadi service-worker.js
+  // tidak perlu (dan sebaiknya tidak) didaftarkan sama sekali di sana.
+  // Versi web/PWA tetap register seperti biasa, tidak berubah.
+  if (isNativePlatform()) return;
 
   try {
     const registration = await navigator.serviceWorker.register(SW_URL, {

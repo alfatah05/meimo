@@ -27,7 +27,7 @@
 import * as documentService from "./document-service.js";
 import { buildMeimoZipBytes, safeFileNameFromTitle } from "./meimo-export.js";
 import { buildZipBlob } from "../utils/zip-writer.js";
-import { saveFileForUser } from "../utils/save-file.js";
+import { saveOrShareBlob } from "../utils/native-share.js";
 
 // Versi format file cadangan-semua-catatan ITU SENDIRI (struktur zip
 // terluarnya: daftar entry `*.meimo` + `backup-manifest.json`) — BEDA dari
@@ -65,17 +65,21 @@ function uniqueZipEntryName(baseName, usedNames) {
   return candidate;
 }
 
+function triggerBlobDownload(blob, fileName) {
+  // Native (APK): Filesystem+Share. Web: Blob+<a download> seperti
+  // sebelumnya. Lihat utils/native-share.js untuk detail & alasannya.
+  return saveOrShareBlob(blob, fileName);
+}
+
 /**
- * Buat & picu unduhan satu file `.zip` berisi `.meimo` (lengkap dengan
- * asset & kustomisasi tampilan) untuk SETIAP catatan, termasuk yang di
- * Arsip & Sampah.
+ * Buat & picu unduhan (web) / Share sheet native (APK) untuk satu file
+ * `.zip` berisi `.meimo` (lengkap dengan asset & kustomisasi tampilan)
+ * untuk SETIAP catatan, termasuk yang di Arsip & Sampah.
  *
- * @returns {Promise<{noteCount: number, assetCount: number, savedTo?: object}>}
- *   `noteCount`/`assetCount` = jumlah catatan & total asset (gambar/musik)
- *   yang berhasil ikut dicadangkan. `savedTo` adalah hasil saveFileForUser()
- *   apa adanya (method: "documents" | "share" | "browser" | "failed"),
- *   dipropagate biar pemanggil bisa menyesuaikan teks toast konfirmasi;
- *   tidak ada (undefined) kalau noteCount 0 karena tidak ada file yang ditulis.
+ * @returns {Promise<{noteCount: number, assetCount: number, shared: boolean}>}
+ *   jumlah catatan & total asset (gambar/musik) yang berhasil ikut
+ *   dicadangkan, serta `shared` (true = lewat Share native, false = lewat
+ *   unduhan browser biasa).
  */
 export async function exportAllNotes() {
   const notes = await documentService.listNotes({ includeTrashed: true, includeArchived: true });
@@ -108,7 +112,7 @@ export async function exportAllNotes() {
   const zipBlob = buildZipBlob([{ name: "backup-manifest.json", data: manifestBytes }, ...zipEntries], "application/zip");
 
   const dateStr = new Date().toISOString().slice(0, 10);
-  const savedTo = await saveFileForUser(zipBlob, `catatan-cadangan-${dateStr}.zip`);
+  const { shared } = await triggerBlobDownload(zipBlob, `catatan-cadangan-${dateStr}.zip`);
 
-  return { noteCount: notes.length, assetCount: totalAssetCount, savedTo };
+  return { noteCount: notes.length, assetCount: totalAssetCount, shared };
 }
