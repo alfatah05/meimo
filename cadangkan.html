@@ -23,6 +23,18 @@
       var meta = document.querySelector('meta[name="theme-color"]');
       if (meta) meta.setAttribute("content", THEME_COLORS[t] || THEME_COLORS.light);
     } catch (e) {}
+
+    // Fallback animasi transisi halaman (lihat src/js/pwa/capacitor-page-
+    // transition.js) — kalau halaman sebelumnya nyimpan flag "lagi pindah
+    // ke sini", pasang class animasi masuk SEBELUM paint pertama di sini
+    // juga (bukan nunggu module script di bawah dimuat), supaya tidak ada
+    // kedip konten statis dulu baru animasi jalan.
+    try {
+      if (sessionStorage.getItem("meimo-page-transition-enter") === "1") {
+        sessionStorage.removeItem("meimo-page-transition-enter");
+        document.documentElement.classList.add("meimo-page-enter");
+      }
+    } catch (e) {}
   })();
 </script>
 <link rel="icon" href="/assets/icons/favicon.ico" sizes="any">
@@ -128,6 +140,7 @@
 <script type="module" src="/src/js/pwa/capacitor-status-bar.js"></script>
 <script type="module" src="/src/js/pwa/install-prompt.js"></script>
 <script type="module" src="/src/js/utils/native-feel.js"></script>
+<script type="module" src="/src/js/pwa/capacitor-page-transition.js"></script>
 
 </body>
 </html>

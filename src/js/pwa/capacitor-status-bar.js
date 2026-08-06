@@ -67,10 +67,11 @@ export async function syncCapacitorStatusBar(hexColor, isDarkBackground) {
   }
 
   try {
-    // Style "DARK" = ikon status bar gelap (buat background TERANG),
-    // Style "LIGHT" = ikon status bar terang (buat background GELAP) — jadi
-    // KEBALIKAN dari nama variabelnya, ini penamaan resmi plugin StatusBar.
-    await StatusBar.setStyle({ style: isDarkBackground ? "LIGHT" : "DARK" });
+    // Style "DARK" = ikon status bar TERANG (dipakai utk background gelap),
+    // Style "LIGHT" = ikon status bar GELAP (dipakai utk background terang)
+    // — jadi KEBALIKAN dari nama variabelnya, ini penamaan resmi plugin
+    // StatusBar (nama style merujuk ke tema, bukan ke warna ikonnya).
+    await StatusBar.setStyle({ style: isDarkBackground ? "DARK" : "LIGHT" });
   } catch (err) {
     console.warn("[capacitor-status-bar] gagal mengatur warna ikon status bar:", err);
   }

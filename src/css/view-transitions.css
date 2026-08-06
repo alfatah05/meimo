@@ -69,3 +69,38 @@
     animation: none;
   }
 }
+
+/* ==========================================================================
+   Fallback manual (non-View-Transition-API) untuk navigasi push (klik <a>
+   internal biasa — tombol back header, item menu FAB, dst).
+   Lihat src/js/pwa/capacitor-page-transition.js: di WebView Android yang
+   dipakai, Cross-Document View Transition browser di atas kelihatannya cuma
+   reliable dipicu utk navigasi back/forward (traverse dari bfcache) — TIDAK
+   utk klik <a> biasa. Modul itu intercept klik <a> internal, kasih class
+   `.meimo-page-exit` di <html>, delay sebentar (samakan durasinya dengan
+   --duration-page-out di bawah), baru pindah halaman; di halaman tujuan,
+   modul yang sama kasih class `.meimo-page-enter` di <html> (lewat inline
+   script <head> supaya kepasang SEBELUM paint pertama, tidak ada kedip).
+
+   SENGAJA dipisah dari ::view-transition-old/new(root) di atas (bukan
+   dipakai bareng) — modul JS ini HANYA aktif kalau Capacitor.isNativePlatform()
+   true (lihat modulnya), jadi tidak akan pernah kepasang bareng dengan
+   browser yang View Transition-nya sudah reliable duluan utk push navigation
+   (mis. Chrome desktop/Android biasa) — dengan begitu tidak ada dobel animasi
+   di kasus itu, dan tetap tidak bentrok dengan animasi native yang sudah
+   jalan sendiri di back/forward (modul JS ini tidak disentuh sama sekali
+   oleh navigasi back/forward, cuma oleh klik <a> yang di-intercept-nya). */
+.meimo-page-exit {
+  animation: meimo-page-out var(--duration-page-out) var(--ease-standard) both;
+}
+
+.meimo-page-enter {
+  animation: meimo-page-in var(--duration-page-in) var(--ease-bounce) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .meimo-page-exit,
+  .meimo-page-enter {
+    animation: none;
+  }
+}

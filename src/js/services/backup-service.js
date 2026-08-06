@@ -70,8 +70,12 @@ function uniqueZipEntryName(baseName, usedNames) {
  * asset & kustomisasi tampilan) untuk SETIAP catatan, termasuk yang di
  * Arsip & Sampah.
  *
- * @returns {Promise<{noteCount: number, assetCount: number}>} jumlah
- *   catatan & total asset (gambar/musik) yang berhasil ikut dicadangkan.
+ * @returns {Promise<{noteCount: number, assetCount: number, savedTo?: object}>}
+ *   `noteCount`/`assetCount` = jumlah catatan & total asset (gambar/musik)
+ *   yang berhasil ikut dicadangkan. `savedTo` adalah hasil saveFileForUser()
+ *   apa adanya (method: "documents" | "share" | "browser" | "failed"),
+ *   dipropagate biar pemanggil bisa menyesuaikan teks toast konfirmasi;
+ *   tidak ada (undefined) kalau noteCount 0 karena tidak ada file yang ditulis.
  */
 export async function exportAllNotes() {
   const notes = await documentService.listNotes({ includeTrashed: true, includeArchived: true });
@@ -104,7 +108,7 @@ export async function exportAllNotes() {
   const zipBlob = buildZipBlob([{ name: "backup-manifest.json", data: manifestBytes }, ...zipEntries], "application/zip");
 
   const dateStr = new Date().toISOString().slice(0, 10);
-  await saveFileForUser(zipBlob, `catatan-cadangan-${dateStr}.zip`);
+  const savedTo = await saveFileForUser(zipBlob, `catatan-cadangan-${dateStr}.zip`);
 
-  return { noteCount: notes.length, assetCount: totalAssetCount };
+  return { noteCount: notes.length, assetCount: totalAssetCount, savedTo };
 }

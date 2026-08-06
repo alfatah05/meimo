@@ -32,8 +32,16 @@ export async function downloadNoteAsMeimo(note) {
       showToast("Catatan tidak ditemukan (mungkin sudah dihapus).", { tone: "danger" });
       return;
     }
-    const { fileName } = await exportNoteAsMeimo(freshDoc);
-    showToast(`Diunduh sebagai ${fileName}`);
+    const { fileName, savedTo } = await exportNoteAsMeimo(freshDoc);
+    if (savedTo?.method === "documents") {
+      showToast(`Diunduh ke folder Documents sebagai ${fileName}`);
+    } else if (savedTo?.method === "share") {
+      showToast(`${fileName} dibagikan lewat sheet — pilih tempat menyimpannya.`);
+    } else if (savedTo?.method === "failed") {
+      showToast("Gagal mengunduh catatan. Coba lagi.", { tone: "danger" });
+    } else {
+      showToast(`Diunduh sebagai ${fileName}`);
+    }
   } catch (err) {
     console.error("Gagal mengunduh catatan:", err);
     showToast("Gagal mengunduh catatan. Coba lagi.", { tone: "danger" });

@@ -33,12 +33,16 @@ async function boot() {
     backupBtn.addEventListener("click", async () => {
       backupBtn.disabled = true;
       try {
-        const { noteCount } = await exportAllNotes();
-        showToast(
-          noteCount > 0
-            ? `Cadangan ${noteCount} catatan (lengkap dengan gambar/musik) berhasil diunduh.`
-            : "Belum ada catatan untuk dicadangkan."
-        );
+        const { noteCount, savedTo } = await exportAllNotes();
+        if (noteCount === 0) {
+          showToast("Belum ada catatan untuk dicadangkan.");
+        } else if (savedTo?.method === "share") {
+          showToast(`Cadangan ${noteCount} catatan dibagikan lewat sheet — pilih tempat menyimpannya.`);
+        } else if (savedTo?.method === "failed") {
+          showToast("Gagal membuat cadangan. Coba lagi.", { tone: "danger" });
+        } else {
+          showToast(`Cadangan ${noteCount} catatan (lengkap dengan gambar/musik) berhasil diunduh ke folder Documents.`);
+        }
       } catch (err) {
         console.error("Gagal membuat cadangan:", err);
         showToast("Gagal membuat cadangan. Coba lagi.", { tone: "danger" });

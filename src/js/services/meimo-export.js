@@ -182,14 +182,17 @@ export async function buildMeimoZipBytes(doc) {
  *
  * @param {object} doc - hasil state.getDocument() dari editor-state.js
  *   (schemaVersion, id, title, blocks, scenes, music, dst).
- * @returns {Promise<{assetCount: number, fileName: string}>}
+ * @returns {Promise<{assetCount: number, fileName: string, savedTo: object}>}
+ *   `savedTo` adalah hasil saveFileForUser() apa adanya (method: "documents"
+ *   | "share" | "browser" | "failed"), dipropagate biar pemanggil bisa
+ *   menyesuaikan teks toast konfirmasi.
  */
 export async function exportNoteAsMeimo(doc) {
   const { bytes, assetCount } = await buildMeimoZipBytes(doc);
   const zipBlob = new Blob([bytes], { type: MEIMO_MIME_TYPE });
 
   const fileName = `${safeFileNameFromTitle(doc.title)}.meimo`;
-  await saveFileForUser(zipBlob, fileName);
+  const savedTo = await saveFileForUser(zipBlob, fileName);
 
-  return { assetCount, fileName };
+  return { assetCount, fileName, savedTo };
 }
