@@ -116,3 +116,34 @@ butuh keystore milik kamu sendiri).
   belum tentu otomatis hilang di WebView native — perlu ditest ulang
   setelah build pertama, karena mesin render/file-picker-nya berbeda dari
   Chrome mobile.
+
+## Package name (applicationId)
+
+```
+com.meimo.app
+```
+
+Sumber: `appId` di `capacitor.config.json`. Ini yang terlihat di Settings → Apps dan yang harus unik di Play Store.
+
+## Artifact build CI
+
+Workflow GitHub Actions menghasilkan:
+
+| Artifact | Isi |
+|---|---|
+| `meimo-apk` | `meimo.apk` — **release signed**, siap sideload |
+| `meimo-release-aab` | `app-release.aab` — untuk unggah Play Console |
+
+## Google Play Protect memblokir install?
+
+APK sideload (bukan dari Play Store) sering diperingatkan Play Protect — **normal**, bukan berarti app rusak.
+
+Cara install:
+
+1. Settings → Security → izinkan **Install unknown apps** untuk Files / Chrome / browser yang dipakai.
+2. Saat muncul "Blocked by Play Protect" → **More details** → **Install anyway**.
+3. Atau buka Play Protect → Settings → matikan "Scan apps with Play Protect" sementara (nyalakan lagi setelah install).
+
+Supaya peringatan berkurang jangka panjang: unggah ke **Google Play** (internal testing / production) — APK dari Play tidak diblokir Protect.
+
+Signature release di CI di-cache (`meimo-release-keystore-v1`) supaya update menimpa install lama. Untuk kunci sendiri, set Secrets: `MEIMO_KEYSTORE_BASE64`, `MEIMO_KEYSTORE_PASSWORD`, `MEIMO_KEY_ALIAS`, `MEIMO_KEY_PASSWORD`.

@@ -210,28 +210,26 @@ function init() {
     const headerSpace = topbarTop + topbarHeight + CONTENT_GAP_PX;
 
     // Padding bawah konten + acuan posisi FAB outline.
+    // Gap tepi FAB = --space-lg (24px) — SAMA dengan `right` di outline.css
+    // supaya jarak FAB→kanan layar, FAB→atas keyboard, dan FAB→atas bottom
+    // bar (via translate = tinggi bar saja) konsisten.
     // PENTING saat keyboard terbuka: JANGAN tambah insets.bottom (nav bar
-    // HP). Nav bar biasanya sudah hilang di balik IME; kalau tetap dijumlah
-    // ke keyboardInset / gap, FAB "melayang" terlalu tinggi (jarak dihitung
-    // seolah ke bawah layar penuh, bukan ke tepi atas keyboard).
-    // Tinggi block-selection-bar TIDAK ditambah di sini (FAB sudah diangkat
-    // lewat translate di outline.css saat bar terbuka).
-    const FAB_KEYBOARD_GAP_PX = 12; // jarak rapat FAB di atas tepi keyboard
+    // HP sudah hilang di balik IME).
+    const FAB_EDGE_GAP_PX = 24; // = --space-lg
     let footerSpace;
     let fabBottom;
     if (!keyboardOpen) {
       footerSpace = insets.bottom + FOOTER_CONTENT_GAP_PX;
-      // FAB: sedikit di atas nav bar (footer space dikurangi offset visual)
-      fabBottom = Math.max(insets.bottom + 12, footerSpace - 40);
+      // FAB di atas nav bar / safe-area, gap = space-lg
+      fabBottom = insets.bottom + FAB_EDGE_GAP_PX;
     } else if (keyboardInset > 0) {
-      // Overlay: angkat konten & FAB tepat di atas IME, gap kecil saja
+      // Overlay: FAB di atas IME, gap = space-lg
       footerSpace = keyboardInset + KEYBOARD_CONTENT_GAP_PX;
-      fabBottom = keyboardInset + FAB_KEYBOARD_GAP_PX;
+      fabBottom = keyboardInset + FAB_EDGE_GAP_PX;
     } else {
-      // Layout sudah di-resize: tepi bawah WebView = tepi atas IME.
-      // Cukup gap kecil dari tepi layout — tanpa safe-area nav.
+      // Layout sudah di-resize: tepi bawah WebView = tepi atas IME
       footerSpace = KEYBOARD_CONTENT_GAP_PX;
-      fabBottom = FAB_KEYBOARD_GAP_PX;
+      fabBottom = FAB_EDGE_GAP_PX;
     }
 
     setPxIfChanged(
@@ -256,13 +254,23 @@ function init() {
     );
 
     // --- Block selection bar: angkat di atas keyboard.
-    // Pakai bottom = keyboardInset (tinggi IME). Sumber angka: max(VV,
-    // nativeKeyboardHeight) — di Android native height yang andal.
+    // bottom = keyboardInset. Tinggi bar diukur → --block-selection-bar-lift
+    // supaya FAB naik tepat setinggi bar (gap ke bar = FAB_EDGE_GAP, sama
+    // dengan jarak ke kanan layar — jangan dijumlahkan lagi di CSS).
     if (selectionBar) {
       setPxIfChanged(
         "selectionBar.bottom",
         (v) => (selectionBar.style.bottom = v),
         keyboardOpen ? keyboardInset : 0
+      );
+      const barOpen =
+        selectionBar.classList.contains("is-open") ||
+        document.body.classList.contains("is-block-selection-bar-open");
+      const barLift = barOpen ? selectionBar.offsetHeight : 0;
+      setPxIfChanged(
+        "--block-selection-bar-lift",
+        (v) => document.documentElement.style.setProperty("--block-selection-bar-lift", v),
+        barLift
       );
     }
   }
@@ -307,6 +315,14 @@ function init() {
   if (window.ResizeObserver) {
     const ro = new ResizeObserver(scheduleUpdate);
     ro.observe(topbar);
+    if (selectionBar) ro.observe(selectionBar);
+  }
+
+  // Bar buka/tutup (class is-open) harus hitung ulang lift FAB.
+  if (selectionBar && window.MutationObserver) {
+    const mo = new MutationObserver(scheduleUpdate);
+    mo.observe(selectionBar, { attributes: true, attributeFilter: ["class"] });
+    mo.observe(document.body, { attributes: true, attributeFilter: ["class"] });
   }
 
   computeAndApply();

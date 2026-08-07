@@ -1,6 +1,6 @@
 {
   "name": "meimo",
-  "version": "1.19.0",
+  "version": "1.20.0",
   "private": true,
   "description": "Meimo \u2014 Catatan Pribadi. Web app statis (tanpa build step) + shell native Android lewat Capacitor.",
   "scripts": {

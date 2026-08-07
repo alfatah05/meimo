@@ -40,11 +40,11 @@
    sejajar persis dengan baris terakhir catatan. */
 .outline-fab {
   position: fixed;
+  /* Jarak kanan = kiri gap ke keyboard/bar = --space-lg (24px) — konsisten. */
   right: var(--space-lg);
-  /* --outline-fab-bottom di-set viewport-pin.js:
-     - keyboard tutup: di atas nav bar
-     - keyboard buka: rapat di atas tepi IME (tanpa double-count safe-area) */
-  bottom: var(--outline-fab-bottom, calc(var(--editor-footer-space, var(--space-lg)) - 40px));
+  /* --outline-fab-bottom = tepi stack (keyboard / safe-area) + --space-lg.
+     Di-set viewport-pin.js. */
+  bottom: var(--outline-fab-bottom, var(--space-lg));
   z-index: var(--z-fab);
   width: 52px;
   height: 52px;
@@ -84,8 +84,11 @@
   transition: translate var(--duration-base) var(--ease-standard);
 }
 
+/* Naik setinggi bar saja — gap ke atas bar = --space-lg sudah ada di
+   --outline-fab-bottom (sama dengan jarak FAB ke kanan layar). Jangan
+   tambah gap lagi di sini (dobel). Tinggi bar diukur di viewport-pin.js. */
 body.is-block-selection-bar-open .outline-fab {
-  translate: 0 calc(-1 * (var(--block-selection-bar-lift, 60px) + var(--space-md)));
+  translate: 0 calc(-1 * var(--block-selection-bar-lift, 46px));
 }
 
 /* Selagi mode Select Block aktif, FAB ini bentrok posisi dengan probe
