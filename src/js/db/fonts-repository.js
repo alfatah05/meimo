@@ -1,39 +1,35 @@
 /**
  * fonts-repository.js
- * Repository layer — SATU-SATUNYA tempat operasi CRUD mentah ke IndexedDB
- * untuk font kustom yang sudah diunduh user dijalankan (lewat helper di db.js).
+ * Repository layer — CRUD font kustom.
  *
- * Sama seperti notes-repository.js: file ini sengaja "bodoh" (tidak tahu
- * aturan bisnis seperti mengunduh berkas dari Font Library, memuat
- * @font-face, dsb) — itu tugas Font Service (src/js/services/font-service.js).
+ * Backend: Capacitor Filesystem → Directory.Data (private app folder).
+ * Project ini khusus native; tidak memakai IndexedDB.
  *
  * Arsitektur:
- *   Font Family Dropdown / Font Manager -> Font Service -> Repository (file ini) -> IndexedDB (db.js)
+ *   Font Service -> Repository (file ini) -> Filesystem
  *
- * Modul lain DILARANG mengimpor file ini secara langsung — semua akses
- * lewat font-service.js.
+ * Modul lain DILARANG mengimpor file ini secara langsung —
+ * semua akses lewat font-service.js.
  */
 
-import { withStore, requestToPromise } from "./db.js";
-import { STORES } from "./schema.js";
+import * as fs from "./fs-backend.js";
 
 /** Simpan (buat baru atau timpa) satu font kustom. */
 export async function putFont(font) {
-  await withStore(STORES.FONTS, "readwrite", (store) => requestToPromise(store.put(font)));
-  return font;
+  return fs.fsPutFont(font);
 }
 
-/** Ambil satu font berdasarkan id. `undefined` bila belum diunduh/tidak ada. */
+/** Ambil satu font berdasarkan id. `undefined` bila tidak ada. */
 export async function getFontById(id) {
-  return withStore(STORES.FONTS, "readonly", (store) => requestToPromise(store.get(id)));
+  return fs.fsGetFontById(id);
 }
 
 /** Ambil seluruh font kustom yang sudah diunduh. */
 export async function getAllFonts() {
-  return withStore(STORES.FONTS, "readonly", (store) => requestToPromise(store.getAll()));
+  return fs.fsGetAllFonts();
 }
 
-/** Hapus satu font kustom secara permanen dari penyimpanan lokal. */
+/** Hapus satu font kustom secara permanen. */
 export async function deleteFont(id) {
-  await withStore(STORES.FONTS, "readwrite", (store) => requestToPromise(store.delete(id)));
+  return fs.fsDeleteFont(id);
 }
