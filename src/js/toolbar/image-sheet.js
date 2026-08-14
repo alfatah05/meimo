@@ -25,10 +25,11 @@ import { IMAGE_DEFAULTS } from "../editor/block-model.js";
 import * as imageService from "../services/image-service.js";
 import { IMAGE_CLIP_SHAPES, ensureClipDefsInjected, getClipPathCssValue } from "../editor/image-clip-shapes.js";
 import { registerActiveSheet, closeActiveSheet, clearActiveSheet } from "./active-sheet.js";
+import { t } from "../i18n/i18n.js";
 
 const WIDTH_RANGE = { min: 10, max: 640 };
 const HEIGHT_RANGE = { min: 10, max: 640 };
-const RADIUS_RANGE = { min: 0, max: 100 };
+const RADIUS_RANGE = { min: 0, max: 1000 };
 
 function clamp(v, min, max) {
   return Math.min(max, Math.max(min, v));
@@ -57,17 +58,17 @@ function loadNaturalAspectRatio(url) {
 const ALIGN_OPTIONS = [
   {
     value: "left",
-    label: "Kiri",
+    labelKey: "image.align.left",
     icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="10" height="16" rx="1.5"/><line x1="16" y1="8" x2="21" y2="8"/><line x1="16" y1="12" x2="21" y2="12"/><line x1="16" y1="16" x2="21" y2="16"/></svg>',
   },
   {
     value: "center",
-    label: "Tengah",
+    labelKey: "image.align.center",
     icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="4" width="10" height="10" rx="1.5"/><line x1="4" y1="18" x2="20" y2="18"/></svg>',
   },
   {
     value: "right",
-    label: "Kanan",
+    labelKey: "image.align.right",
     icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="11" y="4" width="10" height="16" rx="1.5"/><line x1="3" y1="8" x2="8" y2="8"/><line x1="3" y1="12" x2="8" y2="12"/><line x1="3" y1="16" x2="8" y2="16"/></svg>',
   },
 ];
@@ -84,6 +85,10 @@ function applyPreviewToBlockEl(blockEl, settings) {
   blockEl.style.setProperty("--img-h", `${settings.height}px`);
   blockEl.style.setProperty("--img-radius", `${settings.radius}px`);
   blockEl.style.setProperty("--img-clip", getClipPathCssValue(settings.clipShape));
+  blockEl.style.setProperty("--img-ox", `${settings.offsetX || 0}px`);
+  blockEl.style.setProperty("--img-oy", `${settings.offsetY || 0}px`);
+  blockEl.style.setProperty("--img-scale", String(settings.scale != null ? settings.scale : 1));
+  blockEl.style.setProperty("--img-rotate", `${settings.rotate || 0}deg`);
   blockEl.classList.toggle("editor-block--image-clipped", settings.clipShape !== "none");
   blockEl.classList.toggle("editor-block--image-transparent", !!settings.transparentBg);
   blockEl.classList.remove(
@@ -112,36 +117,232 @@ function setPreviewImageSrc(blockEl, url) {
   img.src = url;
 }
 
-function makeSlider(labelText, range, initial, onInput) {
-  const row = createEl("div", { className: "image-sheet__slider-row" });
-  const labelRow = createEl("div", { className: "image-sheet__slider-label-row" });
-  labelRow.appendChild(createEl("span", { className: "image-sheet__label", text: labelText }));
-  const valueEl = createEl("span", { className: "image-sheet__value", text: `${initial}px` });
-  labelRow.appendChild(valueEl);
-  row.appendChild(labelRow);
+const RULER_TICK_PX = 5; // jarak antar garis tetap (= 1 unit nilai), konsisten di semua range
 
-  const input = createEl("input", {
-    className: "image-sheet__slider",
-    attrs: { type: "range", min: range.min, max: range.max, value: initial },
+/**
+ * Ruler drag + momentum (fling), VIRTUAL TICKS.
+ * Tidak pernah membangun (max-min) DOM tick — hanya garis di sekitar
+ * viewport (+overscan). Jarak antar tick tetap RULER_TICK_PX walau
+ * range-nya -9999…9999.
+ * Pointer fixed di tengah; nilai diubah dari delta drag.
+ */
+function makeRuler(labelText, range, initial, onInput, { format } = {}) {
+  const fmt = format || ((v) => `${v}px`);
+  const row = createEl("div", { className: "image-sheet__ruler-row" });
+  row.appendChild(createEl("span", { className: "image-sheet__ruler-label", text: labelText }));
+
+  const wrap = createEl("div", { className: "image-sheet__ruler-wrap" });
+  const viewport = createEl("div", { className: "image-sheet__ruler-viewport" });
+  const track = createEl("div", { className: "image-sheet__ruler-track image-sheet__ruler-track--virtual" });
+  // Track tidak punya width raksasa — tick diposisikan relatif ke pusat pointer.
+  track.style.width = "100%";
+  track.style.transform = "none";
+  viewport.appendChild(track);
+  wrap.append(
+    viewport,
+    createEl("div", { className: "image-sheet__ruler-pointer", attrs: { "aria-hidden": "true" } })
+  );
+
+  const valueEl = createEl("span", { className: "image-sheet__ruler-value", text: fmt(Math.round(Number(initial))) });
+  row.append(wrap, valueEl);
+
+  const min = range.min;
+  const max = range.max;
+  let frac = clamp(Number(initial), min, max);
+  let current = Math.round(frac);
+  let dragging = false;
+  let originX = 0;
+  let originFrac = 0;
+  const samples = [];
+  let raf = 0;
+  let lastEmit = current;
+  // Pool tick nodes supaya tidak create/destroy tiap frame drag
+  const tickPool = [];
+
+  function centerX() {
+    return (viewport.clientWidth || wrap.clientWidth || 0) / 2;
+  }
+
+  function ensurePool(n) {
+    while (tickPool.length < n) {
+      const tick = document.createElement("div");
+      tick.className = "image-sheet__ruler-tick";
+      tick.style.position = "absolute";
+      tick.style.top = "0";
+      tick.style.bottom = "0";
+      tickPool.push(tick);
+      track.appendChild(tick);
+    }
+  }
+
+  function layoutTicks() {
+    const cx = centerX();
+    const vpW = viewport.clientWidth || wrap.clientWidth || 200;
+    // cukup tutup viewport + overscan kiri/kanan
+    const half = Math.ceil(vpW / RULER_TICK_PX) + 12;
+    const centerInt = Math.round(frac);
+    const v0 = Math.max(min, centerInt - half);
+    const v1 = Math.min(max, centerInt + half);
+    const need = Math.max(0, v1 - v0 + 1);
+    ensurePool(need);
+    for (let i = 0; i < tickPool.length; i++) {
+      const tick = tickPool[i];
+      if (i >= need) {
+        tick.style.display = "none";
+        continue;
+      }
+      const v = v0 + i;
+      tick.style.display = "";
+      // Posisi di viewport: pusat pointer = nilai `frac`
+      const x = cx + (v - frac) * RULER_TICK_PX;
+      tick.style.left = `${x}px`;
+      // Major tick tiap 10 unit (opsional visual)
+      tick.classList.toggle("is-major", v % 10 === 0);
+    }
+  }
+
+  function paint(f) {
+    frac = clamp(f, min, max);
+    layoutTicks();
+    const snapped = Math.round(frac);
+    if (snapped !== lastEmit) {
+      lastEmit = snapped;
+      current = snapped;
+      valueEl.textContent = fmt(current);
+      onInput(current);
+    } else {
+      valueEl.textContent = fmt(current);
+    }
+  }
+
+  function setValue(v, { silent = false } = {}) {
+    cancelMomentum();
+    frac = clamp(Math.round(v), min, max);
+    current = Math.round(frac);
+    lastEmit = current;
+    layoutTicks();
+    valueEl.textContent = fmt(current);
+    if (!silent) onInput(current);
+  }
+
+  function cancelMomentum() {
+    if (raf) {
+      cancelAnimationFrame(raf);
+      raf = 0;
+    }
+  }
+
+  function startMomentum(velocityPxPerMs) {
+    let v = (-velocityPxPerMs / RULER_TICK_PX) * 2.8;
+    const MAX_V = 1.1;
+    if (Math.abs(v) > MAX_V) v = Math.sign(v) * MAX_V;
+    const FRICTION = 0.0028;
+    let prev = performance.now();
+
+    const step = (now) => {
+      const dt = Math.min(34, now - prev);
+      prev = now;
+      if (dt > 0) {
+        v *= Math.exp(-FRICTION * dt);
+        if (Math.abs(v) < 0.00012) {
+          frac = clamp(Math.round(frac), min, max);
+          paint(frac);
+          raf = 0;
+          return;
+        }
+        paint(frac + v * dt);
+        if (frac <= min || frac >= max) {
+          frac = clamp(frac, min, max);
+          v = 0;
+          paint(frac);
+          raf = 0;
+          return;
+        }
+      }
+      raf = requestAnimationFrame(step);
+    };
+    cancelMomentum();
+    raf = requestAnimationFrame(step);
+  }
+
+  function recordSample(clientX, t) {
+    samples.push({ x: clientX, t });
+    const cut = t - 120;
+    while (samples.length && samples[0].t < cut) samples.shift();
+    while (samples.length > 10) samples.shift();
+  }
+
+  function releaseVelocity() {
+    if (samples.length < 2) return 0;
+    const b = samples[samples.length - 1];
+    let a = samples[0];
+    for (let i = samples.length - 2; i >= 0; i--) {
+      if (b.t - samples[i].t >= 40) {
+        a = samples[i];
+        break;
+      }
+      a = samples[i];
+    }
+    const dt = b.t - a.t;
+    if (dt <= 0) return 0;
+    return (b.x - a.x) / dt;
+  }
+
+  viewport.addEventListener("pointerdown", (e) => {
+    if (e.button != null && e.button !== 0) return;
+    cancelMomentum();
+    dragging = true;
+    originX = e.clientX;
+    originFrac = frac;
+    samples.length = 0;
+    recordSample(e.clientX, performance.now());
+    try {
+      viewport.setPointerCapture(e.pointerId);
+    } catch (_) {}
+    e.preventDefault();
   });
-  input.addEventListener("input", () => {
-    const v = Number(input.value);
-    valueEl.textContent = `${v}px`;
-    onInput(v);
+
+  viewport.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - originX;
+    recordSample(e.clientX, performance.now());
+    paint(originFrac - dx / RULER_TICK_PX);
   });
-  row.appendChild(input);
-  // Diekspos supaya pemanggil bisa menonaktifkan slider ini dari luar (mis.
-  // slider Border Radius dimatikan saat crop bentuk SVG aktif — lihat
-  // shapeSection di bawah).
-  row.sliderInputEl = input;
-  // Diekspos supaya slider lain (Lebar <-> Tinggi) bisa menyinkronkan nilai
-  // tampilan slider ini secara programatis (mis. saat Kunci Rasio aktif),
-  // TANPA memicu ulang `onInput` milik slider ini sendiri — mencegah loop
-  // saling panggil antara handler Lebar & Tinggi.
-  row.setValue = (v) => {
-    input.value = v;
-    valueEl.textContent = `${v}px`;
+
+  function endDrag() {
+    if (!dragging) return;
+    dragging = false;
+    const vel = releaseVelocity();
+    if (Math.abs(vel) > 0.015) {
+      startMomentum(vel);
+    } else {
+      paint(Math.round(frac));
+      frac = current;
+    }
+  }
+
+  viewport.addEventListener("pointerup", endDrag);
+  viewport.addEventListener("pointercancel", endDrag);
+
+  viewport.addEventListener(
+    "wheel",
+    (e) => {
+      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      if (!delta) return;
+      e.preventDefault();
+      cancelMomentum();
+      paint(frac + Math.sign(delta));
+      frac = current;
+    },
+    { passive: false }
+  );
+
+  row._rulerReady = () => {
+    setValue(current, { silent: true });
+    requestAnimationFrame(() => setValue(current, { silent: true }));
   };
+  row.setValue = (v) => setValue(v, { silent: true });
+  row.getValue = () => current;
   return row;
 }
 
@@ -177,7 +378,15 @@ function openImageSheet({ editor, state, blockId, mode }) {
     radius: existingBlock.borderRadius ?? IMAGE_DEFAULTS.borderRadius,
     clipShape: existingBlock.clipShape || IMAGE_DEFAULTS.clipShape,
     transparentBg: !!existingBlock.transparentBg,
-    lockAspect: false,
+    // FIX: sebelumnya hardcode false di sini (state toggle "Kunci Rasio"
+    // selalu balik ke off tiap sheet dibuka lagi) — sekarang dibaca dari
+    // block model (lihat IMAGE_DEFAULTS.lockAspect & createImageBlock di
+    // block-model.js) supaya preferensinya benar-benar diingat per gambar.
+    lockAspect: !!existingBlock.lockAspect,
+    offsetX: Number.isFinite(existingBlock.imageOffsetX) ? existingBlock.imageOffsetX : 0,
+    offsetY: Number.isFinite(existingBlock.imageOffsetY) ? existingBlock.imageOffsetY : 0,
+    scale: Number.isFinite(existingBlock.imageScale) ? existingBlock.imageScale : 1,
+    rotate: Number.isFinite(existingBlock.imageRotate) ? existingBlock.imageRotate : 0,
   };
 
   // Rasio aspek dipakai toggle "Kunci Rasio" di bawah supaya slider Lebar
@@ -212,108 +421,107 @@ function openImageSheet({ editor, state, blockId, mode }) {
   let sheetClosed = false;
 
   const overlay = createEl("div", { className: "image-sheet-overlay" });
-  const sheet = createEl("div", { className: "image-sheet" });
+  const sheet = createEl("div", { className: "image-sheet image-sheet--compact" });
   overlay.appendChild(sheet);
 
-  // ---- Judul + tombol Hapus Gambar (icon-only, pojok kanan atas,
-  // konsisten dengan scene-sheet.js/music-sheet.js) — HANYA muncul di
-  // mode "edit" (block gambar yang sudah ada, dibuka lewat tap). Di mode
-  // "insert" tombol "Batal" di bawah sudah setara dengan menghapus
-  // placeholder yang baru saja disisipkan (lihat doCancel()).
-  const titleRow = createEl("div", { className: "image-sheet__title scene-sheet__title-row" });
-  titleRow.appendChild(
-    createEl("span", { text: mode === "edit" ? "Pengaturan Gambar" : "Sisipkan Gambar" })
-  );
-  let deleteArmed = false;
-  let deleteArmTimer = null;
-  let deleteBtn = null;
-  if (mode === "edit") {
-    deleteBtn = createEl("button", {
-      className: "scene-sheet__delete-icon-btn",
-      attrs: { type: "button", "aria-label": "Hapus Gambar" },
-      html:
-        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
-    });
-    deleteBtn.addEventListener("click", () => {
-      if (isBusy) return;
-      if (!deleteArmed) {
-        deleteArmed = true;
-        deleteBtn.classList.add("is-armed");
-        deleteBtn.setAttribute("aria-label", "Ketuk lagi untuk hapus Gambar");
-        deleteArmTimer = setTimeout(() => {
-          deleteArmed = false;
-          deleteBtn.classList.remove("is-armed");
-          deleteBtn.setAttribute("aria-label", "Hapus Gambar");
-        }, 3000);
-        return;
-      }
-      clearTimeout(deleteArmTimer);
-      if (pendingPreviewUrl) URL.revokeObjectURL(pendingPreviewUrl);
-      if (pendingBytesPromise) pendingBytesPromise.catch(() => {});
-      editor.runCommand(removeImageBlock, blockId);
-      close();
-    });
-    titleRow.appendChild(deleteBtn);
-  }
-  sheet.appendChild(titleRow);
+  const ICON = {
+    wrap: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><line x1="12" y1="6" x2="21" y2="6"/><line x1="12" y1="10" x2="21" y2="10"/><line x1="3" y1="14" x2="21" y2="14"/><line x1="3" y1="18" x2="21" y2="18"/></svg>',
+    transparent: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><g fill="currentColor" stroke="none"><rect x="3" y="3" width="4.5" height="4.5"/><rect x="12" y="3" width="4.5" height="4.5"/><rect x="7.5" y="7.5" width="4.5" height="4.5"/><rect x="16.5" y="7.5" width="4.5" height="4.5"/><rect x="3" y="12" width="4.5" height="4.5"/><rect x="12" y="12" width="4.5" height="4.5"/><rect x="7.5" y="16.5" width="4.5" height="4.5"/><rect x="16.5" y="16.5" width="4.5" height="4.5"/></g></svg>',
+    lock: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><line x1="3" y1="19" x2="21" y2="5"/></svg>',
+    delete: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+    dimension: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H3v6"/><path d="M15 21h6v-6"/><path d="M3 3l7 7"/><path d="M21 21l-7-7"/></svg>',
+    offset: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l-3 3 3 3"/><path d="M9 5l3-3 3 3"/><path d="M15 19l3 3 3-3"/><path d="M19 9l3 3-3 3"/><path d="M2 12h20"/><path d="M12 2v20"/></svg>',
+    rotate: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>',
+    crop: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="12" cy="12" r="5.5" fill="currentColor" stroke="none"/></svg>',
+    upload: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.75" fill="currentColor" stroke="none"/><path d="M3 16l5-5 4 4 3-3 6 6"/></svg>',
+    check: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+    back: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>',
+  };
 
-  /* ---- Posisi (align) ---- */
-  const alignSection = createEl("div", { className: "image-sheet__section" });
-  alignSection.appendChild(createEl("div", { className: "image-sheet__label", text: "Posisi Gambar" }));
-  const alignGroup = createEl("div", { className: "image-sheet__align-group" });
+  // ---- Panels: main / dimension / crop (satu sheet, isi diganti) ----
+  const panelMain = createEl("div", { className: "image-sheet__panel image-sheet__panel--main is-active" });
+  const panelDim = createEl("div", { className: "image-sheet__panel image-sheet__panel--sub" });
+  const panelCrop = createEl("div", { className: "image-sheet__panel image-sheet__panel--sub" });
+  sheet.append(panelMain, panelDim, panelCrop);
+
+  let setDimTab = null; // diisi saat dimension panel dibangun
+  function showPanel(name) {
+    panelMain.classList.toggle("is-active", name === "main");
+    panelDim.classList.toggle("is-active", name === "dimension");
+    panelCrop.classList.toggle("is-active", name === "crop");
+    if (name === "dimension") {
+      if (typeof setDimTab === "function") setDimTab("size");
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          widthRow._rulerReady && widthRow._rulerReady();
+          heightRow._rulerReady && heightRow._rulerReady();
+          radiusRow._rulerReady && radiusRow._rulerReady();
+        });
+      });
+    }
+  }
+
+  // ========== MAIN PANEL ==========
+  const mainLeft = createEl("div", { className: "image-sheet__main-left" });
+  const mainRight = createEl("div", { className: "image-sheet__main-right" });
+  panelMain.append(mainLeft, mainRight);
+
+  /* Align bar */
+  const alignBar = createEl("div", { className: "image-sheet__align-bar" });
   const alignButtons = {};
-  for (const opt of ALIGN_OPTIONS) {
+  ALIGN_OPTIONS.forEach((opt, i) => {
+    if (i > 0) alignBar.appendChild(createEl("span", { className: "image-sheet__align-divider", attrs: { "aria-hidden": "true" } }));
     const btn = createEl("button", {
       className: "image-sheet__align-btn",
-      attrs: { type: "button", "aria-label": opt.label },
-      html: `${opt.icon}<span>${opt.label}</span>`,
+      attrs: { type: "button", "aria-label": t(opt.labelKey) },
+      html: opt.icon,
     });
     btn.addEventListener("click", () => {
       settings.align = opt.value;
       for (const key in alignButtons) alignButtons[key].classList.toggle("is-active", key === opt.value);
-      wrapRow.classList.toggle("is-disabled", opt.value === "center");
+      wrapToggle.classList.toggle("is-disabled", opt.value === "center");
+      if (opt.value === "center" && settings.wrap) {
+        settings.wrap = false;
+        wrapToggle.classList.remove("is-on");
+        wrapToggle.setAttribute("aria-checked", "false");
+      }
       applyPreviewToBlockEl(blockEl, settings);
     });
     alignButtons[opt.value] = btn;
-    alignGroup.appendChild(btn);
-  }
-  alignSection.appendChild(alignGroup);
-  sheet.appendChild(alignSection);
-
-  /* ---- Wrap text ---- */
-  const wrapRow = createEl("div", { className: "image-sheet__section image-sheet__row" });
-  wrapRow.appendChild(createEl("div", { className: "image-sheet__label", text: "Bungkus Teks (Wrap)" }));
-  const wrapToggle = createEl("button", {
-    className: "image-sheet__toggle",
-    attrs: { type: "button", role: "switch", "aria-checked": "false" },
+    alignBar.appendChild(btn);
   });
-  wrapToggle.appendChild(createEl("span", { className: "image-sheet__toggle-knob" }));
-  wrapToggle.addEventListener("click", () => {
-    if (settings.align === "center") return; // wrap tidak berlaku untuk posisi tengah
-    settings.wrap = !settings.wrap;
-    wrapToggle.classList.toggle("is-on", settings.wrap);
-    wrapToggle.setAttribute("aria-checked", String(settings.wrap));
-    applyPreviewToBlockEl(blockEl, settings);
-  });
-  wrapRow.appendChild(wrapToggle);
-  sheet.appendChild(wrapRow);
+  mainLeft.appendChild(alignBar);
 
-  /* ---- Upload gambar ---- */
-  const uploadSection = createEl("div", { className: "image-sheet__section" });
+  /* Big row: Dimension | Crop | Upload  (dari kanan: dim, crop, upload → kiri ke kanan: upload, crop, dim? User: dari kanan = dimension, crop, upload)
+     Jadi urutan DOM kiri→kanan: Upload, Crop, Dimension */
+  const bigRow = createEl("div", { className: "image-sheet__big-row" });
   const fileInput = createEl("input", { attrs: { type: "file", accept: "image/*" } });
   fileInput.hidden = true;
-  const uploadBtnIdleHtml =
-    '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg><span>Unggah Gambar</span>';
-  const uploadBtnBusyHtml = '<span class="image-sheet__spinner" aria-hidden="true"></span><span>Mengonversi…</span>';
+
+  const uploadBtnIdleHtml = `${ICON.upload}<span>${t("image.upload")}</span>`;
+  const uploadBtnBusyHtml = '<span class="image-sheet__spinner" aria-hidden="true"></span><span>…</span>';
   const uploadBtn = createEl("button", {
-    className: "image-sheet__upload-btn",
-    attrs: { type: "button" },
+    className: "image-sheet__big-btn image-sheet__big-btn--upload",
+    attrs: { type: "button", "aria-label": t("image.uploadAria") },
     html: uploadBtnIdleHtml,
   });
-  // Tombol "Unggah Gambar" dikunci + diganti spinner selama konversi WebP
-  // berjalan (lihat convertToWebp di image-service.js) — supaya kalau
-  // konversinya agak lama (gambar besar/HP lambat), user tahu ada proses
-  // yang sedang berjalan, bukan mengira tombolnya tidak merespons.
+  const cropOpenBtn = createEl("button", {
+    className: "image-sheet__big-btn",
+    attrs: { type: "button", "aria-label": t("image.cropAria") },
+    html: `${ICON.crop}<span>${t("image.crop")}</span>`,
+  });
+  const dimOpenBtn = createEl("button", {
+    className: "image-sheet__big-btn",
+    attrs: { type: "button", "aria-label": t("image.dimension") },
+    html: `${ICON.dimension}<span>${t("image.dimension")}</span>`,
+  });
+  // Urutan visual kiri → kanan: Unggah, Crop, Dimensi (kanan = dimensi sesuai request)
+  bigRow.append(uploadBtn, cropOpenBtn, dimOpenBtn, fileInput);
+  mainLeft.appendChild(bigRow);
+
+  cropOpenBtn.addEventListener("click", () => showPanel("crop"));
+  dimOpenBtn.addEventListener("click", () => showPanel("dimension"));
+
   function setUploadBusy(busy) {
     isConverting = busy;
     uploadBtn.disabled = busy;
@@ -325,46 +533,20 @@ function openImageSheet({ editor, state, blockId, mode }) {
   uploadBtn.addEventListener("click", () => fileInput.click());
   fileInput.addEventListener("change", () => {
     const file = fileInput.files && fileInput.files[0];
-    if (!file) {
-      return;
-    }
+    if (!file) return;
     if (pendingPreviewUrl) URL.revokeObjectURL(pendingPreviewUrl);
     pendingFile = file;
     const rawMimeType = file.type;
-
-    // FIX (akar masalah "Terapkan gagal di mobile"): baca isi file jadi
-    // ArrayBuffer SEKARANG JUGA, sedetik setelah user memilihnya di photo
-    // picker — BUKAN nanti saat tombol Terapkan ditekan.
-    //
-    // Kenapa: izin baca ke file yang dipilih lewat photo picker Android
-    // (content:// URI) bersifat singkat/one-shot. Sebelumnya kode ini baru
-    // memanggil file.arrayBuffer() di dalam doApply(), yaitu SETELAH user
-    // sempat mengatur posisi/wrap/ukuran gambar dulu (baru dari log nyata:
-    // jeda ~3 detik antara file dipilih & Terapkan ditekan) — dalam jeda
-    // itu Android sudah keburu mencabut izin baca ke file-nya, jadi
-    // pembacaan gagal dengan NotReadableError ("izin bermasalah setelah
-    // referensi file diperoleh").
-    //
-    // Dengan memulai pembacaan di sini (tepat saat file masih "segar"),
-    // begitu ArrayBuffer selesai didapat ia sudah jadi salinan mentah di
-    // memori JS biasa — tidak lagi bergantung ke izin/referensi file
-    // eksternal apa pun. Konversi WebP di bawah (imageService.convertToWebp)
-    // murni bekerja dari salinan ArrayBuffer ini lewat Canvas API, jadi
-    // TIDAK menyentuh file/izin aslinya lagi sama sekali — aman dilakukan
-    // kapan pun, termasuk yang agak lama untuk gambar besar.
     const rawBytesPromise = file.arrayBuffer();
-
     pendingPreviewUrl = null;
-    hasImage = false; // baru jadi true lagi setelah konversi WebP selesai
+    hasImage = false;
     setUploadBusy(true);
-
-    const selectionToken = pendingFile; // deteksi kalau user pilih file lain lagi selagi masih convert
+    const selectionToken = pendingFile;
     pendingBytesPromise = rawBytesPromise
       .then((rawBytes) => imageService.convertToWebp(rawBytes, rawMimeType))
       .then(({ bytes, mimeType }) => {
         pendingMimeType = mimeType;
-        if (sheetClosed || selectionToken !== pendingFile) return bytes; // sheet sudah ditutup / file sudah diganti lagi
-
+        if (sheetClosed || selectionToken !== pendingFile) return bytes;
         const blob = new Blob([bytes], { type: mimeType });
         const url = URL.createObjectURL(blob);
         pendingPreviewUrl = url;
@@ -372,144 +554,279 @@ function openImageSheet({ editor, state, blockId, mode }) {
         setPreviewImageSrc(blockEl, url);
         applyPreviewToBlockEl(blockEl, settings);
         setUploadBusy(false);
-
-        // Rasio aspek dihitung dari dimensi ASLI gambar hasil konversi
-        // (bukan dari lebar/tinggi slider yang sedang dipakai) — begitu
-        // didapat, kalau Kunci Rasio sedang aktif langsung selaraskan
-        // slider Tinggi supaya tidak menunggu user menyentuh slider Lebar
-        // dulu.
         loadNaturalAspectRatio(url).then((ratio) => {
-          if (!ratio || sheetClosed || selectionToken !== pendingFile) return; // sheet ditutup / file sudah diganti lagi
+          if (!ratio || sheetClosed || selectionToken !== pendingFile) return;
           aspectRatio = ratio;
           if (settings.lockAspect) {
             syncHeightFromWidth(settings.width);
             applyPreviewToBlockEl(blockEl, settings);
           }
         });
-
         return bytes;
       })
       .catch((err) => {
         console.error("[image-sheet] Gagal memproses gambar:", err);
         if (!sheetClosed && selectionToken === pendingFile) {
           setUploadBusy(false);
-          errorEl.textContent = "Gagal memproses gambar yang dipilih. Coba pilih ulang lewat \"Unggah Gambar\".";
+          errorEl.textContent = t("image.err.process");
         }
         throw err;
       });
   });
-  uploadSection.appendChild(uploadBtn);
-  uploadSection.appendChild(fileInput);
-  sheet.appendChild(uploadSection);
 
-  /* ---- Crop bentuk SVG (bintang/love/dll) ----
-   * Strip yang bisa di-scroll ke samping, persis di bawah tombol "Unggah
-   * Gambar". Memilih salah satu bentuk di sini langsung memotong pratinjau
-   * gambar di dokumen lewat clip-path (lihat applyPreviewToBlockEl &
-   * editor/image-clip-shapes.js) — DAN mematikan slider Border Radius di
-   * bawah, karena begitu bentuknya dipotong jadi bintang/love/dll,
-   * border-radius kotak sudah tidak relevan lagi secara visual. */
-  const shapeSection = createEl("div", { className: "image-sheet__section" });
-  shapeSection.appendChild(createEl("div", { className: "image-sheet__label", text: "Bentuk Crop" }));
-  const shapeScroll = createEl("div", { className: "image-sheet__shape-scroll" });
-  const shapeButtons = {};
-  for (const shape of IMAGE_CLIP_SHAPES) {
-    const iconSvg = shape.d
-      ? `<svg viewBox="0 0 1 1" width="26" height="26"><path d="${shape.d}" fill="currentColor"/></svg>`
-      : '<svg viewBox="0 0 1 1" width="26" height="26"><rect x="0.06" y="0.06" width="0.88" height="0.88" rx="0.12" fill="none" stroke="currentColor" stroke-width="0.1"/></svg>';
-    const btn = createEl("button", {
-      className: "image-sheet__shape-btn",
-      attrs: { type: "button", "aria-label": shape.label },
-      html: `${iconSvg}<span>${shape.label}</span>`,
-    });
-    btn.addEventListener("click", () => {
-      settings.clipShape = shape.id;
-      for (const key in shapeButtons) shapeButtons[key].classList.toggle("is-active", key === shape.id);
-      updateRadiusDisabledState();
-      applyPreviewToBlockEl(blockEl, settings);
-    });
-    shapeButtons[shape.id] = btn;
-    shapeScroll.appendChild(btn);
-  }
-  shapeSection.appendChild(shapeScroll);
-  sheet.appendChild(shapeSection);
-
-  /* ---- Latar Transparan ----
-   * Begitu aktif, kotak/frame di belakang gambar (biasanya diberi warna
-   * --color-surface, lihat editor.css) dilepas jadi transparan — supaya
-   * area tembus pandang gambar PNG (kanal alpha) benar-benar tembus ke
-   * warna latar catatan/scene di baliknya, bukan ketutup warna frame.
-   * Tidak berpengaruh secara visual untuk gambar tanpa transparansi asli
-   * (mis. JPG), karena gambarnya sendiri memang tidak punya area
-   * tembus pandang. */
-  const transparentRow = createEl("div", { className: "image-sheet__section image-sheet__row" });
-  const transparentLabelCol = createEl("div", { className: "image-sheet__label-col" });
-  transparentLabelCol.appendChild(createEl("div", { className: "image-sheet__label", text: "Latar Transparan" }));
-  transparentLabelCol.appendChild(
-    createEl("div", {
-      className: "image-sheet__hint",
-      text: "Untuk gambar PNG — area transparan gambar akan tembus ke latar catatan.",
-    })
-  );
-  transparentRow.appendChild(transparentLabelCol);
-  const transparentToggle = createEl("button", {
-    className: "image-sheet__toggle",
-    attrs: { type: "button", role: "switch", "aria-checked": "false" },
+  /* Actions: Batal / Terapkan */
+  const actions = createEl("div", { className: "image-sheet__actions" });
+  const cancelBtn = createEl("button", {
+    className: "image-sheet__btn image-sheet__btn--ghost",
+    attrs: { type: "button" },
+    text: t("sheet.cancel"),
   });
-  transparentToggle.appendChild(createEl("span", { className: "image-sheet__toggle-knob" }));
+  const applyBtn = createEl("button", {
+    className: "image-sheet__btn image-sheet__btn--primary",
+    attrs: { type: "button" },
+    text: t("sheet.apply"),
+  });
+  actions.append(cancelBtn, applyBtn);
+  mainLeft.appendChild(actions);
+
+  /* Right rail: wrap, transparent, lock, delete */
+  const wrapToggle = createEl("button", {
+    className: "image-sheet__icon-btn",
+    attrs: { type: "button", role: "switch", "aria-checked": "false", "aria-label": t("image.wrap") },
+    html: ICON.wrap,
+  });
+  wrapToggle.addEventListener("click", () => {
+    if (settings.align === "center") return;
+    settings.wrap = !settings.wrap;
+    wrapToggle.classList.toggle("is-on", settings.wrap);
+    wrapToggle.setAttribute("aria-checked", String(settings.wrap));
+    applyPreviewToBlockEl(blockEl, settings);
+  });
+
+  const transparentToggle = createEl("button", {
+    className: "image-sheet__icon-btn",
+    attrs: { type: "button", role: "switch", "aria-checked": "false", "aria-label": t("image.transparentBg") },
+    html: ICON.transparent,
+  });
   transparentToggle.addEventListener("click", () => {
     settings.transparentBg = !settings.transparentBg;
     transparentToggle.classList.toggle("is-on", settings.transparentBg);
     transparentToggle.setAttribute("aria-checked", String(settings.transparentBg));
     applyPreviewToBlockEl(blockEl, settings);
   });
-  transparentRow.appendChild(transparentToggle);
-  sheet.appendChild(transparentRow);
 
-  /* ---- Kunci Rasio Gambar ----
-   * Begitu aktif, slider Lebar & Tinggi di bawah saling mengikuti supaya
-   * rasio aspek gambar tetap terjaga (default 1:1 sebelum ada gambar —
-   * lihat IMAGE_DEFAULTS — lalu ikut rasio ASLI gambar begitu satu berhasil
-   * diunggah/dimuat, lihat loadNaturalAspectRatio di atas). */
-  const lockRow = createEl("div", { className: "image-sheet__section image-sheet__row" });
-  lockRow.appendChild(createEl("div", { className: "image-sheet__label", text: "Kunci Rasio Gambar" }));
   const lockToggle = createEl("button", {
-    className: "image-sheet__toggle",
-    attrs: { type: "button", role: "switch", "aria-checked": "false" },
+    className: "image-sheet__icon-btn",
+    attrs: { type: "button", role: "switch", "aria-checked": "false", "aria-label": t("image.lockAspect") },
+    html: ICON.lock,
   });
-  lockToggle.appendChild(createEl("span", { className: "image-sheet__toggle-knob" }));
   lockToggle.addEventListener("click", () => {
     settings.lockAspect = !settings.lockAspect;
     lockToggle.classList.toggle("is-on", settings.lockAspect);
     lockToggle.setAttribute("aria-checked", String(settings.lockAspect));
-    // Begitu dikunci, samakan Tinggi ke Lebar yang sedang aktif sekarang
-    // juga (bukan menunggu slider disentuh dulu) supaya keduanya langsung
-    // konsisten dengan rasio yang berlaku.
     if (settings.lockAspect) syncHeightFromWidth(settings.width);
   });
-  lockRow.appendChild(lockToggle);
-  sheet.appendChild(lockRow);
 
-  /* ---- Slider: lebar / tinggi / border-radius ---- */
-  const slidersSection = createEl("div", { className: "image-sheet__section image-sheet__sliders" });
-  const widthRow = makeSlider("Lebar", WIDTH_RANGE, settings.width, (v) => {
+  let deleteArmed = false;
+  let deleteArmTimer = null;
+  let deleteBtn = null;
+  if (mode === "edit") {
+    deleteBtn = createEl("button", {
+      className: "image-sheet__icon-btn image-sheet__icon-btn--danger",
+      attrs: { type: "button", "aria-label": t("image.delete") },
+      html: ICON.delete,
+    });
+    function resetDeleteArm() {
+      deleteArmed = false;
+      deleteBtn.classList.remove("is-armed");
+      deleteBtn.innerHTML = ICON.delete;
+      deleteBtn.setAttribute("aria-label", t("image.delete"));
+    }
+    deleteBtn.addEventListener("click", () => {
+      if (isBusy) return;
+      if (!deleteArmed) {
+        deleteArmed = true;
+        deleteBtn.classList.add("is-armed");
+        deleteBtn.innerHTML = ICON.check;
+        deleteBtn.setAttribute("aria-label", t("image.deleteConfirm"));
+        deleteArmTimer = setTimeout(() => {
+          resetDeleteArm();
+        }, 3000);
+        return;
+      }
+      clearTimeout(deleteArmTimer);
+      if (pendingPreviewUrl) URL.revokeObjectURL(pendingPreviewUrl);
+      if (pendingBytesPromise) pendingBytesPromise.catch(() => {});
+      editor.runCommand(removeImageBlock, blockId);
+      close();
+    });
+  } else {
+    // mode insert: slot kosong biar grid tetap 4 box (tinggi sejajar)
+    deleteBtn = createEl("div", {
+      className: "image-sheet__icon-btn",
+      attrs: { "aria-hidden": "true", style: "visibility:hidden;pointer-events:none;" },
+    });
+  }
+  mainRight.append(wrapToggle, transparentToggle, lockToggle, deleteBtn);
+
+  // ========== DIMENSION PANEL (tabs: size | offset | rotate) ==========
+  const OFFSET_RANGE = { min: -9999, max: 9999 };
+  const SCALE_RANGE = { min: 10, max: 500 };
+  const dimRail = createEl("div", { className: "image-sheet__sub-rail" });
+  const dimBack = createEl("button", {
+    className: "image-sheet__back-btn",
+    attrs: { type: "button", "aria-label": t("sheet.back") },
+    html: ICON.back,
+  });
+  dimBack.addEventListener("click", () => showPanel("main"));
+  const dimTabSize = createEl("button", {
+    className: "image-sheet__rail-icon-btn is-active",
+    attrs: { type: "button", "aria-label": t("image.dimension"), "data-dim-tab": "size" },
+    html: ICON.dimension,
+  });
+  const dimTabOffset = createEl("button", {
+    className: "image-sheet__rail-icon-btn",
+    attrs: { type: "button", "aria-label": t("image.offset"), "data-dim-tab": "offset" },
+    html: ICON.offset,
+  });
+  const dimTabRotate = createEl("button", {
+    className: "image-sheet__rail-icon-btn",
+    attrs: { type: "button", "aria-label": t("image.rotate"), "data-dim-tab": "rotate" },
+    html: ICON.rotate,
+  });
+  dimRail.append(dimBack, dimTabSize, dimTabOffset, dimTabRotate);
+
+  const dimBody = createEl("div", { className: "image-sheet__sub-body" });
+
+  const sizePane = createEl("div", { className: "image-sheet__dim-pane is-active", attrs: { "data-dim-pane": "size" } });
+  const rulersSection = createEl("div", { className: "image-sheet__rulers" });
+  const widthRow = makeRuler(t("image.width"), WIDTH_RANGE, settings.width, (v) => {
     settings.width = v;
     if (settings.lockAspect) syncHeightFromWidth(v);
     applyPreviewToBlockEl(blockEl, settings);
   });
-  const heightRow = makeSlider("Tinggi", HEIGHT_RANGE, settings.height, (v) => {
+  const heightRow = makeRuler(t("image.height"), HEIGHT_RANGE, settings.height, (v) => {
     settings.height = v;
     if (settings.lockAspect) syncWidthFromHeight(v);
     applyPreviewToBlockEl(blockEl, settings);
   });
-  slidersSection.appendChild(widthRow);
-  slidersSection.appendChild(heightRow);
+  const radiusRow = makeRuler(t("image.radius"), RADIUS_RANGE, settings.radius, (v) => {
+    settings.radius = v;
+    applyPreviewToBlockEl(blockEl, settings);
+  });
+  rulersSection.append(widthRow, heightRow, radiusRow);
+  sizePane.appendChild(rulersSection);
 
-  // Sinkronkan slider Tinggi mengikuti Lebar (atau sebaliknya) sesuai
-  // `aspectRatio` yang sedang berlaku — dipanggil dari handler `input` di
-  // atas maupun saat toggle Kunci Rasio baru dinyalakan. Nilai HANYA
-  // ditampilkan ulang lewat setValue() (tanpa memicu onInput slider
-  // lawannya) supaya tidak saling panggil balik antar keduanya.
+  const offsetPane = createEl("div", { className: "image-sheet__dim-pane", attrs: { "data-dim-pane": "offset", hidden: "true" } });
+  const offsetRulers = createEl("div", { className: "image-sheet__rulers" });
+  const offsetXRow = makeRuler(t("image.offsetX"), OFFSET_RANGE, settings.offsetX, (v) => {
+    settings.offsetX = v;
+    applyPreviewToBlockEl(blockEl, settings);
+  });
+  const offsetYRow = makeRuler(t("image.offsetY"), OFFSET_RANGE, settings.offsetY, (v) => {
+    settings.offsetY = v;
+    applyPreviewToBlockEl(blockEl, settings);
+  });
+  const scalePct = Math.round((settings.scale != null ? settings.scale : 1) * 100);
+  const scaleRow = makeRuler(t("image.scale"), SCALE_RANGE, scalePct, (v) => {
+    settings.scale = v / 100;
+    applyPreviewToBlockEl(blockEl, settings);
+  }, { format: (v) => `${v}%` });
+  offsetRulers.append(offsetXRow, offsetYRow, scaleRow);
+  offsetPane.appendChild(offsetRulers);
+
+  const rotatePane = createEl("div", {
+    className: "image-sheet__dim-pane image-sheet__dim-pane--rotate",
+    attrs: { "data-dim-pane": "rotate", hidden: "true" },
+  });
+  const rotateDial = createEl("div", {
+    className: "image-sheet__rotate-dial",
+    attrs: {
+      role: "slider",
+      "aria-valuemin": "0",
+      "aria-valuemax": "360",
+      "aria-valuenow": String(settings.rotate || 0),
+      tabindex: "0",
+    },
+  });
+  const rotateRing = createEl("div", { className: "image-sheet__rotate-ring", attrs: { "aria-hidden": "true" } });
+  const rotateKnob = createEl("div", { className: "image-sheet__rotate-knob", attrs: { "aria-hidden": "true" } });
+  const rotateChip = createEl("div", { className: "image-sheet__rotate-chip", text: `${Math.round(settings.rotate || 0)}°` });
+  rotateRing.appendChild(rotateKnob);
+  rotateDial.append(rotateRing, rotateChip);
+  rotatePane.appendChild(rotateDial);
+
+  function setRotateUI(deg) {
+    const d = ((Math.round(deg) % 360) + 360) % 360;
+    settings.rotate = d;
+    rotateChip.textContent = `${d}°`;
+    rotateDial.setAttribute("aria-valuenow", String(d));
+    rotateKnob.style.transform = `rotate(${d}deg)`;
+    applyPreviewToBlockEl(blockEl, settings);
+  }
+  setRotateUI(settings.rotate || 0);
+
+  function angleFromPointer(clientX, clientY) {
+    const rect = rotateRing.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    let deg = (Math.atan2(clientY - cy, clientX - cx) * 180) / Math.PI + 90;
+    if (deg < 0) deg += 360;
+    return deg;
+  }
+  let rotateDragging = false;
+  rotateDial.addEventListener("pointerdown", (e) => {
+    if (e.button != null && e.button !== 0) return;
+    rotateDragging = true;
+    try { rotateDial.setPointerCapture(e.pointerId); } catch (_) {}
+    setRotateUI(angleFromPointer(e.clientX, e.clientY));
+    e.preventDefault();
+  });
+  rotateDial.addEventListener("pointermove", (e) => {
+    if (!rotateDragging) return;
+    setRotateUI(angleFromPointer(e.clientX, e.clientY));
+  });
+  const endRot = () => { rotateDragging = false; };
+  rotateDial.addEventListener("pointerup", endRot);
+  rotateDial.addEventListener("pointercancel", endRot);
+  rotateDial.addEventListener("keydown", (e) => {
+    let d = settings.rotate || 0;
+    if (e.key === "ArrowLeft" || e.key === "ArrowDown") d -= 5;
+    else if (e.key === "ArrowRight" || e.key === "ArrowUp") d += 5;
+    else return;
+    e.preventDefault();
+    setRotateUI(d);
+  });
+
+  dimBody.append(sizePane, offsetPane, rotatePane);
+  panelDim.append(dimRail, dimBody);
+
+  const dimTabs = [dimTabSize, dimTabOffset, dimTabRotate];
+  const dimPanes = { size: sizePane, offset: offsetPane, rotate: rotatePane };
+  setDimTab = function setDimTabFn(name) {
+    dimTabs.forEach((btn) => {
+      btn.classList.toggle("is-active", btn.getAttribute("data-dim-tab") === name);
+    });
+    for (const [key, pane] of Object.entries(dimPanes)) {
+      const on = key === name;
+      pane.classList.toggle("is-active", on);
+      pane.hidden = !on;
+    }
+    if (name === "size") {
+      widthRow._rulerReady && widthRow._rulerReady();
+      heightRow._rulerReady && heightRow._rulerReady();
+      radiusRow._rulerReady && radiusRow._rulerReady();
+    } else if (name === "offset") {
+      offsetXRow._rulerReady && offsetXRow._rulerReady();
+      offsetYRow._rulerReady && offsetYRow._rulerReady();
+      scaleRow._rulerReady && scaleRow._rulerReady();
+    }
+  };
+  dimTabs.forEach((btn) => {
+    btn.addEventListener("click", () => setDimTab(btn.getAttribute("data-dim-tab")));
+  });
+
+
   function syncHeightFromWidth(width) {
     const h = clamp(Math.round(width / aspectRatio), HEIGHT_RANGE.min, HEIGHT_RANGE.max);
     settings.height = h;
@@ -520,59 +837,66 @@ function openImageSheet({ editor, state, blockId, mode }) {
     settings.width = w;
     widthRow.setValue(w);
   }
-  const radiusRow = makeSlider("Border Radius", RADIUS_RANGE, settings.radius, (v) => {
-    settings.radius = v;
-    applyPreviewToBlockEl(blockEl, settings);
-  });
-  slidersSection.appendChild(radiusRow);
-  sheet.appendChild(slidersSection);
-
-  // Slider Border Radius dinonaktifkan (visual pudar + input disabled)
-  // selama crop bentuk SVG sedang aktif, karena radius kotak tidak lagi
-  // berpengaruh terhadap tampilan (bentuknya sudah ditentukan clip-path).
   function updateRadiusDisabledState() {
     const disabled = settings.clipShape !== "none";
     radiusRow.classList.toggle("is-disabled", disabled);
-    if (radiusRow.sliderInputEl) radiusRow.sliderInputEl.disabled = disabled;
   }
 
-  /* ---- Aksi: Batal / Terapkan ---- */
-  const actions = createEl("div", { className: "image-sheet__actions" });
-  const cancelBtn = createEl("button", {
-    className: "image-sheet__btn image-sheet__btn--ghost",
-    attrs: { type: "button" },
-    text: "Batal",
+  // ========== CROP PANEL ==========
+  const cropRail = createEl("div", { className: "image-sheet__sub-rail" });
+  const cropBack = createEl("button", {
+    className: "image-sheet__back-btn",
+    attrs: { type: "button", "aria-label": t("sheet.back") },
+    html: ICON.back,
   });
-  const applyBtn = createEl("button", {
-    className: "image-sheet__btn image-sheet__btn--primary",
-    attrs: { type: "button" },
-    text: "Terapkan",
+  cropBack.addEventListener("click", () => showPanel("main"));
+  const cropRailIcon = createEl("button", {
+    className: "image-sheet__rail-icon-btn is-active",
+    attrs: { type: "button", "aria-label": t("image.crop"), tabindex: "-1" },
+    html: ICON.crop,
   });
-  actions.appendChild(cancelBtn);
-  actions.appendChild(applyBtn);
-  sheet.appendChild(actions);
+  cropRail.append(cropBack, cropRailIcon);
+  const cropBody = createEl("div", { className: "image-sheet__sub-body image-sheet__sub-body--crop" });
+  const shapeGrid = createEl("div", { className: "image-sheet__shape-grid" });
+  const shapeButtons = {};
+  for (const shape of IMAGE_CLIP_SHAPES) {
+    const iconSvg = shape.d
+      ? `<svg viewBox="0 0 1 1" width="22" height="22"><path d="${shape.d}" fill="currentColor"/></svg>`
+      : '<svg viewBox="0 0 1 1" width="22" height="22"><rect x="0.06" y="0.06" width="0.88" height="0.88" rx="0.12" fill="none" stroke="currentColor" stroke-width="0.1"/></svg>';
+    const btn = createEl("button", {
+      className: "image-sheet__shape-btn",
+      attrs: { type: "button", "aria-label": t("image.clip." + shape.id) },
+      html: iconSvg,
+    });
+    btn.addEventListener("click", () => {
+      settings.clipShape = shape.id;
+      for (const key in shapeButtons) shapeButtons[key].classList.toggle("is-active", key === shape.id);
+      updateRadiusDisabledState();
+      applyPreviewToBlockEl(blockEl, settings);
+    });
+    shapeButtons[shape.id] = btn;
+    shapeGrid.appendChild(btn);
+  }
+  cropBody.appendChild(shapeGrid);
+  panelCrop.append(cropRail, cropBody);
 
   const errorEl = createEl("div", { className: "image-sheet__error" });
   sheet.appendChild(errorEl);
 
   function updateApplyState() {
-    // Mode "insert" wajib punya gambar dulu sebelum bisa diterapkan; mode
-    // "edit" boleh langsung Terapkan (mis. cuma ganti posisi/ukuran) tanpa
-    // wajib mengganti gambarnya. Di kedua mode, selagi gambar yang baru
-    // dipilih masih dikonversi ke WebP, "Terapkan" dikunci dulu — supaya
-    // tidak ada proses simpan yang jalan diam-diam menunggu konversi
-    // selesai tanpa indikasi apa pun ke user.
     applyBtn.disabled = isConverting || (mode === "insert" && !hasImage);
   }
 
-  // --- Set tampilan awal sheet sesuai `settings` & gambar yang sudah ada ---
+  // --- Set tampilan awal ---
   for (const key in alignButtons) alignButtons[key].classList.toggle("is-active", key === settings.align);
   for (const key in shapeButtons) shapeButtons[key].classList.toggle("is-active", key === settings.clipShape);
   wrapToggle.classList.toggle("is-on", settings.wrap);
   wrapToggle.setAttribute("aria-checked", String(settings.wrap));
-  wrapRow.classList.toggle("is-disabled", settings.align === "center");
+  wrapToggle.classList.toggle("is-disabled", settings.align === "center");
   transparentToggle.classList.toggle("is-on", settings.transparentBg);
   transparentToggle.setAttribute("aria-checked", String(settings.transparentBg));
+  lockToggle.classList.toggle("is-on", settings.lockAspect);
+  lockToggle.setAttribute("aria-checked", String(settings.lockAspect));
   updateApplyState();
   updateRadiusDisabledState();
   applyPreviewToBlockEl(blockEl, settings);
@@ -580,10 +904,6 @@ function openImageSheet({ editor, state, blockId, mode }) {
     imageService.getObjectUrl(existingBlock.assetId).then((url) => {
       if (!url) return;
       setPreviewImageSrc(blockEl, url);
-      // Rasio aspek gambar yang SUDAH ada di dokumen (mode "edit") juga
-      // dihitung dari dimensi aslinya, sama seperti gambar yang baru
-      // diunggah di atas — supaya Kunci Rasio tetap akurat walau user
-      // membuka lagi pengaturan gambar yang lama tanpa mengganti filenya.
       loadNaturalAspectRatio(url).then((ratio) => {
         if (ratio) aspectRatio = ratio;
       });
@@ -681,7 +1001,7 @@ function openImageSheet({ editor, state, blockId, mode }) {
     cancelBtn.disabled = busy;
     if (deleteBtn) deleteBtn.disabled = busy;
     applyBtn.disabled = busy || (mode === "insert" && !hasImage);
-    applyBtn.textContent = busy ? "Menyimpan…" : "Terapkan";
+    applyBtn.textContent = busy ? t("sheet.saving") : t("sheet.apply");
   }
 
   async function doApply() {
@@ -699,6 +1019,11 @@ function openImageSheet({ editor, state, blockId, mode }) {
       borderRadius: settings.radius,
       clipShape: settings.clipShape,
       transparentBg: !!settings.transparentBg,
+      lockAspect: !!settings.lockAspect,
+      imageOffsetX: settings.offsetX || 0,
+      imageOffsetY: settings.offsetY || 0,
+      imageScale: settings.scale != null ? settings.scale : 1,
+      imageRotate: settings.rotate || 0,
     };
 
     const t0 = performance.now();
@@ -742,8 +1067,8 @@ function openImageSheet({ editor, state, blockId, mode }) {
       // Untuk error lain (mis. IndexedDB) baru masuk akal minta coba lagi.
       const isFileReadError = err && (err.name === "NotReadableError" || /could not be read/i.test(err.message || ""));
       errorEl.textContent = isFileReadError
-        ? "Gagal membaca gambar yang dipilih. Coba pilih ulang gambarnya lewat \"Unggah Gambar\"."
-        : "Gagal menyimpan gambar. Coba tekan Terapkan sekali lagi.";
+        ? t("image.err.read")
+        : t("image.err.save");
     }
   }
 

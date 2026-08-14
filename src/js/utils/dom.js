@@ -73,7 +73,7 @@ let activePanel = null; // { el, close }
 // di floating-button.js untuk FAB).
 const PANEL_CLOSE_ANIM_MS = 150;
 
-export function closeActivePanel() {
+function closeActivePanel() {
   if (activePanel) {
     activePanel.close();
     activePanel = null;

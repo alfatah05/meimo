@@ -1,17 +1,9 @@
 <!DOCTYPE html>
-<html lang="id" class="dark scroll-smooth">
+<html lang="en" class="dark scroll-smooth">
 <head>
     <meta charset="UTF-8">
-    <!-- Opt-in Cross-Document View Transition SEDINI mungkin di <head>
-     (bukan cuma di view-transitions.css). Chrome/WebView sering melewati
-     animasi navigasi MAJU kalau @view-transition belum terbaca saat
-     dokumen baru di-parse; back/bfcache tetap jalan karena stylesheet
-     sudah di memori. Lihat Chromium issue 348683476. -->
-<style>
-@view-transition { navigation: auto; }
-</style>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
-    <title>Meimo — Unduh Aplikasi Catatan Modern</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meimo — Download a Modern Notes App</title>
 
     <!-- ============ PWA: Manifest & Icon (supaya browser bisa menawarkan
          prompt instal langsung dari halaman unduh ini) ============ -->
@@ -201,6 +193,54 @@
             opacity: 0.55;
             border-color: rgba(255, 255, 255, 0.08);
         }
+
+        /* Caption fade/slide when carousel index changes */
+        .carousel-caption {
+            transition: opacity 0.35s ease, transform 0.35s ease;
+        }
+        .carousel-caption.is-leaving {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+        .carousel-caption.is-entering {
+            opacity: 0;
+            transform: translateY(-8px);
+        }
+        .carousel-caption.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Slide indicators: dot → pill when active */
+        .carousel-indicators {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 8px;
+            padding: 0 16px;
+            position: relative;
+            z-index: 10;
+        }
+        .carousel-indicator {
+            height: 8px;
+            width: 8px;
+            border-radius: 999px;
+            border: none;
+            padding: 0;
+            background: rgba(255, 255, 255, 0.25);
+            cursor: pointer;
+            transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+                        background-color 0.35s ease,
+                        opacity 0.25s ease;
+        }
+        .carousel-indicator:hover {
+            background: rgba(255, 255, 255, 0.45);
+        }
+        .carousel-indicator.is-active {
+            width: 28px;
+            background: #8892F0;
+        }
     </style>
 </head>
 <body class="bg-bg text-white font-sans antialiased overflow-x-hidden selection:bg-primary/30 selection:text-white">
@@ -208,184 +248,108 @@
     <!-- HEADER -->
     <header class="fixed top-0 left-0 w-full z-50 bg-bg border-b border-borderSubtle">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-            <!-- Icon & Nama -->
-            <a href="#beranda" class="flex items-center gap-2.5 group">
+            <a href="#home" class="flex items-center gap-2.5 group">
                 <div class="w-8 h-8 rounded-lg overflow-hidden border border-white/10 bg-surface flex items-center justify-center">
-                    <img src="/assets/download/1000787396.png" alt="Ikon Meimo" class="w-full h-full object-cover">
+                    <img src="/assets/download/1000787396.png" alt="Meimo icon" class="w-full h-full object-cover">
                 </div>
                 <span class="font-bold text-white text-base tracking-tight">Meimo</span>
             </a>
 
-            <!-- Navigasi -->
             <nav class="flex items-center gap-1 sm:gap-2">
-                <a href="#beranda" class="hidden sm:inline-block px-4 py-2 rounded-lg text-sm font-medium text-textMuted hover:text-white transition-colors">Beranda</a>
-                <a href="#fitur" class="hidden sm:inline-block px-4 py-2 rounded-lg text-sm font-medium text-textMuted hover:text-white transition-colors">Fitur</a>
-                <a href="#pratinjau" class="hidden sm:inline-block px-4 py-2 rounded-lg text-sm font-medium text-textMuted hover:text-white transition-colors">Pratinjau</a>
-                <a href="#unduh" class="glass-button px-4 py-2 rounded-lg text-sm font-semibold text-white whitespace-nowrap">Unduh</a>
+                <a href="#home" class="hidden sm:inline-block px-4 py-2 rounded-lg text-sm font-medium text-textMuted hover:text-white transition-colors">Home</a>
+                <a href="#preview" class="hidden sm:inline-block px-4 py-2 rounded-lg text-sm font-medium text-textMuted hover:text-white transition-colors">Preview</a>
+                <a href="#download" class="glass-button px-4 py-2 rounded-lg text-sm font-semibold text-white whitespace-nowrap">Download</a>
             </nav>
         </div>
     </header>
 
-    <!-- HERO SECTION (Lebar Penuh) -->
-    <section id="beranda" class="relative min-h-screen w-full flex flex-col items-center justify-center bg-mesh bg-grid px-4 sm:px-6 pt-28 sm:pt-32 pb-16 overflow-hidden scroll-mt-16">
-        
-        <!-- Canvas Partikel Animasi Latar Belakang -->
+    <!-- HERO -->
+    <section id="home" class="relative min-h-screen w-full flex flex-col items-center justify-center bg-mesh bg-grid px-4 sm:px-6 pt-28 sm:pt-32 pb-16 overflow-hidden scroll-mt-16">
         <canvas id="hero-canvas" class="absolute inset-0 w-full h-full pointer-events-none opacity-40"></canvas>
-
-        <!-- Pendaran Cahaya Atmosferik Statis Latar Belakang Hero -->
         <div class="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[650px] h-[650px] bg-primary/15 rounded-full blur-[150px] pointer-events-none animate-pulse-glow"></div>
 
-        <!-- Kontainer Konten Hero -->
         <div class="relative z-10 max-w-3xl mx-auto text-center flex flex-col items-center">
-            
-            <!-- Ikon Aplikasi Meimo -->
             <div class="relative mb-6 group cursor-pointer">
                 <div class="absolute -inset-2 rounded-3xl bg-gradient-to-r from-primary via-indigo-400 to-primaryDark opacity-40 blur-xl group-hover:opacity-75 transition duration-500"></div>
                 <div class="relative w-28 h-28 sm:w-32 sm:h-32 rounded-3xl bg-surface p-1 border border-white/15 shadow-app flex items-center justify-center overflow-hidden">
-                    <img src="/assets/download/1000787396.png" alt="Ikon Aplikasi Meimo" class="w-full h-full object-cover rounded-2xl transform transition-transform duration-500 group-hover:scale-105">
+                    <img src="/assets/download/1000787396.png" alt="Meimo app icon" class="w-full h-full object-cover rounded-2xl transform transition-transform duration-500 group-hover:scale-105">
                 </div>
             </div>
 
-            <!-- Nama & Logo Aplikasi -->
-            <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-white mb-4">
-                Meimo
-            </h1>
+            <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-white mb-4">Meimo</h1>
 
-            <!-- Judul & Deskripsi Singkat -->
             <h2 class="text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-white mb-6 leading-[1.1]">
-                Catatan khusus untuk <br />
+                Notes made for <br />
                 <span class="bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-primary font-serif italic font-normal">
-                    keindahan tipografi & tata letak.
+                    beautiful type &amp; layout.
                 </span>
             </h2>
 
             <p class="text-base sm:text-lg text-textMuted max-w-lg mx-auto mb-10 font-normal leading-relaxed">
-                Ruang kerja mencatat yang tenang dan bebas gangguan, dirancang khusus untuk estetika cetak digital dan keluwesan dokumen.
+                A calm, distraction-free writing space designed for digital print aesthetics and flexible documents.
             </p>
 
-            <!-- HANYA DUA TOMBOL UTAMA, LEBAR SERAGAM -->
-            <div id="unduh" class="flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-md scroll-mt-24">
-                <!-- Tombol Unduh Utama -->
+            <div id="download" class="flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-md scroll-mt-24">
                 <a href="#" id="download-btn" class="btn-primary flex-1 w-full px-6 py-4 rounded-xl text-bg font-bold text-sm flex items-center justify-center gap-3 group whitespace-nowrap">
                     <i data-lucide="download" class="w-4 h-4 text-bg transform group-hover:-translate-y-0.5 transition-transform"></i>
-                    <span>Unduh Meimo</span>
+                    <span>Download Meimo</span>
                 </a>
-
-                <!-- Tombol Buka Situs Web -->
                 <a href="https://meimo.nbil.my.id" target="_blank" rel="noopener" class="glass-button flex-1 w-full px-6 py-4 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 text-white/90 hover:text-white whitespace-nowrap">
-                    <span>Buka Situs Web</span>
+                    <span>Open Web App</span>
                     <i data-lucide="arrow-up-right" class="w-4 h-4 text-textMuted"></i>
                 </a>
             </div>
 
-            <!-- Status singkat proses instalasi PWA (diisi oleh script di bawah) -->
             <p id="download-status" class="mt-4 text-xs text-textMuted min-h-[1rem]" role="status" aria-live="polite"></p>
-
-        </div>
-
-    </section>
-
-    <!-- FEATURES SECTION -->
-    <section id="fitur" class="relative w-full py-24 sm:py-28 bg-bg border-t border-borderSubtle/40 scroll-mt-16">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6">
-
-            <div class="max-w-2xl mx-auto text-center mb-16">
-                <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-tight mb-3">Dibuat untuk cara kamu berpikir.</h2>
-                <p class="text-textMuted text-base leading-relaxed">Setiap fitur dirancang agar catatanmu terasa personal, rapi, dan enak dibaca ulang.</p>
-            </div>
-
-            <!-- Grid Card Fitur — tambahkan <div class="feature-card"> baru untuk fitur berikutnya -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" id="features-grid">
-
-                <!-- Card Fitur 01 -->
-                <div class="feature-card glass-panel rounded-2xl overflow-hidden flex flex-col hover:border-white/20 hover:-translate-y-1 transition-all duration-300">
-                    <div class="w-full aspect-video bg-gradient-to-br from-primary/20 via-surfaceLight to-surface flex items-center justify-center border-b border-borderSubtle">
-                        <div class="w-14 h-14 rounded-2xl bg-primary/15 border border-primary/25 flex items-center justify-center">
-                            <i data-lucide="type" class="w-6 h-6 text-primary"></i>
-                        </div>
-                    </div>
-                    <div class="p-6 flex flex-col gap-2">
-                        <h3 class="text-lg font-bold text-white">Tipografi Fleksibel</h3>
-                        <p class="text-sm text-textMuted leading-relaxed">Padukan dan atur font, ukuran, serta jarak baris agar setiap halaman punya karakter sendiri.</p>
-                    </div>
-                </div>
-
-                <!-- Card Fitur 02 -->
-                <div class="feature-card glass-panel rounded-2xl overflow-hidden flex flex-col hover:border-white/20 hover:-translate-y-1 transition-all duration-300">
-                    <div class="w-full aspect-video bg-gradient-to-br from-primary/20 via-surfaceLight to-surface flex items-center justify-center border-b border-borderSubtle">
-                        <div class="w-14 h-14 rounded-2xl bg-primary/15 border border-primary/25 flex items-center justify-center">
-                            <i data-lucide="layout-template" class="w-6 h-6 text-primary"></i>
-                        </div>
-                    </div>
-                    <div class="p-6 flex flex-col gap-2">
-                        <h3 class="text-lg font-bold text-white">Tata Letak Bebas</h3>
-                        <p class="text-sm text-textMuted leading-relaxed">Susun teks dan gambar berdampingan, atur warna latar, dan bentuk halaman sesuai gayamu.</p>
-                    </div>
-                </div>
-
-                <!-- Card Fitur 03 -->
-                <div class="feature-card glass-panel rounded-2xl overflow-hidden flex flex-col hover:border-white/20 hover:-translate-y-1 transition-all duration-300">
-                    <div class="w-full aspect-video bg-gradient-to-br from-primary/20 via-surfaceLight to-surface flex items-center justify-center border-b border-borderSubtle">
-                        <div class="w-14 h-14 rounded-2xl bg-primary/15 border border-primary/25 flex items-center justify-center">
-                            <i data-lucide="feather" class="w-6 h-6 text-primary"></i>
-                        </div>
-                    </div>
-                    <div class="p-6 flex flex-col gap-2">
-                        <h3 class="text-lg font-bold text-white">Ruang Tanpa Gangguan</h3>
-                        <p class="text-sm text-textMuted leading-relaxed">Mode fokus menyingkirkan semua elemen selain tulisanmu, jadi pikiran tetap mengalir tanpa gangguan.</p>
-                    </div>
-                </div>
-
-            </div>
         </div>
     </section>
 
-    <!-- PREVIEW SECTION (Korsel 3 Slide dengan Soft Ambient Gradient Background) -->
-    <section id="pratinjau" class="relative w-full py-24 bg-bg overflow-hidden border-t border-borderSubtle/40 scroll-mt-16">
-        
-        <!-- Gradien Soft Ambient Background Statis di Belakang Korsel -->
+    <!-- PREVIEW / SCREENSHOTS -->
+    <section id="preview" class="relative w-full py-24 bg-bg overflow-hidden border-t border-borderSubtle/40 scroll-mt-16">
         <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[750px] h-[350px] bg-gradient-to-r from-primary/10 via-indigo-500/10 to-primary/10 rounded-full blur-[140px] pointer-events-none"></div>
 
         <div class="max-w-7xl mx-auto px-4 sm:px-6 mb-12 text-center relative z-10">
-            <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Antarmuka bersih & minimalis.</h2>
+            <h2 id="carousel-caption" class="carousel-caption is-visible text-2xl sm:text-3xl font-bold text-white tracking-tight">A space made for your thoughts</h2>
         </div>
 
-        <!-- Kontainer Korsel -->
         <div class="relative w-full overflow-hidden py-8 z-10" id="carousel-viewport">
             <div class="carousel-track" id="carousel-track">
-                
-                <!-- Slide 01 -->
-                <div class="carousel-item" data-src="/assets/download/1000787929.png">
-                    <img src="/assets/download/1000787929.png" alt="Tampilan Kelola Font Meimo">
+                <div class="carousel-item" data-src="/assets/download/slide1.png" data-caption="A space made for your thoughts">
+                    <img data-src="/assets/download/slide1.png" alt="Meimo home" loading="lazy" decoding="async">
                 </div>
-
-                <!-- Slide 02 -->
-                <div class="carousel-item" data-src="/assets/download/1000787930.png">
-                    <img src="/assets/download/1000787930.png" alt="Tampilan Catatan Saya Meimo">
+                <div class="carousel-item" data-src="/assets/download/slide2.png" data-caption="Keep everything within reach">
+                    <img data-src="/assets/download/slide2.png" alt="Meimo notes list" loading="lazy" decoding="async">
                 </div>
-
-                <!-- Slide 03 -->
-                <div class="carousel-item" data-src="/assets/download/1000787931.png">
-                    <img src="/assets/download/1000787931.png" alt="Tampilan Editor Catatan Meimo">
+                <div class="carousel-item" data-src="/assets/download/slide3.png" data-caption="Build your own personal font library">
+                    <img data-src="/assets/download/slide3.png" alt="Meimo font library" loading="lazy" decoding="async">
                 </div>
-
+                <div class="carousel-item" data-src="/assets/download/slide4.png" data-caption="Get help without leaving your notes">
+                    <img data-src="/assets/download/slide4.png" alt="Meimo AI assist" loading="lazy" decoding="async">
+                </div>
+                <div class="carousel-item" data-src="/assets/download/slide5.png" data-caption="Give your AI the context it needs">
+                    <img data-src="/assets/download/slide5.png" alt="Meimo AI context" loading="lazy" decoding="async">
+                </div>
+                <div class="carousel-item" data-src="/assets/download/slide6.png" data-caption="Record and keep your conversations in Meimo">
+                    <img data-src="/assets/download/slide6.png" alt="Meimo voice recording" loading="lazy" decoding="async">
+                </div>
             </div>
         </div>
 
+        <div class="carousel-indicators" id="carousel-indicators" role="tablist" aria-label="Screenshot slides"></div>
     </section>
 
-    <!-- Footer Minimalis -->
+    <!-- FOOTER -->
     <footer class="border-t border-borderSubtle py-8 text-center text-xs text-textMuted/60">
         <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div class="flex items-center gap-2">
                 <img src="/assets/download/1000787396.png" alt="Meimo" class="w-4 h-4 rounded-sm object-cover">
                 <span class="font-semibold text-white/80">Meimo</span>
-                <span>© 2026. Hak cipta dilindungi undang-undang.</span>
+                <span>© 2026. All rights reserved.</span>
             </div>
             <div class="flex items-center gap-6">
-                <a href="#" class="hover:text-white transition-colors">Privasi</a>
-                <a href="#" class="hover:text-white transition-colors">Ketentuan</a>
-                <a href="#" class="hover:text-white transition-colors">Dokumentasi</a>
+                <a href="/privacy-policy.html" class="hover:text-white transition-colors">Privacy</a>
+                <a href="#" class="hover:text-white transition-colors">Terms</a>
+                <a href="#" class="hover:text-white transition-colors">Docs</a>
             </div>
         </div>
     </footer>
@@ -393,8 +357,6 @@
     <!-- Registrasi Service Worker & penangkap event install PWA (modul asli
          project Meimo — sama seperti yang dipakai index.html/editor.html) -->
     <script type="module" src="/src/js/pwa/sw-register.js"></script>
-<script type="module" src="/src/js/pwa/native-bridge.js"></script>
-<script type="module" src="/src/js/utils/view-transition-nav.js"></script>
     <script type="module">
         import { initInstallAvailability, triggerInstall } from "/src/js/pwa/install-prompt.js";
 
@@ -415,16 +377,16 @@
             e.preventDefault();
 
             if (installAvailable) {
-                setStatus("Menyiapkan pemasangan…");
+                setStatus("Preparing installation…");
                 const outcome = await triggerInstall();
                 installAvailable = false;
 
                 if (outcome === "accepted") {
-                    setStatus("Meimo sedang dipasang di perangkatmu…");
+                    setStatus("Meimo is being installed on your device…");
                 } else if (outcome === "dismissed") {
-                    setStatus("Instalasi dibatalkan. Kamu bisa coba lagi kapan saja.");
+                    setStatus("Installation cancelled. You can try again anytime.");
                 } else {
-                    setStatus("Instalasi tidak tersedia saat ini. Membuka Meimo…");
+                    setStatus("Installation is not available right now. Opening Meimo…");
                     window.location.href = "/library";
                 }
                 return;
@@ -433,7 +395,7 @@
             // Browser ini tidak menawarkan prompt instal otomatis (mis. Safari
             // desktop/iOS), atau Meimo sudah terpasang sebelumnya — arahkan ke
             // aplikasinya langsung, sambil kasih tahu cara pasang manual.
-            setStatus("Membuka Meimo — kalau belum terpasang, gunakan menu \"Tambah ke Layar Utama\" di browser kamu.");
+            setStatus("Opening Meimo — if it is not installed yet, use \"Add to Home Screen\" in your browser.");
             window.location.href = "/library";
         });
     </script>
@@ -448,27 +410,87 @@
             initCarousel();
         });
 
-        // Script Korsel Sederhana — 3 Slide Statis, Tanpa Loop Infinite
+        // Carousel — 6 slides, caption + indicators, lazy-load images
         function initCarousel() {
             const track = document.getElementById('carousel-track');
             const viewport = document.getElementById('carousel-viewport');
+            const captionEl = document.getElementById('carousel-caption');
+            const indicatorsEl = document.getElementById('carousel-indicators');
 
             const allItems = Array.from(track.children);
-            let activeIndex = 1; // Mulai dari slide tengah
+            let activeIndex = 0;
             let isDragging = false;
             let startX = 0;
+            let captionTimer = null;
+
+            // Build indicators
+            indicatorsEl.innerHTML = '';
+            allItems.forEach((_, idx) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'carousel-indicator' + (idx === activeIndex ? ' is-active' : '');
+                btn.setAttribute('role', 'tab');
+                btn.setAttribute('aria-label', 'Go to slide ' + (idx + 1));
+                btn.addEventListener('click', () => {
+                    if (idx !== activeIndex) {
+                        activeIndex = idx;
+                        updateCarousel();
+                    }
+                });
+                indicatorsEl.appendChild(btn);
+            });
+            const indicatorBtns = Array.from(indicatorsEl.children);
+
+            function loadSlideImage(item) {
+                if (!item) return;
+                const img = item.querySelector('img');
+                if (!img) return;
+                const src = img.getAttribute('data-src') || item.getAttribute('data-src');
+                if (!src) return;
+                if (img.getAttribute('src') === src) return;
+                img.setAttribute('src', src);
+                img.removeAttribute('data-src');
+            }
+
+            function ensureNearbyLoaded(centerIdx) {
+                // Load active ±1 for snappy swipe
+                for (let i = centerIdx - 1; i <= centerIdx + 1; i++) {
+                    if (i >= 0 && i < allItems.length) loadSlideImage(allItems[i]);
+                }
+            }
+
+            function setCaption(nextText) {
+                if (!captionEl) return;
+                const next = nextText || '';
+                if (captionEl.textContent === next && captionEl.classList.contains('is-visible')) return;
+                captionEl.classList.remove('is-visible', 'is-entering');
+                captionEl.classList.add('is-leaving');
+                clearTimeout(captionTimer);
+                captionTimer = setTimeout(() => {
+                    captionEl.textContent = next;
+                    captionEl.classList.remove('is-leaving');
+                    captionEl.classList.add('is-entering');
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            captionEl.classList.remove('is-entering');
+                            captionEl.classList.add('is-visible');
+                        });
+                    });
+                }, 180);
+            }
 
             function updateCarousel() {
+                if (!allItems.length) return;
                 const viewportWidth = viewport.offsetWidth;
                 const itemWidth = allItems[0].offsetWidth;
-                const gap = 40; // gap 2.5rem
+                const gap = 40;
                 const step = itemWidth + gap;
 
                 const centerOffset = (viewportWidth / 2) - (itemWidth / 2);
                 const targetTranslate = centerOffset - (activeIndex * step);
 
                 track.style.transition = 'transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)';
-                track.style.transform = `translateX(${targetTranslate}px)`;
+                track.style.transform = 'translateX(' + targetTranslate + 'px)';
 
                 allItems.forEach((item, idx) => {
                     if (idx === activeIndex) {
@@ -479,6 +501,16 @@
                         item.classList.add('inactive');
                     }
                 });
+
+                indicatorBtns.forEach((btn, idx) => {
+                    btn.classList.toggle('is-active', idx === activeIndex);
+                    btn.setAttribute('aria-selected', idx === activeIndex ? 'true' : 'false');
+                });
+
+                ensureNearbyLoaded(activeIndex);
+
+                const cap = allItems[activeIndex] && allItems[activeIndex].getAttribute('data-caption');
+                setCaption(cap || '');
             }
 
             function goNext() {
@@ -495,7 +527,6 @@
                 }
             }
 
-            // Klik slide manapun untuk memusatkannya
             allItems.forEach((item, idx) => {
                 item.addEventListener('click', () => {
                     if (idx !== activeIndex) {
@@ -505,13 +536,10 @@
                 });
             });
 
-            // Gerakan Drag / Swipe untuk berpindah
             track.addEventListener('mousedown', dragStart);
             track.addEventListener('touchstart', dragStart, { passive: true });
-
             track.addEventListener('mousemove', dragMove);
             track.addEventListener('touchmove', dragMove, { passive: true });
-
             track.addEventListener('mouseup', dragEnd);
             track.addEventListener('mouseleave', dragEnd);
             track.addEventListener('touchend', dragEnd);
@@ -526,11 +554,8 @@
                 const currentX = getPositionX(e);
                 const diff = currentX - startX;
                 if (Math.abs(diff) > 40) {
-                    if (diff < 0) {
-                        goNext();
-                    } else {
-                        goPrev();
-                    }
+                    if (diff < 0) goNext();
+                    else goPrev();
                     isDragging = false;
                 }
             }
@@ -544,7 +569,9 @@
             }
 
             window.addEventListener('resize', updateCarousel);
-            setTimeout(updateCarousel, 100);
+            // Prefetch first slide immediately, then layout
+            loadSlideImage(allItems[0]);
+            setTimeout(updateCarousel, 50);
         }
 
         // Animasi Partikel Latar Belakang

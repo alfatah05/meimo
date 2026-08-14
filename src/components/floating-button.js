@@ -1,8 +1,8 @@
 /**
  * floating-button.js
  * Floating Menu (speed dial) di pojok kanan bawah Home: tombol "+" utama
- * membuka sekumpulan aksi cepat — Catatan Baru, Ganti Tema, Sampah, dan
- * Cadangkan Catatan. Dipasang lewat mountFloatingMenu() ke atas markup
+ * membuka aksi cepat — Catatan Baru, Rekam Suara, Pengaturan (menu lain
+ * dipindah ke halaman Pengaturan). Dipasang lewat mountFloatingMenu() ke atas markup
  * `.fab-menu` yang sudah ada di index.html.
  */
 
@@ -10,6 +10,7 @@ import { qs, qsa, openPanel, closeAllPanels } from "../js/utils/dom.js";
 import { THEMES, getTheme, setTheme } from "../js/themes/theme-manager.js";
 import { showToast } from "./toast.js";
 import { initInstallAvailability, triggerInstall } from "../js/pwa/install-prompt.js";
+import { t } from "../js/i18n/i18n.js";
 
 /** Bangun panel kecil berisi 5 pilihan tema (dibuka lewat openPanel dom.js). */
 function buildThemePanel(onPick) {
@@ -97,7 +98,7 @@ export function mountFloatingMenu(root = document) {
   qsa("[data-fab-action]", actionsList).forEach((el) => {
     const action = el.getAttribute("data-fab-action");
 
-    // "new-note", "trash", "backup" & "font-library" adalah <a> biasa
+    // "new-note", "trash", "backup", "font-library" & "voice-record" adalah <a> biasa
     // (navigasi native ke editor.html / trash.html / cadangkan.html /
     // font-manager.html) — sebelumnya sama sekali tidak dikasih handler,
     // jadi klik langsung navigasi tanpa memicu setOpen(false) dulu: FAB
@@ -107,9 +108,7 @@ export function mountFloatingMenu(root = document) {
     // jadi kelihatan seperti menu tidak pernah menutup. Panggil setOpen(false)
     // di sini (TANPA preventDefault, navigasi native tetap jalan seperti
     // biasa) supaya FAB sempat mulai animasi close-nya lebih dulu.
-    if (action === "new-note" || action === "trash" || action === "backup" || action === "font-library") {
-      // Tutup FAB tanpa preventDefault — biarkan <a> navigasi native supaya
-      // cross-document View Transition maju terpicu (opt-in inline di <head>).
+    if (action === "new-note" || action === "voice-record" || action === "settings") {
       el.addEventListener("click", () => setOpen(false));
       return;
     }
@@ -121,7 +120,7 @@ export function mountFloatingMenu(root = document) {
           setTheme(theme.id);
           closeAllPanels();
           setOpen(false);
-          showToast(`Tema diganti ke ${theme.label}.`);
+          showToast(t("settings.theme.changed", { label: theme.label }));
         });
         openPanel(el, panel, { align: "center" });
         return;
@@ -132,9 +131,9 @@ export function mountFloatingMenu(root = document) {
         setOpen(false);
         const outcome = await triggerInstall();
         if (outcome === "accepted") {
-          showToast("Meimo sedang dipasang…");
+          showToast(t("install.progress"));
         } else if (outcome === "dismissed") {
-          showToast("Instalasi dibatalkan.");
+          showToast(t("install.cancelled"));
         }
         // "unavailable" (prompt sudah dipakai/hilang) -> diam saja, tombol
         // sudah ikut tersembunyi lewat event meimo:install-availability.

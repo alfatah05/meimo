@@ -40,11 +40,8 @@
    sejajar persis dengan baris terakhir catatan. */
 .outline-fab {
   position: fixed;
-  /* Jarak kanan = kiri gap ke keyboard/bar = --space-lg (24px) — konsisten. */
   right: var(--space-lg);
-  /* --outline-fab-bottom = tepi stack (keyboard / safe-area) + --space-lg.
-     Di-set viewport-pin.js. */
-  bottom: var(--outline-fab-bottom, var(--space-lg));
+  bottom: calc(var(--editor-footer-space, var(--space-lg)) - 40px);
   z-index: var(--z-fab);
   width: 52px;
   height: 52px;
@@ -52,9 +49,12 @@
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-full);
-  background-color: var(--color-accent);
-  color: #FFFFFF;
-  box-shadow: 0 6px 18px rgba(74, 85, 199, 0.35);
+  /* Senada background topbar (.note-topbar pakai --color-surface) supaya
+     tidak "berebut" highlight ungu dengan FAB AI di bawahnya. */
+  background-color: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 4px 14px rgba(var(--shadow-color), 0.12);
   opacity: 0;
   transform: scale(0);
   pointer-events: none;
@@ -84,11 +84,19 @@
   transition: translate var(--duration-base) var(--ease-standard);
 }
 
-/* Naik setinggi bar saja — gap ke atas bar = --space-lg sudah ada di
-   --outline-fab-bottom (sama dengan jarak FAB ke kanan layar). Jangan
-   tambah gap lagi di sini (dobel). Tinggi bar diukur di viewport-pin.js. */
+/* Outline di ATAS FAB AI. */
+body:has(.ai-fab.is-visible) .outline-fab,
+body:has(.ai-fab.is-hiding) .outline-fab {
+  translate: 0 calc(-1 * (52px + var(--space-sm)));
+}
+
 body.is-block-selection-bar-open .outline-fab {
-  translate: 0 calc(-1 * var(--block-selection-bar-lift, 46px));
+  translate: 0 calc(-1 * (var(--block-selection-bar-lift, 60px) + var(--space-md)));
+}
+
+body.is-block-selection-bar-open:has(.ai-fab.is-visible) .outline-fab,
+body.is-block-selection-bar-open:has(.ai-fab.is-hiding) .outline-fab {
+  translate: 0 calc(-1 * (var(--block-selection-bar-lift, 60px) + var(--space-md) + 52px + var(--space-sm)));
 }
 
 /* Selagi mode Select Block aktif, FAB ini bentrok posisi dengan probe
@@ -135,17 +143,14 @@ body.is-block-select-mode .outline-fab {
 
 /* ---- Overlay + sidebar ---- */
 
-/* z-index SENGAJA var(--z-fab) — lebih RENDAH dari .note-topbar
-   (var(--z-toolbar), lihat layout.css). Konsekuensinya: topbar (yang
-   punya background sendiri) selalu tergambar DI ATAS overlay & sidebar
-   ini, jadi sidebar tidak pernah bisa menutupi topbar walau posisinya
-   "top: 0" secara CSS. Sidebar diberi padding-top setinggi topbar (lihat
-   .outline-sidebar di bawah) supaya isinya sendiri juga tidak start
-   ketiban topbar secara visual. */
+/* z-index di antara --z-fab (20) dan --z-toolbar (30): lebih TINGGI dari
+   FAB AI supaya sidebar menutupi FAB saat terbuka, tapi tetap LEBIH RENDAH
+   dari .note-topbar sehingga topbar tidak ketutup. Sidebar tetap pakai
+   padding-top setinggi topbar. */
 .outline-overlay {
   position: fixed;
   inset: 0;
-  z-index: var(--z-fab);
+  z-index: 25;
   pointer-events: none;
 }
 
@@ -303,3 +308,67 @@ body.is-block-select-mode .outline-fab {
 .outline-item--level-2 .outline-item__label { font-weight: var(--weight-medium); }
 .outline-item--level-5 .outline-item__label,
 .outline-item--level-6 .outline-item__label { color: var(--color-text-secondary); }
+
+/* ---- Scroll-to-bottom FAB (kiri bawah) ---------------------------------- */
+
+.scroll-bottom-fab {
+  position: fixed;
+  left: var(--space-lg);
+  bottom: calc(var(--editor-footer-space, var(--space-lg)) - 40px);
+  z-index: var(--z-fab);
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background-color: var(--color-surface);
+  color: var(--color-text-primary);
+  box-shadow: 0 4px 14px rgba(var(--shadow-color), 0.12);
+  opacity: 0;
+  transform: translateY(28px) scale(0.9);
+  pointer-events: none;
+  cursor: pointer;
+  translate: 0 0;
+  transition: translate var(--duration-base) var(--ease-standard);
+}
+
+.scroll-bottom-fab:active {
+  transform: scale(0.94);
+}
+
+body.is-block-selection-bar-open .scroll-bottom-fab {
+  translate: 0 calc(-1 * (var(--block-selection-bar-lift, 60px) + var(--space-md)));
+}
+
+body.is-block-select-mode .scroll-bottom-fab {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.scroll-bottom-fab.is-visible {
+  animation: scrollBottomFabIn 480ms cubic-bezier(0.34, 1.45, 0.64, 1) both;
+  pointer-events: auto;
+}
+
+.scroll-bottom-fab.is-hiding {
+  animation: scrollBottomFabOut 260ms var(--ease-standard) both;
+  pointer-events: none;
+}
+
+@keyframes scrollBottomFabIn {
+  0%   { opacity: 0; transform: translateY(28px) scale(0.88); }
+  55%  { opacity: 1; transform: translateY(-5px) scale(1.08); }
+  75%  { transform: translateY(2px) scale(0.97); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes scrollBottomFabOut {
+  0%   { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(22px) scale(0.9); }
+}
+
+@media (min-width: 640px) {
+  .scroll-bottom-fab { left: var(--space-xl); }
+}

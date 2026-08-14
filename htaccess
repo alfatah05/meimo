@@ -73,14 +73,15 @@ RewriteRule ^ /font-manager [R=301,L]
 RewriteCond %{THE_REQUEST} \s/about\.html[\s?] [NC]
 RewriteRule ^ /about [R=301,L]
 
-# 2) URL cantik /editor/<uuid> -> isinya disajikan dari editor.html (rewrite
-#    INTERNAL, alamat di address bar browser TIDAK berubah).
-RewriteRule ^editor/([^/]+)/?$ /editor.html [L]
+# 2) URL cantik /editor/<uuid> -> SPA shell (index.html). Client-side router
+#    + app.js membaca id dari pathname. (v1.22.0 SPA Home+Editor)
+#    INTERNAL, alamat di address bar browser TIDAK berubah.
+RewriteRule ^editor/([^/]+)/?$ /index.html [L]
 
-# 2b) URL cantik /editor (TANPA id, dipakai tombol "Catatan Baru") -> juga
-#     dari editor.html. app.js yang akan membuatkan id baru & menuliskannya
-#     balik ke URL (jadi /editor/<uuid>) lewat history.replaceState.
-RewriteRule ^editor/?$ /editor.html [L]
+# 2b) URL cantik /editor (TANPA id, dipakai tombol "Catatan Baru") -> SPA shell.
+#     app.js yang akan membuatkan id baru & menuliskannya balik ke URL
+#     (jadi /editor/<uuid>) lewat history.replaceState.
+RewriteRule ^editor/?$ /index.html [L]
 
 # 3) URL cantik /library -> isinya disajikan dari index.html (rewrite
 #    INTERNAL). Beda dengan /editor/<uuid>, index.html & /library sama-sama
@@ -93,7 +94,7 @@ RewriteRule ^library/?$ /index.html [L]
 #     (rewrite INTERNAL, sama persis polanya dengan /editor/<uuid> di atas).
 #     Dipakai oleh menu titik-tiga "Customisasi" di tiap note card (lihat
 #     src/js/notes/note-card.js & src/js/notes/card-style.js).
-RewriteRule ^card-style/([^/]+)/?$ /card-style.html [L]
+RewriteRule ^card-style/([^/]+)/?$ /index.html [L]
 
 # 3c) URL cantik /Download -> isinya disajikan dari download.html (rewrite
 #     INTERNAL, sama polanya dengan /library di atas). Flag [NC] supaya
@@ -102,21 +103,30 @@ RewriteRule ^Download/?$ /download.html [NC,L]
 
 # 3d) URL cantik /cadangkan -> isinya disajikan dari cadangkan.html (halaman
 #     Cadangkan & Impor), sama polanya dengan /library di atas.
-RewriteRule ^cadangkan/?$ /cadangkan.html [NC,L]
+RewriteRule ^cadangkan/?$ /index.html [NC,L]
+
+RewriteRule ^settings/?$ /index.html [NC,L]
+
+RewriteRule ^fitur-ai/?$ /index.html [NC,L]
 
 # 3e) URL cantik /trash -> isinya disajikan dari trash.html (halaman Sampah).
-RewriteRule ^trash/?$ /trash.html [NC,L]
+RewriteRule ^trash/?$ /index.html [NC,L]
 
 # 3e2) URL cantik /arsip -> isinya disajikan dari arsip.html (halaman Arsip,
 #     daftar catatan yang diarsipkan lewat menu titik-tiga note card /
 #     tombol ikon arsip di header Home — lihat src/js/notes/note-card.js &
 #     src/js/notes/notes-list.js). Sama polanya persis dengan /trash di atas.
-RewriteRule ^arsip/?$ /arsip.html [NC,L]
+RewriteRule ^arsip/?$ /index.html [NC,L]
 
 # 3f) URL cantik /font-manager -> isinya disajikan dari font-manager.html
 #     (halaman Font Library / Kelola Font).
-RewriteRule ^font-manager/?$ /font-manager.html [NC,L]
+RewriteRule ^font-manager/?$ /index.html [NC,L]
 
 # 3g) URL cantik /about -> isinya disajikan dari about.html (halaman Tentang
 #     aplikasi).
 RewriteRule ^about/?$ /about.html [NC,L]
+
+RewriteCond %{THE_REQUEST} \s/privacy-policy\.html[\s?] [NC]
+RewriteRule ^ /privacy-policy [R=301,L]
+
+RewriteRule ^privacy-policy/?$ /privacy-policy.html [NC,L]

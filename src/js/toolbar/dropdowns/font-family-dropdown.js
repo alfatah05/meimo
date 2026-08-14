@@ -19,6 +19,7 @@
 import { createEl, clearChildren, openFontFamilyBar, closeTransientPickers } from "../../utils/dom.js";
 import { setFontFamily } from "../../editor/commands.js";
 import { getAvailableFonts, toggleFontFavorite } from "../../services/font-service.js";
+import { t } from "../../i18n/i18n.js";
 
 const DEFAULT_FAMILY = "Inter";
 
@@ -36,20 +37,18 @@ const MANAGE_ICON_SVG =
   '<line x1="9" y1="20" x2="15" y2="20"></line>' +
   '<line x1="12" y1="4" x2="12" y2="20"></line></svg>';
 
-const TABS = [
-  { id: "all", label: "Semua Font" },
-  { id: "favorite", label: "Font Favorit" },
-  { id: "upload", label: "Font Impor" },
-];
+function getTabs() {
+  return [
+    { id: "all", label: t("font.tab.all") },
+    { id: "favorite", label: t("font.tab.favorite") },
+    { id: "upload", label: t("font.tab.upload") },
+  ];
+}
 
 function emptyMessageFor(tabId) {
-  if (tabId === "favorite") {
-    return "Belum ada font favorit. Ketuk ikon bintang di sebelah font untuk menandainya.";
-  }
-  if (tabId === "upload") {
-    return "Belum ada font impor. Unggah lewat halaman Kelola Font.";
-  }
-  return "Belum ada font tersedia.";
+  if (tabId === "favorite") return t("font.empty.favorite");
+  if (tabId === "upload") return t("font.empty.upload");
+  return t("font.empty.all");
 }
 
 export function initFontFamilyDropdown(button, editor) {
@@ -160,7 +159,9 @@ export function initFontFamilyDropdown(button, editor) {
     });
     const syncFavBtn = () => {
       favBtn.classList.toggle("is-favorite", !!font.favorite);
-      const label = font.favorite ? `Hapus "${font.name}" dari favorit` : `Tandai "${font.name}" sebagai favorit`;
+      const label = font.favorite
+        ? t("font.fav.remove", { name: font.name })
+        : t("font.fav.add", { name: font.name });
       favBtn.setAttribute("aria-label", label);
       favBtn.title = label;
     };
@@ -169,7 +170,6 @@ export function initFontFamilyDropdown(button, editor) {
     // (bukan satu elemen bertumpuk), jadi sebenarnya klik keduanya tidak
     // akan saling bentrok — tapi dijaga tetap eksplisit kalau markup-nya
     // berubah nanti.
-    favBtn.addEventListener("pointerdown", (e) => { e.preventDefault(); });
     favBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       font.favorite = toggleFontFavorite(font.id);
@@ -211,17 +211,13 @@ export function initFontFamilyDropdown(button, editor) {
 
   function renderTabs(tabsEl) {
     tabButtons = [];
-    for (const tab of TABS) {
+    for (const tab of getTabs()) {
       const tabBtn = createEl("button", {
         className: "font-family-bar__tab",
         attrs: { type: "button", role: "tab", "aria-selected": String(tab.id === activeTab) },
         text: tab.label,
       });
       tabBtn.classList.toggle("is-active", tab.id === activeTab);
-      // preventDefault di pointerdown: cegah fokus pindah ke tombol tab
-      // (yang bikin Android menutup keyboard + kadang menutup bar). Fokus
-      // tetap di contenteditable, keyboard & menu font family tetap terbuka.
-      tabBtn.addEventListener("pointerdown", (e) => { e.preventDefault(); });
       tabBtn.addEventListener("click", () => {
         if (activeTab === tab.id) return;
         activeTab = tab.id;
@@ -248,7 +244,7 @@ export function initFontFamilyDropdown(button, editor) {
     // berupa link navigasi native").
     const manageBtn = createEl("a", {
       className: "font-family-bar__manage-btn",
-      attrs: { href: "/font-manager", "aria-label": "Kelola Font", title: "Kelola Font" },
+      attrs: { href: "/font-manager", "aria-label": t("font.manage"), title: t("font.manage") },
       html: MANAGE_ICON_SVG,
     });
     tabsEl.appendChild(manageBtn);

@@ -18,14 +18,10 @@
  * Nilai radius dipakai dalam persentase/keyword (bukan px tetap besar) supaya
  * tetap proporsional di kartu grid maupun kartu pinned yang lebih kecil.
  *
- * Preset "stamp"/"cloud"/"torn"/"wave"/"zigzag"/"brush" di bawah memakai
- * clip-path yang dihasilkan notes/card-edge-outline.js (tepi atas+bawah
- * dibentuk, bahasa visualnya disamakan dengan Edge Style "Scene" di editor
- * — lihat editor/scene-edges.js — tapi dihitung terpisah karena di sini
- * yang dibentuk adalah keliling satu kartu utuh, bukan satu bar lepas).
- * Preset "washi-tape" BEDA sendiri: bentuk kartu tetap kotak biasa, cuma
- * ditambah dekorasi 2 potong selotip di pojok atas lewat elemen DOM
- * terpisah (lihat hasWashiTape() di bawah & notes/note-card.js).
+ * Banyak preset memakai clip-path dari notes/card-edge-outline.js
+ * (EDGE_BAND ~8px) supaya tepi tidak memotong judul/snippet.
+ * Preset "washi-tape" sudah dihapus dari picker; kartu lama yang masih
+ * menyimpan id itu tetap ditampilkan lewat hasWashiTape()/applyWashiTapeDecor().
  */
 
 import { CARD_EDGE_CLIP } from "./card-edge-outline.js";
@@ -45,52 +41,94 @@ export const EDGE_SHAPES = [
     clipPath: "none",
   },
   {
-    id: "soft",
-    label: "Membulat Halus",
-    borderRadius: "var(--radius-sm)",
-    clipPath: "none",
-  },
-  {
-    id: "rounded-xl",
-    label: "Sangat Membulat",
-    borderRadius: "var(--radius-xl)",
-    clipPath: "none",
-  },
-  {
-    id: "pill",
-    label: "Pil",
-    // Radius > setengah sisi terpendek otomatis "dipangkas" browser jadi
-    // bentuk stadium/pil oleh spec CSS — lebar/tinggi box tidak berubah.
-    borderRadius: "999px",
-    clipPath: "none",
-  },
-  {
-    id: "organic",
-    label: "Organik",
-    // Border-radius asimetris dalam persen (bukan px) supaya bentuk "blob"
-    // ini tetap proporsional di kartu ukuran berapa pun.
-    borderRadius: "63% 37% 54% 46% / 43% 47% 53% 57%",
-    clipPath: "none",
-  },
-  {
+    // Sudut terpotong kecil (8px) — tidak mengganggu judul.
     id: "cut-corners",
     label: "Sudut Terpotong",
     borderRadius: "0",
     clipPath:
-      "polygon(16px 0, calc(100% - 16px) 0, 100% 16px, 100% calc(100% - 16px), calc(100% - 16px) 100%, 16px 100%, 0 calc(100% - 16px), 0 16px)",
+      "polygon(8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px), 0 8px)",
   },
   {
-    id: "wavy-bottom",
-    label: "Bergelombang",
-    borderRadius: "var(--radius-lg) var(--radius-lg) 0 0",
+    id: "chamfer",
+    label: "Chamfer",
+    borderRadius: "0",
     clipPath:
-      "polygon(0 0, 100% 0, 100% calc(100% - 10px), 87.5% 100%, 75% calc(100% - 10px), 62.5% 100%, 50% calc(100% - 10px), 37.5% 100%, 25% calc(100% - 10px), 12.5% 100%, 0 calc(100% - 10px))",
+      "polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px), 0 10px)",
+  },
+  {
+    // Hanya sudut kiri-atas & kanan-bawah.
+    id: "diagonal-cut",
+    label: "Potong Diagonal",
+    borderRadius: "0",
+    clipPath:
+      "polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px)",
+  },
+  {
+    id: "ticket",
+    label: "Tiket",
+    borderRadius: "0",
+    clipPath:
+      "polygon(0 0, 100% 0, 100% calc(50% - 7px), calc(100% - 6px) 50%, 100% calc(50% + 7px), 100% 100%, 0 100%, 0 calc(50% + 7px), 6px 50%, 0 calc(50% - 7px))",
+  },
+  {
+    id: "bookmark",
+    label: "Bookmark",
+    borderRadius: "0",
+    clipPath:
+      "polygon(0 0, 100% 0, 100% calc(100% - 14px), 50% 100%, 0 calc(100% - 14px))",
+  },
+  {
+    id: "tag",
+    label: "Tag",
+    borderRadius: "0",
+    clipPath:
+      "polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%)",
+  },
+  {
+    id: "arch-top",
+    label: "Lengkung Atas",
+    borderRadius: "0",
+    clipPath:
+      "polygon(0 10px, 8% 3px, 20% 0, 35% 0, 50% 2px, 65% 0, 80% 0, 92% 3px, 100% 10px, 100% 100%, 0 100%)",
+  },
+  {
+    id: "wave-bottom",
+    label: "Ombak Bawah",
+    borderRadius: "var(--radius-md) var(--radius-md) 0 0",
+    clipPath:
+      "polygon(0 0, 100% 0, 100% calc(100% - 8px), 87.5% 100%, 75% calc(100% - 8px), 62.5% 100%, 50% calc(100% - 8px), 37.5% 100%, 25% calc(100% - 8px), 12.5% 100%, 0 calc(100% - 8px))",
+  },
+  {
+    id: "fold-corner",
+    label: "Sudut Lipat",
+    borderRadius: "var(--radius-md)",
+    clipPath:
+      "polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%)",
+  },
+  {
+    id: "notched-top",
+    label: "Lekuk Atas",
+    borderRadius: "0",
+    clipPath:
+      "polygon(0 0, 42% 0, 50% 8px, 58% 0, 100% 0, 100% 100%, 0 100%)",
   },
   {
     id: "stamp",
     label: "Perangko",
     borderRadius: "0",
     clipPath: CARD_EDGE_CLIP.stamp,
+  },
+  {
+    id: "stamp-fine",
+    label: "Perforasi Halus",
+    borderRadius: "0",
+    clipPath: CARD_EDGE_CLIP["stamp-fine"],
+  },
+  {
+    id: "scallop",
+    label: "Kerang",
+    borderRadius: "0",
+    clipPath: CARD_EDGE_CLIP.scallop,
   },
   {
     id: "cloud",
@@ -105,10 +143,28 @@ export const EDGE_SHAPES = [
     clipPath: CARD_EDGE_CLIP.torn,
   },
   {
+    id: "deckle",
+    label: "Tepi Deckle",
+    borderRadius: "0",
+    clipPath: CARD_EDGE_CLIP.deckle,
+  },
+  {
     id: "wave",
     label: "Ombak",
     borderRadius: "0",
     clipPath: CARD_EDGE_CLIP.wave,
+  },
+  {
+    id: "ripple",
+    label: "Riak",
+    borderRadius: "0",
+    clipPath: CARD_EDGE_CLIP.ripple,
+  },
+  {
+    id: "double-wave",
+    label: "Ombak Ganda",
+    borderRadius: "0",
+    clipPath: CARD_EDGE_CLIP["double-wave"],
   },
   {
     id: "zigzag",
@@ -117,20 +173,28 @@ export const EDGE_SHAPES = [
     clipPath: CARD_EDGE_CLIP.zigzag,
   },
   {
+    id: "pinked",
+    label: "Gunting Zigzag",
+    borderRadius: "0",
+    clipPath: CARD_EDGE_CLIP.pinked,
+  },
+  {
+    id: "steps",
+    label: "Tangga",
+    borderRadius: "0",
+    clipPath: CARD_EDGE_CLIP.steps,
+  },
+  {
     id: "brush",
     label: "Sapuan Kuas",
     borderRadius: "0",
     clipPath: CARD_EDGE_CLIP.brush,
   },
   {
-    // Bentuk kartu tetap kotak biasa (default) — dekorasinya ada di 2 elemen
-    // DOM terpisah (.note-card__tape), bukan di clip-path. Lihat
-    // hasWashiTape() & applyWashiTapeDecor() di bawah, dipanggil dari
-    // notes/note-card.js.
-    id: "washi-tape",
-    label: "Selotip Washi",
-    borderRadius: "var(--radius-lg)",
-    clipPath: "none",
+    id: "notch",
+    label: "Lekukan Tengah",
+    borderRadius: "0",
+    clipPath: CARD_EDGE_CLIP.notch,
   },
 ];
 

@@ -11,11 +11,10 @@
  * - Klik FAB -> buka sidebar (daftar di-render ulang dari model saat itu
  *   juga, jadi selalu segar). Klik salah satu item -> sidebar ditutup DULU,
  *   baru scroll otomatis ke heading terkait (lihat scrollToHeading).
- * - Posisi FAB & sidebar TIDAK PERNAH menutupi topbar: FAB & overlay
- *   sidebar dipasang dengan z-index var(--z-fab), lebih rendah dari
- *   .note-topbar (var(--z-toolbar)) -- lihat outline.css untuk detail
- *   kenapa itu cukup (topbar selalu tergambar di atas walau posisi
- *   sidebar "top: 0").
+ * - Posisi FAB & sidebar TIDAK PERNAH menutupi topbar: FAB pakai
+ *   var(--z-fab); overlay sidebar z-index 25 (di atas FAB AI, di bawah
+ *   topbar --z-toolbar). Saat sidebar terbuka body.is-outline-open
+ *   diset supaya FAB AI disembunyikan.
  *
  * Styling murni ada di src/css/outline.css, file ini cuma bikin DOM &
  * wiring interaksinya (senada dengan pola sheet lain, mis. image-sheet.js).
@@ -126,6 +125,11 @@ export function initOutline({ state, bodyEl }) {
     isOpen = true;
     renderList();
     overlayEl.hidden = false;
+    // Tandai body supaya FAB AI (ai-sheet) bisa disembunyikan di belakang
+    // sidebar — muncul lagi saat user fokus editor setelah sidebar tutup.
+    document.body.classList.add("is-outline-open");
+    // Notify listeners (ai-sheet updateFabVisibility via selectionchange).
+    document.dispatchEvent(new Event("selectionchange"));
     // Lepas dari flow render pertama (hidden -> false) dulu sebelum nambah
     // class, supaya transisi transform beneran ke-trigger dari state
     // tersembunyi, bukan langsung "snap" ke state akhir.
@@ -136,6 +140,8 @@ export function initOutline({ state, bodyEl }) {
     if (!isOpen) return;
     isOpen = false;
     overlayEl.classList.remove("is-open");
+    document.body.classList.remove("is-outline-open");
+    document.dispatchEvent(new Event("selectionchange"));
     setTimeout(() => {
       if (!isOpen) overlayEl.hidden = true;
     }, CLOSE_ANIM_MS);

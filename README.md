@@ -1,6 +1,6 @@
 # Personal Notes PWA
 
-**Versi: v1.18.0** (lihat [Changelog](#changelog) di bawah untuk riwayat versi)
+**Versi: v1.23.51** (lihat [Changelog](#changelog) di bawah untuk riwayat versi)
 
 Kerangka struktur folder untuk aplikasi PWA pencatatan pribadi (bukan markdown editor),
 dibuat mengikuti `PROJECT_RULES.md`.
@@ -208,31 +208,394 @@ lewat tombol seperti biasa di `cadangkan.html`.
 
 ## Changelog
 
-Penomoran versi mengikuti [SemVer](https://semver.org/lang/id/) — format
-`MAJOR.MINOR.PATCH`:
-- **MAJOR**: perubahan besar yang tidak kompatibel/mengubah total cara pakai.
-- **MINOR**: fitur baru yang tetap kompatibel dengan versi sebelumnya.
-- **PATCH**: perbaikan bug atau penyesuaian kecil (mis. tweak tampilan),
-  tanpa fitur baru.
+Aturan penomoran versi (SemVer) & checklist sebelum export/zip dipindah
+ke [`AI_RULES.md`](./AI_RULES.md).
 
-Setiap ada perubahan yang di-deploy, versi di `manifest.json` (field
-`"version"`) HARUS dinaikkan sesuai aturan di atas, dan ditambahkan satu
-entri baru di bawah ini (versi terbaru paling atas).
+### v1.23.51
+- Ruler virtual (tick jarak tetap 5px, hanya render sekitar viewport) — offset ±9999, radius max 1000, scale 10–500%.
+- Offset/scale/rotate tetap pada isi gambar (object-position + transform di `<img>`), bukan frame.
+- `CACHE_VERSION` -> v146.
+
+### v1.23.50
+- Image offset via object-position (size=frame, offset=pan cover).
+- `CACHE_VERSION` -> v145.
+
+### v1.23.49
+- Toolbar i18n: font tabs, align, line-height, letter-spacing, hyperlink panel.
+- `CACHE_VERSION` -> v144.
+
+### v1.23.48
+- `.image-sheet__sub-rail` gap di-nol-kan (berlaku image + scene child sheets).
+- `CACHE_VERSION` -> v143.
+
+### v1.23.47
+- Image sheet: orbit dot rotate dial centered; no scroll on size child body; rail icon gap 0.
+- `CACHE_VERSION` -> v142.
+
+### v1.23.46
+- Image sheet Size: rail tab Offset (X/Y + Scale) & Rotate (radial 360°) — active ungu, inactive putih.
+- Model: `imageOffsetX/Y`, `imageScale`, `imageRotate` (preview + persist).
+- `CACHE_VERSION` -> v141.
+
+### v1.23.45
+- Image sheet Size: tab Offset (X/Y + Scale) & Rotate (radial 360°) di rail kiri; active ungu / inactive putih.
+- Model gambar: `imageOffsetX`, `imageOffsetY`, `imageScale`, `imageRotate` (preview + persist).
+- `CACHE_VERSION` -> v140.
+
+### v1.23.44
+- Scene sheet: UX padding visual, color card (bar + grid + opacity), custom RGBA, back icon selaras crop sheet; i18n image/scene/music sheets.
+- Default tema aplikasi: dark.
+- Card style: background digabung satu card dengan tab None / Color / Image (opacity color & image, upload/hapus chip).
+- `CACHE_VERSION` -> v139.
+
+### v1.23.43
+- Music sheet: compact (tinggi/padding sama); tombol pilih lagu full width (nama kiri transparan + icon 40px kanan); Batal/Terapkan/Delete sama pola image sheet.
+- `CACHE_VERSION` -> v138.
+
+### v1.23.42
+- Scene sheet: rombak compact seperti image sheet — padding 5 chip, big Color/Edge, Batal/Terapkan/Delete; child Color (grid 4 baris) & Edge (2 baris, chip 100×80).
+- `CACHE_VERSION` -> v137.
+
+### v1.23.41
+- Chip/menu: background disamakan dengan tampilan efektif toggle wrap text saat disabled.
+- `CACHE_VERSION` -> v136.
+
+### v1.23.40
+- Chip/menu: warna mengikuti tone icon topbar disabled (mix text-primary 14% + surface); label dimensi ikut tema (bukan putih statis).
+- `CACHE_VERSION` -> v135.
+
+### v1.23.39
+- Chip/menu lebih terang dari background sheet di semua tema (`surface` mix putih); sheet tetap surface.
+- `CACHE_VERSION` -> v134.
+
+### v1.23.38
+- Ruler: momentum lebih satisfying (friction eksponensial, amplifikasi 2.8×).
+- Background menu/chip pakai `--color-bg` (sheet tetap surface).
+- Crop: grid 4 baris, kolom mengalir ke kanan, scroll horizontal.
+- `CACHE_VERSION` -> v133.
+
+### v1.23.37
+- Ruler: momentum lebih panjang (decel lebih rendah + amplifikasi lempar).
+- Chip lebih terang (kontras di atas surface); crop: icon 40×40 tanpa label/bg/border, scroll horizontal; body padding 15px; rail kiri tetap tanpa padding.
+- `CACHE_VERSION` -> v132.
+
+### v1.23.36
+- Ruler: momentum/fling saat lepas jari; pointer tebal 1px (sama garis).
+- Sheet utama: tinggi 205px, padding 15×20, radius chip 5px, tanpa border; Terapkan = background accent-soft.
+- `CACHE_VERSION` -> v131.
+
+### v1.23.35
+- Image sheet ruler: pointer di luar track (tidak ikut geser), posisi via transform+drag (bukan scrollLeft); chip tinggi 40px, label putih, tanpa border.
+- `CACHE_VERSION` -> v130.
+
+### v1.23.34
+- Image sheet ruler: pointer di tengah via padding px + ResizeObserver; chip 50px radius 5; garis 40px; pointer 50px; gap 10px; body child bisa scroll, rail kiri tetap.
+- `CACHE_VERSION` -> v128.
+
+### v1.23.33
+- Image sheet ruler: pointer tengah via padding 50%, update dimensi gambar realtime saat digeser; chip label 80×60, nilai 70×60, garis 50px, pointer 60px.
+- `CACHE_VERSION` -> v127.
+
+### v1.23.32
+- Image sheet dimensi: ruler diperbaiki (pointer tengah, fade kiri-kanan, label/nilai ber-chip, tick seragam, align atas); rail child icon tanpa background, lebih lebar.
+- `CACHE_VERSION` -> v126.
+
+### v1.23.31
+- Image sheet tinggi 195px (bar/icon/Batal 40px); child rail kiri nempel tepi, back + icon 40px gap 5px radius 10px.
+- Dimensi: slider diganti ruler scroller (tick 1px, pointer tengah accent, snap magnet).
+- `CACHE_VERSION` -> v125.
+
+### v1.23.30
+- Image sheet: align aktif hanya ganti warna icon (tanpa background); delete icon merah dari awal, saat konfirmasi jadi checklist merah + border/bg merah.
+- `CACHE_VERSION` -> v124.
+
+### v1.23.29
+- Image sheet: border-radius semua box 10px; background menu disamakan dengan tampilan wrap disabled (blend bg@40% + surface).
+- `CACHE_VERSION` -> v123.
+
+### v1.23.28
+- Image sheet child (Dimensi/Crop): menu bar di kiri lebar 60px, back di atas rail; area aksi full tinggi di kanan.
+- `CACHE_VERSION` -> v122.
+
+### v1.23.27
+- Image sheet: background disamakan dengan topbar (`--color-surface`); warna menu disesuaikan (`--color-bg`) agar kontras.
+- `CACHE_VERSION` -> v121.
+
+### v1.23.26
+- Image sheet: gap antar box 5px, border-radius 4px, ukuran card disesuaikan (42 / 96 / 42).
+- `CACHE_VERSION` -> v120.
+
+### v1.23.25
+- Image sheet: tinggi 210px, layout grid baru (align bar, 3 aksi besar, Batal/Terapkan, rail toggle icon); panel Dimensi & Crop sebagai view dalam sheet yang sama.
+- `CACHE_VERSION` -> v119.
+
+### v1.23.24
+- i18n: terjemahkan sisa UI yang masih hardcode Indonesia (font library, trash, cadangkan, fitur AI, search placeholder, tanggal relatif, FAB AI, about, archive empty).
+- Privacy Policy: teks statis bahasa Inggris.
+- `CACHE_VERSION` -> v118.
+
+### v1.23.23
+- Card style: skeleton loading disederhanakan jadi 3 bar full-width (bar atas 4× tinggi 2 bar bawah) — SPA & multi-page.
+- Editor FAB gulir ke bawah: delay auto-focus ke akhir dokumen 1000ms → 300ms; hilangkan blink kursor ke posisi lama saat focusEnd.
+- Outline sidebar: z-index di atas FAB AI; FAB AI disembunyikan saat sidebar terbuka (`is-outline-open`), muncul lagi saat fokus editor.
+- `CACHE_VERSION` -> v117.
+
+### v1.23.19
+- Notes list: menu titik-tiga di kartu biasa & pinned background transparan
+  (hover pakai accent-soft), tampilan disamakan.
+- `CACHE_VERSION` -> v113.
+
+### v1.23.22
+- Customisasi kartu: perbaiki posisi toggle **Sembunyikan isi catatan**
+  (sebelumnya di luar `<main>`, jadi tidak terlihat).
+- `CACHE_VERSION` -> v116.
+
+### v1.23.21
+- Menu titik tiga: ikon tetap putih; hanya background hitam transparan 0.2.
+- `CACHE_VERSION` -> v115.
+
+### v1.23.20
+- Customisasi kartu: toggle **Sembunyikan isi catatan** (hideSnippet) —
+  kartu hanya menampilkan judul; berlaku di preview, note list, dan pinned.
+- `CACHE_VERSION` -> v114.
+
+### v1.23.19
+- Note list: tombol menu titik tiga (kartu biasa & pinned) pakai background
+  hitam transparan `rgba(0,0,0,0.2)`.
+- `CACHE_VERSION` -> v113.
+
+### v1.23.18
+- AI sheet: posisi generate mengikuti kursor/seleksi yang dipindah saat sheet
+  terbuka; hapus strip handle atas (bukan drag).
+- Home FAB: shadow mengikuti warna tema (bukan ungu tetap di Sepia).
+- `CACHE_VERSION` -> v112.
+
+### v1.23.17
+- AI sheet: toggle **Mengganti** / **Buat baru** saat ada teks terpilih
+  (posisi antara konteks & prompt, align kanan). Mengganti menimpa seleksi;
+  Buat baru menyisipkan hasil di bawah block seleksi.
+- Prompt sistem AI: default paragraph; jangan heading/list kecuali diminta.
+- `CACHE_VERSION` -> v111.
+
+### v1.23.16
+- Crop gambar: hapus Segitiga, Plus, Panah, Tetesan, Kelopak; tambah bentuk
+  kreatif (Perangko, Tiket, Stub Tiket, Bookmark, Tag, Perisai, Pita, Awan,
+  Balon Chat, Bulan, Daun, Polaroid, Roda Gigi, Roset, Kapsul, dll.).
+- `CACHE_VERSION` -> v110.
+
+### v1.23.15
+- Editor Scene: perluas Edge Style (Ombak Ganda, Riak, Deckle, Perforasi,
+  Kerang, Gunting, Tangga, Lekukan, Lengkung, Puncak, Gergaji, dll.) —
+  variasi lebih banyak tanpa mengubah tinggi bar edge.
+- `CACHE_VERSION` -> v109.
+
+### v1.23.14
+- Customisasi kartu: hapus bentuk Membulat Halus, Sangat Membulat, Pil,
+  Organik, Selotip Washi; tambah banyak bentuk baru (tiket, bookmark, tag,
+  scallop, deckle, pinked, dll.) dengan kedalaman tepi ~8px agar tidak
+  memotong judul/isi.
+- `CACHE_VERSION` -> v108.
+
+### v1.23.13
+- About: card kontributor — nama & tombol sosial `space-between` + align center.
+- Fitur AI: ganti gambar tutorial (image1–7) dengan aset baru.
+- `CACHE_VERSION` -> v107.
+
+### v1.23.12
+- i18n UI hampir penuh (en / id / ja): Home, Settings, Trash, Archive,
+  Backup, Font Library, Card Style, AI Features, About, menu kartu, toast.
+  Pengecualian: `download.html` & `privacy-policy.html`.
+- `CACHE_VERSION` -> v106.
+
+### v1.23.11
+- Pengaturan: opsi **Bahasa** (English default, Indonesia, Jepang).
+  Preferensi disimpan di localStorage; string UI Settings & judul halaman
+  ikut berganti lewat modul `src/js/i18n/`.
+- `CACHE_VERSION` -> v105.
+
+### v1.23.10
+- Halaman **Customisasi Kartu** lebih enteng saat transisi: kerja berat
+  (FontFace + render swatch clip-path) ditunda sampai animasi page-in selesai,
+  supaya tidak jank di tengah animasi. Animasi page transition tetap sama
+  seperti semula (jarak/durasi/easing tidak diubah).
+- `CACHE_VERSION` -> v104.
+
+### v1.23.9
+- (ditarik) peringanan parameter animasi page-in — diganti pendekatan defer
+  kerja berat di v1.23.10 tanpa mengubah animasi global.
+- `CACHE_VERSION` -> v103.
+
+### v1.23.8
+- Home: skeleton menunggu gambar/GIF latar kartu selesai di-decode sebelum
+  disembunyikan; preload asset kartu setelah list notes.
+- `CACHE_VERSION` -> v102.
+
+### v1.23.7
+- Fix preview gambar di **Customisasi Kartu**: upload pertama (cold start PWA)
+  tidak lagi menghilangkan preview — decode image dulu + re-apply CSS var
+  setelah paint.
+- `CACHE_VERSION` -> v101.
+
+### v1.23.6
+- Halaman **Tentang** diperbarui (fitur baru, bahasa awam, tanpa istilah teknis berat).
+- Tombol sosial kontributor (GitHub & Instagram, placeholder).
+- Halaman **Kebijakan Privasi** (`/privacy-policy`, multi-page, bukan SPA) dari footer Tentang.
+- `CACHE_VERSION` -> v100.
+
+### v1.23.4
+- Tutorial **cara buat API key** di halaman Fitur AI (7 langkah + gambar
+  1:1 di `assets/images/image1.png` … `image7.png`).
+- `CACHE_VERSION` v97 -> v98.
+
+### v1.23.3
+- **AI sheet UI** diperhalus: handle, brand icon gradient, sheet lebih tinggi
+  (~78vh), textarea lebih luas, konteks seleksi & tombol bergaya app AI.
+- `CACHE_VERSION` v96 -> v97.
+
+### v1.23.2
+- **Halaman Fitur AI** (`/fitur-ai`) terpisah di SPA — API key & model tidak lagi di Pengaturan utama.
+- Pengaturan → menu **Fitur AI** mengarah ke halaman itu.
+- AI sheet: jika API key kosong, tampil pesan *Asisten AI belum aktif…* + tombol **Batal** / **Pengaturan** (ke `/fitur-ai`).
+- Teks privasi di atas input API key di halaman Fitur AI.
+- `CACHE_VERSION` v95 -> v96.
+
+### v1.23.1
+- UI halaman Pengaturan diselaraskan dengan halaman lain: `home-header`,
+  `note-back-btn`, `section-title`, tombol menu memakai pola
+  `backup-action-btn` (sama seperti Cadangkan), ikon stroke 1.8 konsisten.
+- `CACHE_VERSION` v94 -> v95.
+
+### v1.23.0
+- **Halaman Pengaturan (`/settings`)** di SPA: Font Library, Pilih Tema,
+  Sampah, Cadangkan & Impor dipindah dari FAB Home ke sini.
+- **Fitur AI di Pengaturan:** input API key Gemini + pilih model
+  (`gemini-3.1-flash-lite`, `gemini-3.6-flash`), disimpan di IndexedDB
+  (store `settings`, DB v3).
+- `ai-sheet.js` memakai API key & model dari pengaturan user (bukan hardcode).
+- FAB Home disederhanakan: Catatan Baru, Rekam Suara, Pengaturan (+ Instal).
+- `CACHE_VERSION` v93 -> v94.
+
+### v1.22.2
+- FAB AI disembunyikan saat offline (`navigator.onLine` + event online/offline).
+- Rekam suara: keyboard editor tidak muncul saat sheet terbuka; setelah
+  **Selesai**, fokus ke baris terakhir (keyboard boleh muncul).
+- `CACHE_VERSION` v92 -> v93.
+
+### v1.22.1
+- **Offline SPA:** `cacheFirst` sekarang juga mencari di `APP_SHELL_CACHE`
+  (precache install), bukan cuma `RUNTIME_CACHE` — sebelumnya modul SPA
+  (`spa-app.js`, `router.js`, dll.) gagal load offline meski sudah
+  ter-precache.
+- Install SW menduplikasi shell files ke `RUNTIME_CACHE`.
+- `CACHE_VERSION` v91 -> v92.
+
+### v1.22.0
+- **SPA (Single Page Application) — tahap utama:** navigasi client-side
+  untuk Home, Editor, Cadangkan & Impor, Sampah, Font Library, Arsip, dan
+  Customisasi Kartu (`card-style`), dengan History API + same-document
+  View Transitions (animasi “mantul” dipertahankan).
+- Shell tunggal `index.html` (`#view-*`); `src/js/router.js` +
+  `src/js/spa-app.js` mengatur ganti view, restore template, dan lazy init.
+- **UX navigasi:** klik menu langsung pindah ke halaman tujuan + skeleton;
+  load data IndexedDB/font tidak menahan View Transition.
+- Perbaikan: FAB AI/Outline tidak bocor ke Home; menu titik-tiga note card;
+  tutup bottom sheet tanpa refresh; back HP + animasi; note baru langsung
+  muncul di list; trap-back hanya di Home.
+- SW `resolveShellPath` + `.htaccess` mengarahkan rute SPA ke `index.html`.
+- `CACHE_VERSION` v87 -> v91.
+
+### v1.21.0
+- **FAB gulir ke bawah — auto-focus baris akhir:** setelah diklik dan
+  scroll benar-benar sampai posisi paling bawah, tunggu 1 detik lalu
+  kursor otomatis difokuskan ke akhir baris/block paling bawah dokumen.
+  Dibatalkan otomatis kalau user scroll manual menjauh dari bawah sebelum
+  delay-nya selesai.
+- `editor.js`: method publik baru `focusEnd()`.
+- `CACHE_VERSION` v86 -> v87.
+
+### v1.20.5
+- **FAB AI animasi:** delay sampai keyboard terbuka (mobile), geser dari
+  bawah + overshoot; muncul dulu lingkaran → label setelah 1 dtk → nutup
+  setelah 5 dtk (animasi geser + mantul).
+- **FAB gulir ke bawah** (kiri bawah, ~½ ukuran AI, warna outline, ikon
+  panah bawah), animasi geser dari bawah + overshoot. Muncul saat konten
+  bisa di-scroll ke bawah.
+- `CACHE_VERSION` v85 -> v86.
+
+### v1.20.4
+- FAB AI di bawah + label pill; Outline warna topbar.
+
+### v1.19.2
+- **Fix: lingkaran "berdenyut" (orb) di panel "AI sedang menulis" tidak
+  simetris dengan icon AI & gelombang ring di sekitarnya.** Penyebabnya:
+  animasi `aiOrbBob` pada `.ai-gen-orb__core` (icon di tengah) ikut
+  `translateY(-3px)` pas membesar, sementara `.ai-gen-orb__ring`
+  (gelombang di sekelilingnya) cuma membesar di tempat tanpa `translateY`
+  — titik pusat icon jadi geser dikit dari titik pusat ring tiap siklus.
+  `src/css/ai-sheet.css`: `translateY` dihapus dari `aiOrbBob`, core
+  sekarang cuma `scale` di tempat, konsentris dengan ring.
+- **Tambahan: auto-scroll ngikutin teks yang lagi diketik AI**, dan fix
+  layar "teleport" ke atas editor pas AI PERTAMA mulai ngetik.
+  - Teleport ke atas disebabkan `editor.bodyEl.focus()` tanpa opsi apa
+    pun — browser otomatis scroll-into-view SELURUH `bodyEl` begitu
+    di-focus (tidak tahu-menahu posisi kursor di dalamnya). Fix: dipanggil
+    dengan `{ preventScroll: true }` di `src/js/editor/ai-sheet.js`
+    (`typewriterInsert` & `typewriterPlain`), jadi tidak ada auto-scroll
+    bawaan browser yang "asal lompat" lagi.
+  - Auto-scroll yang benar ditambahkan lewat `keepAiCaretInView()` (baru)
+    di `ai-sheet.js` — dipanggil tiap kali render setelah karakter baru
+    disisip (baik lewat `typewriterInsert` maupun `typewriterPlain`), cek
+    dulu posisi kursor (`window.getSelection()`) sudah di luar/dekat tepi
+    viewport atau belum, baru `scrollIntoView({ behavior: "smooth",
+    block: "nearest" })` — supaya tidak retrigger smooth-scroll tiap
+    karakter kalau memang sudah kelihatan.
+
+### v1.19.1
+- **Fix: animasi transisi pindah halaman kadang tidak jalan** (mis. dari
+  Home ke Editor, atau ke Sampah/Arsip/dst), terutama pas kunjungan
+  pertama / cache masih dingin. Penyebabnya: opt-in
+  `@view-transition { navigation: auto; }` cuma ada di file eksternal
+  `src/css/view-transitions.css`, dan `<link>`-nya ditaruh mepet ke
+  belakang (setelah ~9 stylesheet lain). Kalau file itu belum selesai
+  di-fetch/parse pas user buru-buru pindah halaman, browser belum sempat
+  "kenal" opt-in-nya, jadi animasi dilewat begitu saja.
+  - Aturan `@view-transition { navigation: auto; }` dipindah jadi inline
+    `<style>` paling atas di `<head>` (persis setelah `<meta charset>`)
+    di SEMUA entry point (`index.html`, `editor.html`, `trash.html`,
+    `arsip.html`, `font-manager.html`, `card-style.html`, `about.html`,
+    `cadangkan.html`) — dijamin tersedia instan tanpa nunggu network.
+  - `<link rel="stylesheet" href="/src/css/view-transitions.css">` juga
+    dipindah lebih awal (tepat setelah `themes.css`) di semua file yang
+    sama, supaya keyframes-nya juga lebih cepat ready.
+  - `src/css/view-transitions.css`: blok `@view-transition` dihapus dari
+    file ini (sudah pindah ke inline), sisanya (keyframes & override
+    pseudo-element) tetap di sini seperti biasa.
 
 ### v1.19.0
-- **Dukungan build app native Android lewat Capacitor + GitHub Actions**
-  (lihat `NATIVE_BUILD.md`) — project ini sekarang bisa di-build jadi
-  `.apk`/`.aab` otomatis di CI, tanpa mengubah satu pun perilaku web/PWA
-  yang sudah ada. Ditambah `src/js/pwa/native-bridge.js` (dimuat di semua
-  halaman persis di sebelah `sw-register.js`): urus tombol back Android,
-  warna status bar & splash screen native, no-op total di web/PWA biasa.
-- **Fix ekspor file (`.meimo` per-note & "Cadangkan Semua Catatan") di app
-  native**: `triggerBlobDownload()` di `backup-service.js` &
-  `meimo-export.js` sekarang lewat `saveOrShareBlob()` — di web/PWA
-  perilakunya SAMA PERSIS seperti sebelumnya (anchor + blob URL), tapi di
-  app native (di mana `<a download>` ke blob URL tidak berfungsi di
-  WebView) file ditulis ke cache app lalu dibuka lewat lembar "Bagikan"
-  native supaya user tetap bisa simpan ke Download/Drive/app lain.
+- **Fix: `src/js/utils/dom.js` dan `trash.html` kosong (0 byte)** — file
+  util inti `dom.js` (dipakai 23 modul lain: `createEl`, `qs`, `qsa`,
+  `openPanel`, `closeAllPanels`, `closeTransientPickers`, `openChildGroup`,
+  `openFontFamilyBar`, `openColorBar`, `clearChildren`) dan halaman
+  `trash.html` sempat kosong di hasil export/zip project — yang pertama
+  bikin seluruh app stuck di skeleton loading (`SyntaxError: does not
+  provide an export named ...`), yang kedua bikin halaman Sampah/Trash
+  hilang total. Isi kedua file dipulihkan dari versi v1.18.0 yang masih
+  utuh.
+- **Fix: Scene kebelah dua kalau AI (`ai-sheet.js`) menyisip teks di
+  dalam scene yang sudah ada.** Block hasil generate AI yang bukan tipe
+  `"scene"` eksplisit sebelumnya SELALU dipaksa `sceneId: null`, walau
+  kursor sedang berada di dalam scene lain. Ini memutus rangkaian
+  `sceneId` yang sama pada block sebelum & sesudah kursor — renderer
+  scene mengelompokkan block berdasarkan `sceneId` yang sama & berurutan,
+  jadi satu scene lama kelihatan kebelah jadi dua kotak begitu AI selesai
+  menyisip.
+  - `src/js/editor/ai-sheet.js`: `parseAiJsonToInsertion()` sekarang
+    menerima parameter `ambientSceneId` dan memakainya untuk block
+    non-"scene" (bukan hardcode `null` lagi). Pemanggilnya di
+    `handleGenerate()` mengambil `sceneId` dari block tempat kursor
+    berada (`state.getBlock(savedSel.startBlockIndex)`) sebelum parsing,
+    supaya sisipan AI ikut masuk ke scene yang sama kalau kursor memang
+    ada di dalamnya.
 
 ### v1.18.0
 - **Fitur baru: item menu "Download" di menu titik-tiga note card**, buat

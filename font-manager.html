@@ -1,16 +1,24 @@
 <!DOCTYPE html>
-<html lang="id" data-theme="light">
+<html lang="id" data-theme="dark">
 <head>
 <meta charset="UTF-8">
-<!-- Opt-in Cross-Document View Transition SEDINI mungkin di <head>
-     (bukan cuma di view-transitions.css). Chrome/WebView sering melewati
-     animasi navigasi MAJU kalau @view-transition belum terbaca saat
-     dokumen baru di-parse; back/bfcache tetap jalan karena stylesheet
-     sudah di memori. Lihat Chromium issue 348683476. -->
 <style>
-@view-transition { navigation: auto; }
+/* BUGFIX v1.19.1: aturan opt-in @view-transition ini SENGAJA inline di
+   sini (bukan di file eksternal src/css/view-transitions.css), dan
+   SENGAJA ditaruh sepaling-atas mungkin di <head>. Sebelumnya aturan ini
+   ada di dalam view-transitions.css yang posisi <link>-nya jauh di bawah
+   ~10 stylesheet lain — kalau file itu belum selesai di-fetch/parse pas
+   user buru-buru pindah halaman (terutama kunjungan pertama / cache
+   masih dingin), browser belum sempat "kenal" opt-in ini, jadi animasi
+   transisi halaman kadang dilewat begitu saja. Inline <style> dijamin
+   langsung tersedia tanpa nunggu network sama sekali, jadi animasinya
+   konsisten selalu jalan. Keyframes & style pseudo-element lain tetap di
+   view-transitions.css seperti biasa. */
+@view-transition {
+  navigation: auto;
+}
 </style>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content, minimum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Kelola Font — Catatan</title>
 
 <!-- ============ PWA: Manifest, Theme Color, App Icon, Splash Screen ============ -->
@@ -25,46 +33,12 @@
   // src/css/themes.css.
   (function () {
     var THEME_COLORS = { light: "#FFFFFF", dark: "#17181C", sepia: "#F4ECD8", paper: "#FBFAF5", oled: "#000000" };
-    var t = null;
     try {
-      t = localStorage.getItem("notes-app-theme");
+      var t = localStorage.getItem("notes-app-theme");
       if (t) document.documentElement.setAttribute("data-theme", t);
       var meta = document.querySelector('meta[name="theme-color"]');
       if (meta) meta.setAttribute("content", THEME_COLORS[t] || THEME_COLORS.light);
     } catch (e) {}
-    // System bars native sedini mungkin (sebelum module native-bridge jalan).
-    // Plugin Capacitor kadang belum inject di frame pertama cold start —
-    // poll singkat sampai siap, supaya warna bar langsung cocok tema
-    // (bukan nunggu refresh).
-    function applyNativeBars() {
-      try {
-        var Cap = window.Capacitor;
-        if (!Cap || !Cap.isNativePlatform || !Cap.isNativePlatform()) return false;
-        var id = document.documentElement.getAttribute("data-theme") || "light";
-        var color = THEME_COLORS[id] || THEME_COLORS.light;
-        var dark = id === "dark" || id === "oled";
-        var SB = Cap.Plugins && Cap.Plugins.StatusBar;
-        if (SB) {
-          if (SB.setOverlaysWebView) SB.setOverlaysWebView({ overlay: true });
-          if (SB.setBackgroundColor) SB.setBackgroundColor({ color: color });
-          if (SB.setStyle) SB.setStyle({ style: dark ? "DARK" : "LIGHT" });
-        }
-        var NB = Cap.Plugins && Cap.Plugins.NavigationBar;
-        if (NB && NB.setNavigationBarColor) {
-          NB.setNavigationBarColor({ color: color, darkButtons: !dark });
-        } else if (NB && NB.setColor) {
-          NB.setColor({ color: color });
-        }
-        return !!(SB || NB);
-      } catch (e) { return false; }
-    }
-    if (!applyNativeBars()) {
-      var n = 0;
-      var timer = setInterval(function () {
-        n++;
-        if (applyNativeBars() || n >= 60) clearInterval(timer);
-      }, 50);
-    }
   })();
 </script>
 <link rel="icon" href="/assets/icons/favicon.ico" sizes="any">
@@ -81,13 +55,13 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/src/css/variables.css">
 <link rel="stylesheet" href="/src/css/themes.css">
+<link rel="stylesheet" href="/src/css/view-transitions.css">
 <link rel="stylesheet" href="/src/css/base.css">
 <link rel="stylesheet" href="/src/css/typography.css">
 <link rel="stylesheet" href="/src/css/layout.css">
 <link rel="stylesheet" href="/src/css/notes-list.css">
 <link rel="stylesheet" href="/src/css/toolbar.css">
 <link rel="stylesheet" href="/src/css/animations.css">
-<link rel="stylesheet" href="/src/css/view-transitions.css">
 <link rel="stylesheet" href="/src/css/responsive.css">
 <link rel="stylesheet" href="/src/css/components.css">
 <link rel="stylesheet" href="/src/css/font-manager.css">
@@ -100,13 +74,13 @@
   <!-- ============ HEADER (Kelola Font) ============ -->
   <header class="home-header">
     <div style="display:flex; align-items:center; gap: var(--space-sm);">
-      <a href="/library" class="note-back-btn" aria-label="Kembali">
+      <a href="/library" class="note-back-btn" aria-label="Back" data-i18n-aria="nav.back">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <line x1="19" y1="12" x2="5" y2="12"></line>
           <polyline points="12 19 5 12 12 5"></polyline>
         </svg>
       </a>
-      <div class="home-greeting">Kelola Font</div>
+      <div class="home-greeting" data-i18n="fonts.title">Font Library</div>
     </div>
   </header>
 
@@ -120,9 +94,9 @@
 
     <section class="section">
       <div class="section-header">
-        <span class="section-title">Font Bawaan</span>
+        <span class="section-title" data-i18n="fonts.builtin">Built-in fonts</span>
       </div>
-      <p class="font-manager-hint">Selalu tersedia di editor, tidak perlu diunduh.</p>
+      <p class="font-manager-hint" data-i18n="fonts.builtin.desc">Always available in the editor, no download needed.</p>
       <div id="builtinFontList" class="font-manager-list"></div>
     </section>
 
@@ -151,7 +125,7 @@
       <div class="section-header">
         <span class="section-title">Font Library</span>
       </div>
-      <p class="font-manager-hint">Unduh font tambahan untuk dipakai di editor. Sekali diunduh, font tetap tersimpan di perangkat ini walau offline.</p>
+      <p class="font-manager-hint" data-i18n="fonts.library.desc">Download extra fonts for the editor. Once downloaded, fonts stay on this device offline.</p>
       <div id="libraryFontList" class="font-manager-list" hidden></div>
       <div id="libraryFontPagination" class="font-manager-pagination" hidden></div>
     </section>
@@ -164,8 +138,8 @@
         <line x1="34" y1="58" x2="62" y2="58"></line>
         <line x1="34" y1="68" x2="50" y2="68"></line>
       </svg>
-      <div class="empty-state__title">Font Library masih kosong</div>
-      <p class="empty-state__desc">Belum ada font tambahan yang bisa diunduh. Tambahkan lewat assets/fonts/library/manifest.json.</p>
+      <div class="empty-state__title" data-i18n="fonts.library.empty">Font Library is empty</div>
+      <p class="empty-state__desc" data-i18n="fonts.library.empty.desc">No extra fonts available to download yet.</p>
     </div>
 
     <!-- ============ FONT KUSTOM (UNGGAH) ============
@@ -176,24 +150,24 @@
          font-manager.js. -->
     <section class="section">
       <div class="section-header">
-        <span class="section-title">Font Kustom (Unggah)</span>
+        <span class="section-title" data-i18n="fonts.custom">Custom fonts (upload)</span>
       </div>
-      <p class="font-manager-hint">Unggah berkas font sendiri (.ttf, .otf, .woff, .woff2) dari perangkat ini untuk dipakai di editor.</p>
+      <p class="font-manager-hint" data-i18n="fonts.custom.hint">Upload your own font files (.ttf, .otf, .woff, .woff2) from this device to use in the editor.</p>
 
       <button type="button" id="btnUploadFont" class="font-manager-upload-btn">
         <span class="font-manager-upload-btn__icon">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V9"/><path d="M7 14l5-5 5 5"/><path d="M4 5h16"/></svg>
         </span>
         <span class="font-manager-upload-btn__text">
-          <span class="font-manager-upload-btn__title">Unggah Font</span>
-          <span class="font-manager-upload-btn__desc">Pilih satu atau beberapa berkas .ttf/.otf/.woff/.woff2</span>
+          <span class="font-manager-upload-btn__title" data-i18n="fonts.upload">Upload font</span>
+          <span class="font-manager-upload-btn__desc" data-i18n="fonts.upload.hint">Choose one or more .ttf/.otf/.woff/.woff2 files</span>
         </span>
       </button>
       <input type="file" id="uploadFontInput" accept=".ttf,.otf,.woff,.woff2" multiple hidden>
 
       <div id="uploadedFontList" class="font-manager-list" hidden></div>
       <div id="uploadedFontPagination" class="font-manager-pagination" hidden></div>
-      <p id="uploadedFontEmpty" class="font-manager-hint">Belum ada font yang diunggah.</p>
+      <p id="uploadedFontEmpty" class="font-manager-hint" data-i18n="fonts.upload.empty">No fonts uploaded yet.</p>
     </section>
 
   </main>
@@ -204,8 +178,6 @@
 
 <!-- ============ PWA: Service Worker (mode offline) ============ -->
 <script type="module" src="/src/js/pwa/sw-register.js"></script>
-<script type="module" src="/src/js/pwa/native-bridge.js"></script>
-<script type="module" src="/src/js/utils/view-transition-nav.js"></script>
 <script type="module" src="/src/js/pwa/install-prompt.js"></script>
 <script type="module" src="/src/js/utils/native-feel.js"></script>
 

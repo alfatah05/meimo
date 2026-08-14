@@ -19,17 +19,16 @@
  * viewport resize/scroll (mis. keyboard buka/tutup, halaman digeser
  * browser, dsb).
  *
- * Topbar di-pin ke tepi ATAS visual viewport. Block-selection-bar (bottom
- * bar yang muncul saat ada seleksi teks / mode Select Block) di-pin ke
- * tepi BAWAH visual viewport — supaya naik di atas keyboard mobile saat
- * keyboard terbuka, bukan tetap tertanam di bottom:0 layout viewport
- * (yang sering ketutup keyboard di Android/Capacitor edge-to-edge).
+ * Karena topbar sekarang selalu di ATAS (bukan lagi dua elemen terpisah
+ * dengan toolbar mengambang dekat keyboard di bawah), modul ini jauh
+ * lebih sederhana dari versi sebelumnya — tidak ada lagi logic "dock ke
+ * keyboard" untuk toolbar.
  *
  * Kalau browser tidak dukung visualViewport (sangat jarang), modul ini
  * langsung berhenti dan CSS fallback (posisi fixed statis) yang dipakai.
  */
 
-import { closeActivePanel } from "./dom.js";
+import { closeAllPanels } from "./dom.js";
 
 const KEYBOARD_THRESHOLD_PX = 120; // di bawah ini dianggap bukan keyboard (mis. cuma toolbar Safari)
 // Topbar sekarang NEMPEL ke tepi (bukan mengambang dengan jarak lagi),
@@ -96,12 +95,9 @@ function setAppHeightVar() {
   document.documentElement.style.setProperty("--app-height", `${window.innerHeight}px`);
 }
 
-function init() {
+export function init() {
   const vv = window.visualViewport;
   const topbar = document.querySelector(".note-topbar");
-  // Bottom bar seleksi teks — opsional (cuma ada di editor). Kalau tidak
-  // ada, logic pin bawah di bawah cukup no-op.
-  const selectionBar = document.querySelector(".block-selection-bar");
 
   setAppHeightVar();
   window.addEventListener("resize", setAppHeightVar);
@@ -116,19 +112,6 @@ function init() {
   const insets = measureSafeAreaInsets();
   let wasKeyboardOpen = false;
   let rafId = null;
-  // Tinggi keyboard dari plugin native Capacitor. Di Android (terutama
-  // edge-to-edge / API 35+), visualViewport SERING TIDAK mengecil saat
-  // IME muncul — keyboardInset dari VV jadi ~0 dan bottom bar / FAB
-  // outline tetap ketutup keyboard. Plugin Keyboard melaporkan tinggi
-  // sungguhan lewat event will/did show.
-  let nativeKeyboardHeight = 0;
-  // Baseline tinggi layout saat keyboard TUTUP. Kalau window.innerHeight
-  // menyusut signifikan saat IME terbuka, berarti WebView/body sudah di-
-  // resize (adjustResize) — elemen position:fixed; bottom:0 sudah berada
-  // di atas keyboard. Menambah nativeKeyboardHeight lagi = dobel tinggi
-  // (bar "melayang" di tengah layar). Hanya angkat fixed elements saat
-  // layout TIDAK menyusut (mode overlay / resize none).
-  let baselineInnerHeight = window.innerHeight;
 
   // Nilai px terakhir yang benar-benar ditulis ke DOM. `visualViewport`
   // sering fire event `scroll`/`resize` berkali-kali per detik walau
@@ -153,38 +136,16 @@ function init() {
     const offsetTop = vv.offsetTop;   // seberapa jauh visual viewport turun dari layout viewport
     const offsetLeft = vv.offsetLeft; // dukungan pinch-zoom horizontal
 
-    // vvInset: selisih layout vs visual viewport (andal di iOS / browser).
-    const vvInset = Math.max(0, window.innerHeight - vv.height - offsetTop);
-
-    // Apakah layout viewport sudah mengecil karena keyboard?
-    // (adjustResize / Keyboard.resize body|native). Kalau ya, fixed bottom:0
-    // sudah di atas IME — JANGAN tambah offset lagi.
-    const layoutShrink = Math.max(0, baselineInnerHeight - window.innerHeight);
-    const layoutAlreadyInset = layoutShrink > KEYBOARD_THRESHOLD_PX;
-
-    // Tinggi IME "mentah" dari sumber mana pun (untuk deteksi buka/tutup
-    // & padding konten). Untuk MENGGESER elemen fixed, pakai liftInset
-    // yang 0 kalau layout sudah inset (hindari dobel).
-    const rawKeyboardInset = Math.max(vvInset, nativeKeyboardHeight, layoutShrink);
-    const keyboardOpen = rawKeyboardInset > KEYBOARD_THRESHOLD_PX;
-    const keyboardInset = layoutAlreadyInset ? 0 : Math.max(vvInset, nativeKeyboardHeight);
+    const keyboardInset = Math.max(0, window.innerHeight - vv.height - offsetTop);
+    const keyboardOpen = keyboardInset > KEYBOARD_THRESHOLD_PX;
 
     if (keyboardOpen !== wasKeyboardOpen) {
-      // Hanya tutup dropdown mengambang (Heading/Font Size/dll lewat
-      // openPanel) yang koordinat fixed-nya bisa nyangkut saat viewport
-      // berubah. JANGAN tutup:
-      //  - child group lv2 (Text/Style/List/…)
-      //  - color bar / font-family bar (nempel di topbar)
-      // Font-family bar sering terbuka SELAGI keyboard aktif; ganti tab
-      // Favorit/Impor bisa bikin Android sebentar fire keyboard hide/show
-      // — kalau closeTransientPickers() ikut jalan, menu + keyboard tutup
-      // mendadak padahal user cuma ganti tab.
-      closeActivePanel();
+      // Trigger dropdown toolbar (mis. Heading/Font Size) akan berpindah
+      // posisi drastis saat topbar/keyboard berubah — tutup panel yang
+      // terbuka biar tidak nyangkut di posisi lama.
+      closeAllPanels();
       document.body.classList.toggle("is-keyboard-open", keyboardOpen);
       if (keyboardOpen) topbar.classList.remove("is-hidden"); // butuh toolbar saat lagi ngetik
-      // Saat keyboard baru tutup, catat ulang tinggi layout penuh supaya
-      // deteksi layoutAlreadyInset di frame berikutnya akurat.
-      if (!keyboardOpen) baselineInnerHeight = window.innerHeight;
       wasKeyboardOpen = keyboardOpen;
     }
 
@@ -208,29 +169,9 @@ function init() {
     // di bawah, jadi tidak perlu ngukur tinggi toolbar tiap frame). ---
     const topbarHeight = topbar.getBoundingClientRect().height;
     const headerSpace = topbarTop + topbarHeight + CONTENT_GAP_PX;
-
-    // Padding bawah konten + acuan posisi FAB outline.
-    // Gap tepi FAB = --space-lg (24px) — SAMA dengan `right` di outline.css
-    // supaya jarak FAB→kanan layar, FAB→atas keyboard, dan FAB→atas bottom
-    // bar (via translate = tinggi bar saja) konsisten.
-    // PENTING saat keyboard terbuka: JANGAN tambah insets.bottom (nav bar
-    // HP sudah hilang di balik IME).
-    const FAB_EDGE_GAP_PX = 24; // = --space-lg
-    let footerSpace;
-    let fabBottom;
-    if (!keyboardOpen) {
-      footerSpace = insets.bottom + FOOTER_CONTENT_GAP_PX;
-      // FAB di atas nav bar / safe-area, gap = space-lg
-      fabBottom = insets.bottom + FAB_EDGE_GAP_PX;
-    } else if (keyboardInset > 0) {
-      // Overlay: FAB di atas IME, gap = space-lg
-      footerSpace = keyboardInset + KEYBOARD_CONTENT_GAP_PX;
-      fabBottom = keyboardInset + FAB_EDGE_GAP_PX;
-    } else {
-      // Layout sudah di-resize: tepi bawah WebView = tepi atas IME
-      footerSpace = KEYBOARD_CONTENT_GAP_PX;
-      fabBottom = FAB_EDGE_GAP_PX;
-    }
+    const footerSpace = keyboardOpen
+      ? keyboardInset + KEYBOARD_CONTENT_GAP_PX
+      : insets.bottom + FOOTER_CONTENT_GAP_PX;
 
     setPxIfChanged(
       "--editor-header-space",
@@ -242,37 +183,6 @@ function init() {
       (v) => document.documentElement.style.setProperty("--editor-footer-space", v),
       footerSpace
     );
-    setPxIfChanged(
-      "--outline-fab-bottom",
-      (v) => document.documentElement.style.setProperty("--outline-fab-bottom", v),
-      fabBottom
-    );
-    setPxIfChanged(
-      "--keyboard-inset",
-      (v) => document.documentElement.style.setProperty("--keyboard-inset", v),
-      keyboardOpen ? keyboardInset : 0
-    );
-
-    // --- Block selection bar: angkat di atas keyboard.
-    // bottom = keyboardInset. Tinggi bar diukur → --block-selection-bar-lift
-    // supaya FAB naik tepat setinggi bar (gap ke bar = FAB_EDGE_GAP, sama
-    // dengan jarak ke kanan layar — jangan dijumlahkan lagi di CSS).
-    if (selectionBar) {
-      setPxIfChanged(
-        "selectionBar.bottom",
-        (v) => (selectionBar.style.bottom = v),
-        keyboardOpen ? keyboardInset : 0
-      );
-      const barOpen =
-        selectionBar.classList.contains("is-open") ||
-        document.body.classList.contains("is-block-selection-bar-open");
-      const barLift = barOpen ? selectionBar.offsetHeight : 0;
-      setPxIfChanged(
-        "--block-selection-bar-lift",
-        (v) => document.documentElement.style.setProperty("--block-selection-bar-lift", v),
-        barLift
-      );
-    }
   }
 
   function scheduleUpdate() {
@@ -284,52 +194,21 @@ function init() {
   vv.addEventListener("scroll", scheduleUpdate);
   window.addEventListener("orientationchange", scheduleUpdate);
 
-  // Capacitor Keyboard plugin: sumber utama tinggi keyboard di Android.
-  // visualViewport di WebView Android edge-to-edge sering TIDAK berubah
-  // saat IME muncul, jadi tanpa angka dari plugin, bottom bar & FAB
-  // outline tetap di bottom:0 dan ketutup keyboard.
-  const CapKeyboard = window.Capacitor?.Plugins?.Keyboard;
-  if (CapKeyboard?.addListener) {
-    const onShow = (info) => {
-      const h = Number(info?.keyboardHeight) || 0;
-      if (h > 0) nativeKeyboardHeight = h;
-      scheduleUpdate();
-    };
-    const onHide = () => {
-      nativeKeyboardHeight = 0;
-      // Tunda baseline sampai layout sempat kembali penuh.
-      requestAnimationFrame(() => {
-        baselineInnerHeight = window.innerHeight;
-        scheduleUpdate();
-      });
-    };
-    CapKeyboard.addListener("keyboardWillShow", onShow);
-    CapKeyboard.addListener("keyboardDidShow", onShow);
-    CapKeyboard.addListener("keyboardWillHide", onHide);
-    CapKeyboard.addListener("keyboardDidHide", onHide);
-  }
-
   // Tinggi topbar (jarang berubah, tapi bisa mis. karena wrap di layar
   // sangat sempit) ikut mempengaruhi header-space; pastikan tetap
   // ter-reposisi kalau ukurannya berubah.
   if (window.ResizeObserver) {
     const ro = new ResizeObserver(scheduleUpdate);
     ro.observe(topbar);
-    if (selectionBar) ro.observe(selectionBar);
-  }
-
-  // Bar buka/tutup (class is-open) harus hitung ulang lift FAB.
-  if (selectionBar && window.MutationObserver) {
-    const mo = new MutationObserver(scheduleUpdate);
-    mo.observe(selectionBar, { attributes: true, attributeFilter: ["class"] });
-    mo.observe(document.body, { attributes: true, attributeFilter: ["class"] });
   }
 
   computeAndApply();
 }
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", init);
-} else {
-  init();
+if (!window.__MEIMO_SPA__) {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
 }

@@ -241,7 +241,9 @@
 // logic-nya di backup-import.js, style .export-card* di backup-import.css)
 // — ekspor satu catatan sekarang bisa langsung dari note card di mana pun
 // tampil, tidak perlu lagi buka halaman Cadangkan & Impor dulu.
-const CACHE_VERSION = "v78";
+// v79 -> v80: v1.19.2 — fix orb loading AI (denyut icon vs gelombang gak
+// simetris) & auto-scroll ngikutin teks yang lagi diketik AI.
+const CACHE_VERSION = "v146"; // v1.23.51 virtual rulers wide range
 const APP_SHELL_CACHE = `meimo-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `meimo-runtime-${CACHE_VERSION}`;
 const FONT_CACHE = `meimo-fonts-${CACHE_VERSION}`;
@@ -252,12 +254,16 @@ const OFFLINE_FALLBACK_PAGE = "/index.html";
 const APP_SHELL_FILES = [
   "/index.html",
   "/editor.html",
+  "/src/js/spa-app.js",
+  "/src/js/router.js",
   "/trash.html",
   "/arsip.html",
   "/font-manager.html",
   "/cadangkan.html",
   "/card-style.html",
   "/about.html",
+  "/privacy-policy.html",
+  "/settings.html",
   "/manifest.json",
 
   "/src/css/variables.css",
@@ -278,12 +284,15 @@ const APP_SHELL_FILES = [
   "/src/css/block-selection-bar.css",
   "/src/css/block-select-mode.css",
   "/src/css/card-style.css",
+  "/src/css/settings.css",
   "/src/css/about.css",
   "/src/css/scene.css",
   "/src/css/scene-sheet.css",
   "/src/css/music.css",
   "/src/css/view-transitions.css",
   "/src/css/skeleton.css",
+  "/src/css/ai-sheet.css",
+  "/src/css/voice-record-sheet.css",
 
   "/src/js/app.js",
   "/src/js/router.js",
@@ -307,6 +316,9 @@ const APP_SHELL_FILES = [
   "/src/js/editor/image-clip-shapes.js",
   "/src/js/editor/scene-edges.js",
   "/src/js/editor/title-style.js",
+  "/src/js/editor/ai-sheet.js",
+  "/src/js/editor/voice-record-sheet.js",
+  "/src/js/editor/scroll-bottom-fab.js",
 
   "/src/js/notes/note-card.js",
   "/src/js/notes/notes-list.js",
@@ -323,11 +335,17 @@ const APP_SHELL_FILES = [
   "/src/js/notes/card-edge-outline.js",
 
   "/src/js/fonts/font-manager.js",
+  "/src/js/settings/settings.js",
+  "/src/js/settings/ai-features.js",
+  "/src/js/i18n/i18n.js",
+  "/src/js/i18n/locales.js",
+  "/fitur-ai.html",
+  "/src/js/services/settings-service.js",
+  "/src/js/db/settings-repository.js",
 
   "/src/js/pwa/install-prompt.js",
   "/src/js/pwa/sw-register.js",
   "/src/js/pwa/factory-reset.js",
-  "/src/js/pwa/native-bridge.js",
 
   "/src/js/services/backup-service.js",
   "/src/js/services/backup-restore.js",
@@ -379,6 +397,13 @@ const APP_SHELL_FILES = [
   "/assets/icons/icon-512-maskable.png",
   "/assets/icons/apple-touch-icon.png",
   "/assets/splash/splash-screen.png",
+  "/assets/images/image1.png",
+  "/assets/images/image2.png",
+  "/assets/images/image3.png",
+  "/assets/images/image4.png",
+  "/assets/images/image5.png",
+  "/assets/images/image6.png",
+  "/assets/images/image7.png",
   "/assets/default-notes/Welcome_to_Meimo.meimo",
 ];
 
@@ -414,6 +439,7 @@ self.addEventListener("install", (event) => {
       const cache = await caches.open(APP_SHELL_CACHE);
       // addAll gagal total kalau satu saja 404 — dipecah per-file supaya
       // satu aset hilang tidak menggagalkan seluruh instalasi SW.
+      const runtimeCache = await caches.open(RUNTIME_CACHE);
       await Promise.all(
         APP_SHELL_FILES.map(async (url) => {
           try {
@@ -423,7 +449,13 @@ self.addEventListener("install", (event) => {
             // beberapa url di APP_SHELL_FILES sekarang di-redirect oleh
             // .htaccess ke bentuk cantiknya, jadi wajib dibersihkan dulu
             // sebelum disimpan ke cache.
-            await cache.put(url, await stripRedirectMeta(res));
+            const clean = await stripRedirectMeta(res);
+            await cache.put(url, clean.clone());
+            // Duplikasi ke RUNTIME_CACHE supaya fetch JS/CSS offline
+            // langsung hit tanpa harus fallback ke shell cache.
+            try {
+              await runtimeCache.put(url, clean);
+            } catch (_) {}
           } catch (_) {
             // Offline saat install (jarang terjadi) — file akan tercache
             // belakangan lewat runtime caching saat berhasil diakses.
@@ -461,7 +493,29 @@ function isGoogleFont(url) {
 /** Cache-first, lalu perbarui cache di background (stale-while-revalidate). */
 async function cacheFirst(request, cacheName) {
   const cache = await caches.open(cacheName);
-  const cached = await cache.match(request);
+  let cached = await cache.match(request);
+
+  // BUGFIX SPA offline: precache install menyimpan file ke APP_SHELL_CACHE,
+  // sementara fetch JS/CSS runtime memakai RUNTIME_CACHE. Kalau file belum
+  // pernah di-fetch online setelah install, RUNTIME_CACHE kosong → offline
+  // gagal meski file ada di shell cache. Cek APP_SHELL_CACHE sebagai
+  // fallback (match Request penuh lalu pathname saja).
+  if (!cached && cacheName !== APP_SHELL_CACHE) {
+    try {
+      const shell = await caches.open(APP_SHELL_CACHE);
+      cached = await shell.match(request);
+      if (!cached) {
+        const path = new URL(request.url).pathname;
+        cached = await shell.match(path);
+      }
+      // Salin ke runtime cache supaya hit berikutnya lebih cepat.
+      if (cached) {
+        try {
+          await cache.put(request, cached.clone());
+        } catch (_) {}
+      }
+    } catch (_) {}
+  }
 
   const networkFetch = fetch(request)
     .then((res) => {
@@ -506,12 +560,16 @@ function resolveShellPath(pathname) {
   // default "/index.html" paling bawah — persis kayak /card-style di v29 &
   // /cadangkan di v34, tapi kali ini pemicunya bare path, bukan pola baru.
   // Fix: tambah pengecekan "=== \"/editor\"" dkk di tiap kondisi.
+  // SPA v1.22.0: /editor & /editor/<id> sekarang dilayani oleh shell SPA
+  // (index.html) supaya client-side router + same-document View Transitions
+  // bisa jalan tanpa full page reload. editor.html tetap di precache sebagai
+  // fallback multi-page / deep-link lama.
   if (
     pathname === "/editor" ||
     pathname === "/editor.html" ||
     pathname.startsWith("/editor/")
   ) {
-    return "/editor.html";
+    return "/index.html";
   }
   // BUGFIX v29: sebelumnya pola /card-style/<id> tidak dicek sama sekali di
   // sini, jadi jatuh ke default "/index.html" di baris paling bawah — itu
@@ -519,29 +577,33 @@ function resolveShellPath(pathname) {
   // dibuka (yang tersaji malah daftar catatan, bukan card-style.html).
   // (/card-style sendiri tidak punya bentuk bare di htaccess — selalu
   // /card-style/<id> — jadi tidak butuh pengecekan bare di sini.)
-  if (pathname === "/card-style.html" || pathname.startsWith("/card-style/")) {
-    return "/card-style.html";
+  if (
+    pathname === "/card-style" ||
+    pathname === "/card-style.html" ||
+    pathname.startsWith("/card-style/")
+  ) {
+    return "/index.html"; // SPA shell
   }
   if (
     pathname === "/trash" ||
     pathname === "/trash.html" ||
     pathname.startsWith("/trash/")
   ) {
-    return "/trash.html";
+    return "/index.html"; // SPA shell
   }
   if (
     pathname === "/arsip" ||
     pathname === "/arsip.html" ||
     pathname.startsWith("/arsip/")
   ) {
-    return "/arsip.html";
+    return "/index.html"; // SPA shell
   }
   if (
     pathname === "/font-manager" ||
     pathname === "/font-manager.html" ||
     pathname.startsWith("/font-manager/")
   ) {
-    return "/font-manager.html";
+    return "/index.html"; // SPA shell
   }
   // BUGFIX v33 -> v34: pola /cadangkan (URL cantik halaman Cadangkan &
   // Impor) belum pernah dikenali di sini sama sekali, jadi selalu jatuh ke
@@ -556,7 +618,21 @@ function resolveShellPath(pathname) {
     pathname === "/cadangkan.html" ||
     pathname.startsWith("/cadangkan/")
   ) {
-    return "/cadangkan.html";
+    return "/index.html"; // SPA shell
+  }
+  if (
+    pathname === "/settings" ||
+    pathname === "/settings.html" ||
+    pathname.startsWith("/settings/")
+  ) {
+    return "/index.html"; // SPA shell
+  }
+  if (
+    pathname === "/fitur-ai" ||
+    pathname === "/fitur-ai.html" ||
+    pathname.startsWith("/fitur-ai/")
+  ) {
+    return "/index.html"; // SPA shell
   }
   if (
     pathname === "/about" ||
@@ -564,6 +640,13 @@ function resolveShellPath(pathname) {
     pathname.startsWith("/about/")
   ) {
     return "/about.html";
+  }
+  if (
+    pathname === "/privacy-policy" ||
+    pathname === "/privacy-policy.html" ||
+    pathname.startsWith("/privacy-policy/")
+  ) {
+    return "/privacy-policy.html";
   }
   // BUGFIX v36 -> v37: /Download (URL cantik halaman instalasi PWA, lihat
   // htaccess rule 3c) SENGAJA tidak dimasukkan ke APP_SHELL_FILES/precache

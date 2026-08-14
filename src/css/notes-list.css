@@ -163,15 +163,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-text-secondary);
-  transition: background-color var(--duration-fast) var(--ease-out),
-              color var(--duration-fast) var(--ease-out);
+  background-color: rgba(0, 0, 0, 0.2);
+  color: #ffffff;
+  transition: background-color var(--duration-fast) var(--ease-out);
 }
 
 .pinned-card__menu-btn:hover,
 .pinned-card__menu-btn.is-open {
-  background-color: var(--color-accent-soft);
-  color: var(--color-text-primary);
+  background-color: rgba(0, 0, 0, 0.28);
+  color: #ffffff;
 }
 
 .pinned-card__menu-btn svg {
@@ -356,4 +356,11 @@
   color: var(--color-text-secondary);
   max-width: 320px;
   line-height: var(--leading-snug);
+}
+
+
+/* Sembunyikan cuplikan isi saat cardStyle.hideSnippet aktif */
+.note-card--hide-snippet .note-card__snippet,
+.pinned-card--hide-snippet .pinned-card__snippet {
+  display: none;
 }

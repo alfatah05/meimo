@@ -13,16 +13,19 @@
 
 import { createEl, openPanel, closeTransientPickers } from "../../utils/dom.js";
 import { setLineHeight } from "../../editor/commands.js";
+import { t } from "../../i18n/i18n.js";
 
-const OPTIONS = [
-  { value: 1, label: "Rapat" },
-  { value: 1.15, label: "Ringkas" },
-  { value: 1.5, label: "Sedang" },
-  { value: null, label: "Normal (bawaan)" },
-  { value: 2, label: "Lebar" },
-  { value: 2.5, label: "Lebih Lebar" },
-  { value: 3, label: "Ganda" },
-];
+function getOptions() {
+  return [
+    { value: 1, labelKey: "lineHeight.tight" },
+    { value: 1.15, labelKey: "lineHeight.snug" },
+    { value: 1.5, labelKey: "lineHeight.relaxed" },
+    { value: null, labelKey: "lineHeight.normal" },
+    { value: 2, labelKey: "lineHeight.loose" },
+    { value: 2.5, labelKey: "lineHeight.looser" },
+    { value: 3, labelKey: "lineHeight.double" },
+  ];
+}
 
 export function initLineHeightDropdown(button, editor) {
   let currentValue = null;
@@ -38,11 +41,11 @@ export function initLineHeightDropdown(button, editor) {
   button.addEventListener("click", () => {
     const panel = createEl("div", { className: "toolbar-panel__list" });
     renderedItems = [];
-    for (const opt of OPTIONS) {
+    for (const opt of getOptions()) {
       const item = createEl("button", {
         className: "toolbar-panel__item",
         attrs: { type: "button" },
-        text: opt.value ? `${opt.label} (${opt.value})` : opt.label,
+        text: opt.value != null ? `${t(opt.labelKey)} (${opt.value})` : t(opt.labelKey),
       });
       item.addEventListener("click", () => {
         editor.runCommand(setLineHeight, opt.value);

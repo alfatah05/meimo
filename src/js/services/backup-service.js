@@ -27,7 +27,6 @@
 import * as documentService from "./document-service.js";
 import { buildMeimoZipBytes, safeFileNameFromTitle } from "./meimo-export.js";
 import { buildZipBlob } from "../utils/zip-writer.js";
-import { saveOrShareBlob } from "../pwa/native-bridge.js";
 
 // Versi format file cadangan-semua-catatan ITU SENDIRI (struktur zip
 // terluarnya: daftar entry `*.meimo` + `backup-manifest.json`) — BEDA dari
@@ -65,18 +64,15 @@ function uniqueZipEntryName(baseName, usedNames) {
   return candidate;
 }
 
-// BUGFIX (dukungan app native Capacitor): <a download> ke blob: URL tidak
-// berfungsi di WebView Android (tidak ada UI unduhan bawaan seperti
-// browser). saveOrShareBlob() di native-bridge.js otomatis pakai jalur
-// yang benar tergantung konteksnya — anchor+blob URL lama di web/PWA,
-// atau tulis-ke-cache + lembar "Bagikan" native kalau di app native.
-async function triggerBlobDownload(blob, fileName) {
-  try {
-    await saveOrShareBlob(blob, fileName);
-  } catch (err) {
-    console.error("Gagal menyimpan/membagikan file cadangan:", err);
-    throw err;
-  }
+function triggerBlobDownload(blob, fileName) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 /**
@@ -118,7 +114,7 @@ export async function exportAllNotes() {
   const zipBlob = buildZipBlob([{ name: "backup-manifest.json", data: manifestBytes }, ...zipEntries], "application/zip");
 
   const dateStr = new Date().toISOString().slice(0, 10);
-  await triggerBlobDownload(zipBlob, `catatan-cadangan-${dateStr}.zip`);
+  triggerBlobDownload(zipBlob, `catatan-cadangan-${dateStr}.zip`);
 
   return { noteCount: notes.length, assetCount: totalAssetCount };
 }

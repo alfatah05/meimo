@@ -6,13 +6,20 @@
  * tetap konsisten dipakai ulang saat app dibuka lagi.
  */
 
+import { t } from "../i18n/i18n.js";
+
 export const SORT_STORAGE_KEY = "meimo-notes-sort";
 
 export const SORT_OPTIONS = [
-  { id: "updatedAt", label: "Terakhir diubah" },
-  { id: "createdAtAsc", label: "Pertama dibuat" },
-  { id: "createdAtDesc", label: "Terakhir dibuat" },
+  { id: "updatedAt", labelKey: "home.sort.updatedAt" },
+  { id: "createdAtAsc", labelKey: "home.sort.createdAtAsc" },
+  { id: "createdAtDesc", labelKey: "home.sort.createdAtDesc" },
 ];
+
+export function sortOptionLabel(opt) {
+  return t(opt.labelKey || opt.label || opt.id);
+}
+
 
 const DEFAULT_SORT = "updatedAt";
 

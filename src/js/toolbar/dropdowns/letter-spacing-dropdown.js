@@ -7,13 +7,16 @@
 
 import { createEl, openPanel, closeTransientPickers } from "../../utils/dom.js";
 import { setLetterSpacing } from "../../editor/commands.js";
+import { t } from "../../i18n/i18n.js";
 
-const OPTIONS = [
-  { value: -0.5, label: "Rapat" },
-  { value: 0, label: "Normal" },
-  { value: 1, label: "Lebar" },
-  { value: 2, label: "Lebih Lebar" },
-];
+function getOptions() {
+  return [
+    { value: -0.5, labelKey: "letterSpacing.tight" },
+    { value: 0, labelKey: "letterSpacing.normal" },
+    { value: 1, labelKey: "letterSpacing.wide" },
+    { value: 2, labelKey: "letterSpacing.wider" },
+  ];
+}
 
 export function initLetterSpacingDropdown(button, editor) {
   let currentValue = null;
@@ -29,11 +32,11 @@ export function initLetterSpacingDropdown(button, editor) {
   button.addEventListener("click", () => {
     const panel = createEl("div", { className: "toolbar-panel__list" });
     renderedItems = [];
-    for (const opt of OPTIONS) {
+    for (const opt of getOptions()) {
       const item = createEl("button", {
         className: "toolbar-panel__item",
         attrs: { type: "button" },
-        text: `${opt.label} (${opt.value}px)`,
+        text: `${t(opt.labelKey)} (${opt.value}px)`,
       });
       item.addEventListener("click", () => {
         if (document.activeElement === editor.titleEl) {

@@ -1,0 +1,200 @@
+/* ==========================================================================
+   voice-record-sheet.css
+   Bottom sheet indikator perekaman suara + real-time transcription.
+   Reuse pola overlay + .image-sheet dari image-sheet.css.
+   ========================================================================== */
+
+.voice-record-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  background: transparent;
+  pointer-events: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.voice-record-sheet {
+  pointer-events: auto;
+  width: 100%;
+  max-width: 480px;
+  max-height: 42vh;
+  overflow-y: auto;
+  background-color: var(--color-bg);
+  border-top: 1px solid var(--color-border);
+  border-radius: 0;
+  padding: var(--space-md) var(--space-md) calc(var(--space-md) + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -2px 10px rgba(var(--shadow-color), 0.08);
+  transform: translateY(100%);
+  transition: transform var(--duration-base) var(--ease-standard);
+  scrollbar-width: thin;
+}
+
+.voice-record-overlay.is-open .voice-record-sheet {
+  transform: translateY(0);
+}
+
+.voice-record-sheet__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.voice-record-sheet__indicator {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.voice-record-sheet__dot {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: #e53935;
+  transition: background 0.2s ease;
+}
+
+.voice-record-sheet__pulse {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid #e53935;
+  opacity: 0;
+  animation: voiceRecordPulse 1.4s ease-out infinite;
+}
+
+.voice-record-sheet.is-paused .voice-record-sheet__dot {
+  background: var(--color-text-secondary);
+}
+
+.voice-record-sheet.is-paused .voice-record-sheet__pulse {
+  animation: none;
+  opacity: 0;
+}
+
+@keyframes voiceRecordPulse {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.7;
+  }
+  70% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+.voice-record-sheet__title-group {
+  flex: 1;
+  min-width: 0;
+}
+
+.voice-record-sheet__title {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-primary);
+  line-height: 1.3;
+}
+
+.voice-record-sheet__status {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+.voice-record-sheet__timer {
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-primary);
+  letter-spacing: 0.02em;
+}
+
+.voice-record-sheet__preview {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.45;
+  min-height: 2.9em;
+  max-height: 5.8em;
+  overflow-y: auto;
+  margin-bottom: var(--space-md);
+  padding: var(--space-xs) 0;
+  word-break: break-word;
+}
+
+.voice-record-sheet__preview:empty::before {
+  content: "Mulai berbicara…";
+  color: var(--color-text-tertiary, var(--color-text-secondary));
+  opacity: 0.7;
+  font-style: italic;
+}
+
+.voice-record-sheet__preview.has-text {
+  color: var(--color-text-primary);
+}
+
+.voice-record-sheet__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  justify-content: flex-end;
+}
+
+.voice-record-sheet__btn {
+  appearance: none;
+  border: none;
+  border-radius: var(--radius-md, 8px);
+  padding: 10px 16px;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease, transform 0.1s ease;
+}
+
+.voice-record-sheet__btn:active {
+  transform: scale(0.97);
+}
+
+.voice-record-sheet__btn--ghost {
+  background: transparent;
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+}
+
+.voice-record-sheet__btn--ghost:hover {
+  background: var(--color-surface-hover, rgba(0, 0, 0, 0.04));
+}
+
+.voice-record-sheet__btn--primary {
+  background: #e53935;
+  color: #fff;
+}
+
+.voice-record-sheet__btn--primary:hover {
+  background: #c62828;
+}
+
+.voice-record-sheet.is-paused .voice-record-sheet__btn--primary {
+  background: var(--color-accent, #4a55c7);
+}
+
+.voice-record-sheet.is-paused .voice-record-sheet__btn--primary:hover {
+  filter: brightness(0.92);
+}
+
+.voice-record-sheet__error {
+  font-size: var(--text-xs);
+  color: #e53935;
+  margin-bottom: var(--space-sm);
+  display: none;
+}
+
+.voice-record-sheet__error.is-visible {
+  display: block;
+}

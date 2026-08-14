@@ -20,7 +20,14 @@
 import { createEditorState } from "./editor/editor-state.js";
 import { createEditor } from "./editor/editor.js";
 import { initOutline } from "./editor/outline.js";
+import { initScrollBottomFab } from "./editor/scroll-bottom-fab.js";
+import { initAiSheet } from "./editor/ai-sheet.js";
 import { initBlockSelectionBar } from "./editor/block-selection-bar.js";
+import {
+  openVoiceRecordSheet,
+  shouldAutoOpenVoiceRecord,
+  clearVoiceQueryFromUrl,
+} from "./editor/voice-record-sheet.js";
 import { initToolbar } from "./toolbar/toolbar.js";
 import * as documentService from "./services/document-service.js";
 import { ensureInstalledFontsLoaded } from "./services/font-service.js";
@@ -55,6 +62,16 @@ function setNoteIdInUrl(id) {
   url.pathname = `/editor/${encodeURIComponent(id)}`;
   url.search = "";
   window.history.replaceState({}, "", url);
+  // SPA: samakan currentRoute router dengan URL baru supaya popstate dari
+  // penutupan bottom sheet (history.back guard) tidak terlihat seperti
+  // pindah note (id null → uuid) lalu memicu remount/reload editor.
+  if (window.__MEIMO_SPA__) {
+    import("./router.js")
+      .then((r) => {
+        if (r && typeof r.syncRoute === "function") r.syncRoute();
+      })
+      .catch(() => {});
+  }
 }
 
 // Durasi minimum skeleton (.editor-skeleton) tampil di layar, dihitung dari
@@ -70,6 +87,13 @@ function setNoteIdInUrl(id) {
 // itu (mis. device lambat/font besar), tidak ada tambahan delay sama sekali.
 const MIN_SKELETON_VISIBLE_MS = 220;
 
+let __editorBooted = false;
+/** Listener pagehide/beforeunload/visibility — sekali saja per document. */
+let __editorGlobalListenersBound = false;
+/** save handler aktif (di-update tiap boot/remount SPA). */
+let __activeSaveNow = null;
+let __activeSaveDebounced = null;
+
 async function boot() {
   const bootStartedAt = performance.now();
 
@@ -78,10 +102,18 @@ async function boot() {
   const toolbarEl = document.querySelector(".note-topbar");
   if (!bodyEl || !toolbarEl) return;
 
+  __editorBooted = true;
+  // Global listeners (pagehide dll.) cukup sekali; remount SPA tidak menambah lagi.
+  const bindGlobalListeners = !__editorGlobalListenersBound;
+  if (bindGlobalListeners) __editorGlobalListenersBound = true;
+
   // Muat lebih dulu @font-face untuk font kustom yang sudah pernah diunduh
   // (lihat font-service.js) — supaya isi note yang sudah memakai Font
   // Family kustom langsung tampil dengan font yang benar, bukan fallback.
   await ensureInstalledFontsLoaded();
+
+  // Tangkap flag voice SEBELUM setNoteIdInUrl menghapus query string.
+  const autoOpenVoice = shouldAutoOpenVoiceRecord();
 
   // Muat note yang sudah ada (?id=...) atau buat note baru (mis. dari tombol "+").
   const existingId = getNoteIdFromUrl();
@@ -90,6 +122,8 @@ async function boot() {
     doc = await documentService.createNote({ title: "" });
     setNoteIdInUrl(doc.id);
   }
+  // Bersihkan query voice dari URL (baik note baru maupun existing).
+  if (autoOpenVoice) clearVoiceQueryFromUrl();
 
   // Tampilkan judul yang sudah tersimpan (sebelumnya titleEl tidak pernah
   // diisi ulang dari `doc`, jadi note lama yang punya judul kelihatan
@@ -129,6 +163,8 @@ async function boot() {
   const editor = createEditor({ state, bodyEl, titleEl });
   initToolbar({ toolbarEl, editor, state });
   initOutline({ state, bodyEl });
+  initScrollBottomFab({ bodyEl, editor });
+  initAiSheet({ editor, state });
   initBlockSelectionBar({ bodyEl, editor, state });
 
   // Tombol back topbar (`.note-back-btn`, <a href="/library">) — kalau ada
@@ -141,9 +177,25 @@ async function boot() {
   const backBtn = document.querySelector(".note-back-btn");
   if (backBtn) {
     backBtn.addEventListener("click", (e) => {
+      // Sheet terbuka → back cuma menutup sheet (sama seperti "Batal").
       if (hasActiveSheet()) {
         e.preventDefault();
         closeActiveSheet();
+        return;
+      }
+      // Mode SPA: navigasi client-side ke home (jangan andalkan <a> +
+      // history stack yang bisa kotor karena sheet guard).
+      if (window.__MEIMO_SPA__) {
+        e.preventDefault();
+        import("./router.js").then((r) => {
+          if (r && typeof r.navigate === "function") {
+            r.navigate("/library");
+          } else {
+            window.location.assign("/library");
+          }
+        }).catch(() => {
+          window.location.assign("/library");
+        });
       }
     });
   }
@@ -158,6 +210,30 @@ async function boot() {
 
   const noteContentEl = document.querySelector(".note-content");
   if (noteContentEl) noteContentEl.classList.remove("is-loading");
+
+  // Auto-buka voice record sheet kalau datang dari FAB "Rekam Suara"
+  // (/editor?voice=1). Flag sudah ditangkap lebih awal sebelum URL dibersihkan.
+  // Jangan fokus judul/body dulu (supaya keyboard tidak muncul); fokus
+  // baris terakhir baru setelah user menekan Selesai di sheet.
+  if (autoOpenVoice) {
+    requestAnimationFrame(() => {
+      openVoiceRecordSheet({
+        editor,
+        state,
+        onFinished: () => {
+          try {
+            if (editor && typeof editor.focusEnd === "function") {
+              editor.focusEnd();
+            } else if (bodyEl) {
+              bodyEl.focus();
+            }
+          } catch (e) {
+            console.warn("[app] focus after voice:", e);
+          }
+        },
+      });
+    });
+  }
 
   // Ctrl/Cmd+Z (undo) & Ctrl/Cmd+Shift+Z / Ctrl+Y (redo) dari mana saja di
   // halaman note (termasuk saat fokus di judul). Kalau fokus ada di dalam
@@ -190,35 +266,119 @@ async function boot() {
   // seluruh playback & reset state player global (services/
   // audio-player-service.js) supaya tidak ada audio yang terus terdengar
   // sesudah user pindah halaman/tab.
-  window.addEventListener("pagehide", () => {
-    saveNow();
-    audioPlayerService.stopAll();
-  });
-  window.addEventListener("beforeunload", saveNow);
+  // Daftarkan save handlers aktif supaya listener global (sekali pasang)
+  // selalu memanggil instance boot yang paling baru setelah SPA remount.
+  __activeSaveNow = saveNow;
+  __activeSaveDebounced = saveDebounced;
 
-  // Beberapa browser mobile bisa "membekukan" tab begitu native picker
-  // foto/kamera terbuka (lihat toolbar/image-sheet.js -> "Sisipkan Gambar").
-  // Kalau autosave yang di-debounce ini kebetulan menembak PERSIS di jendela
-  // waktu itu, transaksinya berisiko jadi transaksi macet yang bisa
-  // menyumbat penyimpanan berikutnya ke store yang sama (lihat catatan
-  // panjang di db/db.js). Supaya autosave tidak pernah mulai tepat saat itu:
-  // begitu halaman disembunyikan, batalkan timer yang masih menunggu; begitu
-  // terlihat lagi, jadwalkan ulang (aman walau ternyata tidak ada perubahan
-  // yang tertunda — saveNote() cukup murah untuk dokumen yang tidak berubah).
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") {
-      saveDebounced.cancel();
-    } else {
-      saveDebounced();
-    }
-  });
+  if (bindGlobalListeners) {
+    window.addEventListener("pagehide", () => {
+      if (typeof __activeSaveNow === "function") __activeSaveNow();
+      audioPlayerService.stopAll();
+    });
+    window.addEventListener("beforeunload", () => {
+      if (typeof __activeSaveNow === "function") __activeSaveNow();
+    });
+
+    // Beberapa browser mobile bisa "membekukan" tab begitu native picker
+    // foto/kamera terbuka (lihat toolbar/image-sheet.js -> "Sisipkan Gambar").
+    // Kalau autosave yang di-debounce ini kebetulan menembak PERSIS di jendela
+    // waktu itu, transaksinya berisiko jadi transaksi macet yang bisa
+    // menyumbat penyimpanan berikutnya ke store yang sama (lihat catatan
+    // panjang di db/db.js). Supaya autosave tidak pernah mulai tepat saat itu:
+    // begitu halaman disembunyikan, batalkan timer yang masih menunggu; begitu
+    // terlihat lagi, jadwalkan ulang (aman walau ternyata tidak ada perubahan
+    // yang tertunda — saveNote() cukup murah untuk dokumen yang tidak berubah).
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") {
+        if (__activeSaveDebounced && __activeSaveDebounced.cancel) __activeSaveDebounced.cancel();
+      } else {
+        if (typeof __activeSaveDebounced === "function") __activeSaveDebounced();
+      }
+    });
+  }
 
   // Fokus otomatis ke judul saat catatan baru dibuka kosong.
-  if (!doc.title) titleEl.focus();
+  // Skip kalau mode rekam suara — input dari bottom sheet dulu.
+  if (!doc.title && !autoOpenVoice) titleEl.focus();
 }
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", boot);
-} else {
-  boot();
+/** Init untuk SPA / multi-page. Dipanggil otomatis kalau BUKAN mode SPA. */
+export async function initEditor() {
+  return boot();
+}
+
+/**
+ * Cleanup ringan saat meninggalkan editor di SPA (stop audio + autosave).
+ * Listener pagehide/beforeunload tetap ada untuk multi-page & tab close.
+ */
+export function destroyEditor() {
+  // Flush save sebelum unmount (SPA leave editor).
+  try {
+    if (typeof __activeSaveNow === "function") __activeSaveNow();
+  } catch (e) {}
+  __editorBooted = false;
+  __activeSaveNow = null;
+  if (__activeSaveDebounced && __activeSaveDebounced.cancel) {
+    try { __activeSaveDebounced.cancel(); } catch (e) {}
+  }
+  __activeSaveDebounced = null;
+  try {
+    // Stop audio supaya tidak nyangkut di Home.
+    import("./services/audio-player-service.js").then((m) => {
+      if (m && m.stopAll) m.stopAll();
+    }).catch(() => {});
+  } catch (e) {}
+  try {
+    import("./toolbar/active-sheet.js").then((m) => {
+      if (m && typeof m.closeActiveSheet === "function") m.closeActiveSheet();
+    }).catch(() => {});
+  } catch (e) {}
+
+  // Hapus chrome editor yang di-append ke document.body (FAB AI, Outline,
+  // scroll-bottom, block-selection-bar, overlay). Kalau dibiarkan, mereka
+  // ikut tampil di index karena tidak ikut di dalam #view-editor.
+  try {
+    const selectors = [
+      ".outline-fab",
+      ".outline-overlay",
+      ".ai-fab",
+      ".ai-sheet-overlay",
+      ".scroll-bottom-fab",
+      ".block-selection-bar",
+      ".image-sheet-overlay",
+      ".scene-sheet-overlay",
+      ".music-sheet-overlay",
+      ".voice-record-overlay",
+      ".block-select-overlay",
+      ".block-select-handle",
+    ];
+    for (const sel of selectors) {
+      document.querySelectorAll(sel).forEach((el) => el.remove());
+    }
+    document.body.classList.remove(
+      "is-ai-generating",
+      "is-ai-typing",
+      "is-block-select-mode"
+    );
+    document.documentElement.style.removeProperty("--ai-sheet-space");
+
+    // Kosongkan field editor agar konten note lama tidak flash saat
+    // view editor sempat terlihat lagi sebelum navigasi penuh.
+    const titleEl = document.getElementById("editorTitle");
+    const bodyEl = document.getElementById("editorBody");
+    if (titleEl) titleEl.textContent = "";
+    if (bodyEl) bodyEl.innerHTML = "";
+  } catch (e) {
+    console.warn("[app] destroyEditor cleanup DOM:", e);
+  }
+}
+
+// Auto-boot hanya di mode multi-page klasik (bukan SPA shell).
+if (!window.__MEIMO_SPA__) {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
 }

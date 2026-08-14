@@ -17,6 +17,7 @@ import { getSnippet } from "../services/document-service.js";
 import { getObjectUrl } from "../services/image-service.js";
 import { formatRelativeDate } from "../utils/date-format.js";
 import { applyCardShapeAndColor, applyTitleFont, applyWashiTapeDecor } from "./card-style-presets.js";
+import { t } from "../i18n/i18n.js";
 
 const PIN_ICON_SVG =
   '<svg class="note-card__pin-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
@@ -91,25 +92,40 @@ function cardStyleHref(note) {
 }
 
 /** Terapkan cardStyle tersimpan (kalau ada) ke elemen kartu & judulnya,
- * termasuk gambar latar (async, lewat image-service getObjectUrl). */
+ * termasuk gambar latar (async, lewat image-service getObjectUrl).
+ * Return Promise yang resolve setelah gambar latar siap (atau tidak ada). */
 function applyStoredCardStyle(cardEl, titleEl, note) {
   const cardStyle = note.metadata && note.metadata.cardStyle;
-  if (!cardStyle) return;
+  if (!cardStyle) return Promise.resolve();
 
   applyCardShapeAndColor(cardEl, cardStyle);
   applyTitleFont(titleEl, cardStyle);
   applyWashiTapeDecor(cardEl, cardStyle);
 
-  if (cardStyle.bgImageAssetId) {
-    cardEl.classList.add("has-bg-image");
-    cardEl.style.setProperty(
-      "--card-bg-opacity",
-      cardStyle.bgImageOpacity != null ? cardStyle.bgImageOpacity : 1
-    );
-    getObjectUrl(cardStyle.bgImageAssetId).then((url) => {
-      if (url) cardEl.style.setProperty("--card-bg-image", `url("${url}")`);
+  if (!cardStyle.bgImageAssetId) return Promise.resolve();
+
+  cardEl.classList.add("has-bg-image");
+  cardEl.style.setProperty(
+    "--card-bg-opacity",
+    cardStyle.bgImageOpacity != null ? cardStyle.bgImageOpacity : 1
+  );
+
+  return getObjectUrl(cardStyle.bgImageAssetId).then((url) => {
+    if (!url || !cardEl.isConnected && cardEl.parentNode == null) {
+      // Masih boleh set — parent bisa belum append; isConnected false di
+      // createNoteCard sebelum appendChild. Tetap set var-nya.
+    }
+    if (!url) return;
+    cardEl.style.setProperty("--card-bg-image", `url("${url}")`);
+    // Tunggu decode (penting untuk GIF) supaya skeleton tidak nutup
+    // sebelum frame pertama gambar siap.
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve();
+      img.onerror = () => resolve();
+      img.src = url;
     });
-  }
+  });
 }
 
 /**
@@ -139,8 +155,8 @@ function openCardMenu(trigger, note, onTrash, onTogglePin, onArchive, onUnarchiv
       className: "toolbar-panel__item",
       attrs: { type: "button" },
       html: pinned
-        ? `${UNPIN_MENU_ICON_SVG}<span>Lepas Sematan</span>`
-        : `${PIN_MENU_ICON_SVG}<span>Sematkan</span>`,
+        ? `${UNPIN_MENU_ICON_SVG}<span>${t("note.unpin")}</span>`
+        : `${PIN_MENU_ICON_SVG}<span>${t("note.pin")}</span>`,
     });
     pinItem.addEventListener("click", () => {
       closeAllPanels();
@@ -153,7 +169,7 @@ function openCardMenu(trigger, note, onTrash, onTogglePin, onArchive, onUnarchiv
     const archiveItem = createEl("button", {
       className: "toolbar-panel__item",
       attrs: { type: "button" },
-      html: `${ARCHIVE_MENU_ICON_SVG}<span>Arsipkan</span>`,
+      html: `${ARCHIVE_MENU_ICON_SVG}<span>${t("note.archive")}</span>`,
     });
     archiveItem.addEventListener("click", () => {
       closeAllPanels();
@@ -166,7 +182,7 @@ function openCardMenu(trigger, note, onTrash, onTogglePin, onArchive, onUnarchiv
     const unarchiveItem = createEl("button", {
       className: "toolbar-panel__item",
       attrs: { type: "button" },
-      html: `${UNARCHIVE_MENU_ICON_SVG}<span>Batalkan Arsip</span>`,
+      html: `${UNARCHIVE_MENU_ICON_SVG}<span>${t("note.unarchive")}</span>`,
     });
     unarchiveItem.addEventListener("click", () => {
       closeAllPanels();
@@ -178,7 +194,7 @@ function openCardMenu(trigger, note, onTrash, onTogglePin, onArchive, onUnarchiv
   const customizeItem = createEl("a", {
     className: "toolbar-panel__item",
     attrs: { href: cardStyleHref(note) },
-    html: `${CUSTOMIZE_ICON_SVG}<span>Customisasi</span>`,
+    html: `${CUSTOMIZE_ICON_SVG}<span>${t("note.customize")}</span>`,
   });
   // Link navigasi native ke halaman Customisasi Kartu — sebelumnya tidak
   // ada handler sama sekali, jadi klik langsung pindah halaman sementara
@@ -192,7 +208,7 @@ function openCardMenu(trigger, note, onTrash, onTogglePin, onArchive, onUnarchiv
     const downloadItem = createEl("button", {
       className: "toolbar-panel__item",
       attrs: { type: "button" },
-      html: `${DOWNLOAD_MENU_ICON_SVG}<span>Download</span>`,
+      html: `${DOWNLOAD_MENU_ICON_SVG}<span>${t("note.download")}</span>`,
     });
     downloadItem.addEventListener("click", () => {
       closeAllPanels();
@@ -204,7 +220,7 @@ function openCardMenu(trigger, note, onTrash, onTogglePin, onArchive, onUnarchiv
   const deleteItem = createEl("button", {
     className: "toolbar-panel__item toolbar-panel__item--danger",
     attrs: { type: "button" },
-    html: `${TRASH_ICON_SVG}<span>Hapus</span>`,
+    html: `${TRASH_ICON_SVG}<span>${t("note.delete")}</span>`,
   });
   deleteItem.addEventListener("click", () => {
     closeAllPanels();
@@ -235,12 +251,12 @@ function openCardMenu(trigger, note, onTrash, onTogglePin, onArchive, onUnarchiv
 export function createNoteCard(note, { onTrash, onTogglePin, onArchive, onUnarchive, onDownload } = {}) {
   const card = createEl("a", {
     className: "note-card anim-slide-up",
-    attrs: { href: noteHref(note), "aria-label": note.title || "Catatan tanpa judul" },
+    attrs: { href: noteHref(note), "aria-label": note.title || t("note.noTitle") },
   });
 
   const header = createEl("div", { className: "note-card__header" });
   const titleWrap = createEl("div", { className: "note-card__title-wrap" });
-  const titleEl = createEl("div", { className: "note-card__title", text: note.title || "Tanpa judul" });
+  const titleEl = createEl("div", { className: "note-card__title", text: note.title || t("note.untitled") });
   titleWrap.appendChild(titleEl);
   header.appendChild(titleWrap);
   if (note.metadata && note.metadata.pinned) {
@@ -249,7 +265,7 @@ export function createNoteCard(note, { onTrash, onTogglePin, onArchive, onUnarch
   if (onTrash || onTogglePin || onArchive || onUnarchive || onDownload) {
     const menuBtn = createEl("button", {
       className: "note-card__menu-btn",
-      attrs: { type: "button", "aria-label": "Menu catatan", "aria-haspopup": "true", "aria-expanded": "false" },
+      attrs: { type: "button", "aria-label": t("note.menu"), "aria-haspopup": "true", "aria-expanded": "false" },
       html: MORE_ICON_SVG,
     });
     menuBtn.addEventListener("click", (e) => {
@@ -262,14 +278,19 @@ export function createNoteCard(note, { onTrash, onTogglePin, onArchive, onUnarch
 
   const snippet = createEl("p", {
     className: "note-card__snippet",
-    text: getSnippet(note) || "Catatan kosong.",
+    text: getSnippet(note) || t("note.empty"),
   });
 
   const footer = createEl("div", { className: "note-card__footer" });
-  footer.appendChild(createEl("span", { text: `Diubah ${formatRelativeDate(note.updatedAt)}` }));
+  footer.appendChild(createEl("span", { text: t("note.updated", { date: formatRelativeDate(note.updatedAt) }) }));
 
+  const hideSnippet = !!(note.metadata && note.metadata.cardStyle && note.metadata.cardStyle.hideSnippet);
+  if (hideSnippet) {
+    snippet.hidden = true;
+    card.classList.add("note-card--hide-snippet");
+  }
   card.append(header, snippet, footer);
-  applyStoredCardStyle(card, titleEl, note);
+  card.__bgReady = applyStoredCardStyle(card, titleEl, note);
   return card;
 }
 
@@ -291,15 +312,15 @@ export function createNoteCard(note, { onTrash, onTogglePin, onArchive, onUnarch
 export function createPinnedCard(note, { onTrash, onTogglePin, onArchive, onDownload } = {}) {
   const card = createEl("a", {
     className: "pinned-card",
-    attrs: { href: noteHref(note), "aria-label": note.title || "Catatan tanpa judul" },
+    attrs: { href: noteHref(note), "aria-label": note.title || t("note.noTitle") },
   });
   const header = createEl("div", { className: "pinned-card__header" });
-  const titleEl = createEl("div", { className: "pinned-card__title", text: note.title || "Tanpa judul" });
+  const titleEl = createEl("div", { className: "pinned-card__title", text: note.title || t("note.untitled") });
   header.appendChild(titleEl);
   if (onTrash || onTogglePin || onArchive || onDownload) {
     const menuBtn = createEl("button", {
       className: "pinned-card__menu-btn",
-      attrs: { type: "button", "aria-label": "Menu catatan", "aria-haspopup": "true", "aria-expanded": "false" },
+      attrs: { type: "button", "aria-label": t("note.menu"), "aria-haspopup": "true", "aria-expanded": "false" },
       html: MORE_ICON_SVG,
     });
     menuBtn.addEventListener("click", (e) => {
@@ -310,9 +331,15 @@ export function createPinnedCard(note, { onTrash, onTogglePin, onArchive, onDown
     header.appendChild(menuBtn);
   }
   card.appendChild(header);
-  card.appendChild(
-    createEl("div", { className: "pinned-card__snippet", text: getSnippet(note, 80) || "Catatan kosong." })
-  );
-  applyStoredCardStyle(card, titleEl, note);
+  const pinnedSnippet = createEl("div", {
+    className: "pinned-card__snippet",
+    text: getSnippet(note, 80) || "Catatan kosong.",
+  });
+  if (note.metadata && note.metadata.cardStyle && note.metadata.cardStyle.hideSnippet) {
+    pinnedSnippet.hidden = true;
+    card.classList.add("pinned-card--hide-snippet");
+  }
+  card.appendChild(pinnedSnippet);
+  card.__bgReady = applyStoredCardStyle(card, titleEl, note);
   return card;
 }

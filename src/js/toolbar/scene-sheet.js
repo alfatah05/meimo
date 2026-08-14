@@ -46,6 +46,7 @@ import { insertScene, deleteScene } from "../editor/commands.js";
 import { SCENE_EDGE_STYLES, SCENE_PADDING_PRESETS, DEFAULT_SCENE_META } from "../editor/block-model.js";
 import { buildEdgeClipPath, SCENE_EDGE_HEIGHT } from "../editor/scene-edges.js";
 import { registerActiveSheet, closeActiveSheet, clearActiveSheet } from "./active-sheet.js";
+import { t } from "../i18n/i18n.js";
 
 // Preset warna latar Scene. `value` BUKAN hex tetap, melainkan referensi ke
 // custom property --scene-bg-* (lihat themes.css) yang isinya rgba tipis —
@@ -82,20 +83,31 @@ const BG_PRESETS = [
   { hex: "var(--scene-bg-plum)", label: "Plum" },
   { hex: "var(--scene-bg-grape)", label: "Grape" },
   { hex: "var(--scene-bg-slate)", label: "Slate" },
-  { hex: "var(--scene-bg-gray)", label: "Abu-abu" },
+  { hex: "var(--scene-bg-gray)", labelKey: "scene.color.gray", label: "Gray" },
 ];
 
-const PADDING_LABELS = { none: "Tanpa", sm: "Kecil", md: "Sedang", lg: "Besar", xl: "Ekstra" };
+const PADDING_KEYS = { none: "scene.pad.none", sm: "scene.pad.sm", md: "scene.pad.md", lg: "scene.pad.lg", xl: "scene.pad.xl" };
 const PADDING_ORDER = ["none", "sm", "md", "lg", "xl"];
 
-const EDGE_LABELS = {
-  straight: "Lurus",
-  wave: "Ombak",
-  torn: "Robekan",
-  stamp: "Perangko",
-  zigzag: "Zigzag",
-  cloud: "Awan",
-  brush: "Kuas",
+const EDGE_KEYS = {
+  straight: "scene.edge.straight",
+  wave: "scene.edge.wave",
+  "double-wave": "scene.edge.double-wave",
+  ripple: "scene.edge.ripple",
+  torn: "scene.edge.torn",
+  deckle: "scene.edge.deckle",
+  stamp: "scene.edge.stamp",
+  "stamp-fine": "scene.edge.stamp-fine",
+  scallop: "scene.edge.scallop",
+  cloud: "scene.edge.cloud",
+  zigzag: "scene.edge.zigzag",
+  pinked: "scene.edge.pinked",
+  steps: "scene.edge.steps",
+  brush: "scene.edge.brush",
+  notch: "scene.edge.notch",
+  arc: "scene.edge.arc",
+  peaks: "scene.edge.peaks",
+  saw: "scene.edge.saw",
 };
 
 /* -------------------------------------------------------------------- */
@@ -119,7 +131,7 @@ function clearSceneSelection() {
 function buildCustomizeChip(editor, state, sceneId) {
   const chip = createEl("button", {
     className: "editor-scene__customize-chip",
-    attrs: { type: "button", "aria-label": "Kustomisasi Scene" },
+    attrs: { type: "button", "aria-label": t("scene.customize") },
     html:
       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span>Scene</span>',
   });
@@ -306,56 +318,140 @@ function applyScenePreview(wrapperEl, settings) {
  *   "Scene" (Batal -> pratinjau dibuang, Scene lama tetap seperti semula).
  */
 function openSceneSheet({ editor, state, sceneId, mode }) {
-  // Batalkan & tutup sheet lain (Gambar/Scene/Musik) yang sedang aktif,
-  // kalau ada — lihat active-sheet.js.
+  // Batalkan & tutup sheet lain (Gambar/Scene/Musik) yang sedang aktif.
   closeActiveSheet();
   const meta = state.getScene(sceneId);
-  if (!meta) return; // Scene sudah tidak ada (mis. dihapus lewat undo di tempat lain)
+  if (!meta) return;
 
   const wrapperEl = qs(`.editor-scene[data-scene-id="${sceneId}"]`, editor.bodyEl);
   if (!wrapperEl) return;
 
-  // Daftarkan `doCancel` (didefinisikan di bawah, aman dirujuk di sini
-  // berkat function hoisting) sebagai sheet aktif SEKARANG (baru setelah
-  // dua guard di atas lolos, supaya tidak ada `doCancel` "cacat" yang
-  // sempat terdaftar untuk sheet yang ternyata gagal dibuka).
   registerActiveSheet(doCancel);
 
   sheetOpenForSceneId = sceneId;
   const settings = { ...DEFAULT_SCENE_META, ...meta };
 
+  const ICON = {
+    // Samakan dengan icon back di crop sheet (image-sheet.js)
+    back: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>',
+    color: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18h1.5a2.5 2.5 0 0 0 1.768-4.268 1.5 1.5 0 0 1 1.06-2.56H18a3 3 0 0 0 3-3 9.02 9.02 0 0 0-9-8z"/><circle cx="7.5" cy="10.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="10.5" cy="7" r="1.2" fill="currentColor" stroke="none"/><circle cx="15" cy="7.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="17" cy="11.5" r="1.2" fill="currentColor" stroke="none"/></svg>',
+    edge: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6c2 2 3-2 5 0s3-2 5 0 3-2 5 0 3-2 5 0v12c-2-2-3 2-5 0s-3 2-5 0-3 2-5 0-3 2-5 0V6z"/></svg>',
+    delete: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+    check: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+    // Eyedropper / palette picker untuk custom color di rail
+    eyedropper:
+      '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m2 22 1-1h3l9-9"/><path d="M3 21v-3l9-9"/><path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l-3-3z"/></svg>',
+    // Square plus: tambah warna custom ke grid
+    plusSquare:
+      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>',
+    // Icon opacity / transparency
+    opacity:
+      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18" fill="currentColor" stroke="none" opacity="0.35"/></svg>',
+  };
+
   const overlay = createEl("div", { className: "scene-sheet-overlay image-sheet-overlay" });
-  const sheet = createEl("div", { className: "scene-sheet image-sheet" });
+  const sheet = createEl("div", { className: "scene-sheet image-sheet image-sheet--compact" });
   overlay.appendChild(sheet);
 
-  // ---- Judul + tombol Hapus Scene (icon-only, pojok kanan atas) ----
-  // Sebelumnya "Delete Scene" adalah tombol besar berlabel di bagian
-  // bawah sheet (berdampingan dengan "Duplicate Scene", yang sekarang
-  // dihapus total karena sudah tidak kepake). Delete tetap HANYA muncul
-  // di mode "edit" (Scene yang sudah ada, dibuka lewat chip) — di mode
-  // "insert" tombol "Batal" di bawah sudah setara dengan membatalkan/
-  // menghapus Scene yang baru saja disisipkan.
-  const titleRow = createEl("div", { className: "image-sheet__title scene-sheet__title-row" });
-  titleRow.appendChild(createEl("span", { text: "Scene" }));
+  // Panels
+  const panelMain = createEl("div", { className: "image-sheet__panel image-sheet__panel--main is-active scene-sheet__panel-main" });
+  const panelColor = createEl("div", { className: "image-sheet__panel image-sheet__panel--sub scene-sheet__panel-color" });
+  const panelEdge = createEl("div", { className: "image-sheet__panel image-sheet__panel--sub scene-sheet__panel-edge" });
+  sheet.append(panelMain, panelColor, panelEdge);
+
+  function showPanel(name) {
+    panelMain.classList.toggle("is-active", name === "main");
+    panelColor.classList.toggle("is-active", name === "color");
+    panelEdge.classList.toggle("is-active", name === "edge");
+  }
+
+  /* ========== MAIN ========== */
+  const mainCol = createEl("div", { className: "scene-sheet__main-col" });
+
+  // 5 padding chips — visual inset + label (UX: user paham beda ukurannya)
+  const padRow = createEl("div", { className: "scene-sheet__pad-row" });
+  const paddingButtons = {};
+  for (const key of PADDING_ORDER) {
+    const btn = createEl("button", {
+      className: "scene-sheet__pad-chip" + (key === settings.padding ? " is-active" : ""),
+      attrs: {
+        type: "button",
+        "aria-label": t("scene.padding", { name: t(PADDING_KEYS[key]) }),
+        title: t("scene.padding", { name: t(PADDING_KEYS[key]) }),
+      },
+    });
+    const visual = createEl("span", {
+      className: `scene-sheet__pad-visual scene-sheet__pad-visual--${key}`,
+    });
+    visual.appendChild(createEl("span", { className: "scene-sheet__pad-visual-inner" }));
+    const label = createEl("span", {
+      className: "scene-sheet__pad-label",
+      text: t(PADDING_KEYS[key]),
+    });
+    btn.append(visual, label);
+    btn.addEventListener("click", () => {
+      settings.padding = key;
+      for (const k in paddingButtons) paddingButtons[k].classList.toggle("is-active", k === key);
+      applyScenePreview(wrapperEl, settings);
+    });
+    paddingButtons[key] = btn;
+    padRow.appendChild(btn);
+  }
+  mainCol.appendChild(padRow);
+
+  // 2 big chips: Color + Edge
+  const bigRow = createEl("div", { className: "scene-sheet__big-row" });
+  const colorBig = createEl("button", {
+    className: "scene-sheet__big-btn",
+    attrs: { type: "button" },
+    html: `${ICON.color}<span>${t("scene.color")}</span>`,
+  });
+  colorBig.addEventListener("click", () => showPanel("color"));
+  const edgeBig = createEl("button", {
+    className: "scene-sheet__big-btn",
+    attrs: { type: "button" },
+    html: `${ICON.edge}<span>${t("scene.edge")}</span>`,
+  });
+  edgeBig.addEventListener("click", () => showPanel("edge"));
+  bigRow.append(colorBig, edgeBig);
+  mainCol.appendChild(bigRow);
+
+  // Actions: Batal / Terapkan + delete (edit)
+  const actions = createEl("div", { className: "image-sheet__actions scene-sheet__actions-row" });
+  const cancelBtn = createEl("button", {
+    className: "image-sheet__btn image-sheet__btn--ghost",
+    attrs: { type: "button" },
+    text: t("sheet.cancel"),
+  });
+  const applyBtn = createEl("button", {
+    className: "image-sheet__btn image-sheet__btn--primary",
+    attrs: { type: "button" },
+    text: t("sheet.apply"),
+  });
+  actions.append(cancelBtn, applyBtn);
+
   let deleteArmTimer = null;
+  let deleteBtn = null;
   if (mode === "edit") {
     let deleteArmed = false;
-    const deleteIconBtn = createEl("button", {
-      className: "scene-sheet__delete-icon-btn",
-      attrs: { type: "button", "aria-label": "Hapus Scene" },
-      html:
-        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+    deleteBtn = createEl("button", {
+      className: "image-sheet__icon-btn image-sheet__icon-btn--danger scene-sheet__delete-btn",
+      attrs: { type: "button", "aria-label": t("scene.delete") },
+      html: ICON.delete,
     });
-    deleteIconBtn.addEventListener("click", () => {
+    function resetDeleteArm() {
+      deleteArmed = false;
+      deleteBtn.classList.remove("is-armed");
+      deleteBtn.innerHTML = ICON.delete;
+      deleteBtn.setAttribute("aria-label", t("scene.delete"));
+    }
+    deleteBtn.addEventListener("click", () => {
       if (!deleteArmed) {
         deleteArmed = true;
-        deleteIconBtn.classList.add("is-armed");
-        deleteIconBtn.setAttribute("aria-label", "Ketuk lagi untuk hapus Scene");
-        deleteArmTimer = setTimeout(() => {
-          deleteArmed = false;
-          deleteIconBtn.classList.remove("is-armed");
-          deleteIconBtn.setAttribute("aria-label", "Hapus Scene");
-        }, 3000);
+        deleteBtn.classList.add("is-armed");
+        deleteBtn.innerHTML = ICON.check;
+        deleteBtn.setAttribute("aria-label", t("scene.deleteConfirm"));
+        deleteArmTimer = setTimeout(resetDeleteArm, 3000);
         return;
       }
       clearTimeout(deleteArmTimer);
@@ -363,88 +459,394 @@ function openSceneSheet({ editor, state, sceneId, mode }) {
       editor.runCommand(deleteScene, sceneId);
       close();
     });
-    titleRow.appendChild(deleteIconBtn);
+    actions.appendChild(deleteBtn);
   }
-  sheet.appendChild(titleRow);
 
-  /* ---- Background Color ---- */
-  const bgSection = createEl("div", { className: "image-sheet__section" });
-  bgSection.appendChild(createEl("div", { className: "image-sheet__label", text: "Background Color" }));
-  const bgGrid = createEl("div", { className: "scene-sheet__color-strip" });
-  const bgSwatches = {};
-  function markActiveSwatch(hex) {
-    for (const key in bgSwatches) bgSwatches[key].classList.toggle("is-active", key === (hex || "none"));
+  mainCol.appendChild(actions);
+  panelMain.appendChild(mainCol);
+
+  /* ========== COLOR PANEL ========== */
+  // Custom colors yang ditambahkan user ke grid (persist di session sheet + localStorage)
+  // Boleh hex (#RRGGBB) atau rgba(...)
+  const CUSTOM_COLORS_KEY = "meimo-scene-custom-colors";
+  const CUSTOM_COLOR_RE = /^(#[0-9A-Fa-f]{6}|rgba?\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*(?:,\s*[\d.]+\s*)?\))$/;
+  function loadCustomColors() {
+    try {
+      const raw = localStorage.getItem(CUSTOM_COLORS_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr)
+        ? arr.filter((c) => typeof c === "string" && CUSTOM_COLOR_RE.test(c.trim()))
+        : [];
+    } catch {
+      return [];
+    }
   }
-  for (const preset of BG_PRESETS) {
-    const key = preset.hex || "none";
+  function saveCustomColors(list) {
+    try {
+      localStorage.setItem(CUSTOM_COLORS_KEY, JSON.stringify(list.slice(0, 24)));
+    } catch {
+      /* ignore quota */
+    }
+  }
+  let extraCustomColors = loadCustomColors();
+
+  /** Parse CSS color string → { r, g, b, a } (a 0–1). Gagal → null. */
+  function parseCssColor(value) {
+    if (!value || typeof value !== "string") return null;
+    const v = value.trim();
+    if (/^var\(/.test(v)) return null;
+    const hex = v.match(/^#([0-9A-Fa-f]{6})$/);
+    if (hex) {
+      const n = parseInt(hex[1], 16);
+      return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255, a: 1 };
+    }
+    const rgb = v.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?\)$/i);
+    if (rgb) {
+      return {
+        r: Math.min(255, +rgb[1]),
+        g: Math.min(255, +rgb[2]),
+        b: Math.min(255, +rgb[3]),
+        a: rgb[4] !== undefined ? Math.max(0, Math.min(1, +rgb[4])) : 1,
+      };
+    }
+    // Fallback: biarkan browser resolve (mis. nama warna), lalu baca computed
+    try {
+      const probe = document.createElement("div");
+      probe.style.cssText = "position:absolute;left:-9999px;width:1px;height:1px;";
+      probe.style.backgroundColor = v;
+      document.body.appendChild(probe);
+      const computed = getComputedStyle(probe).backgroundColor;
+      document.body.removeChild(probe);
+      const m = computed && computed.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?/);
+      if (!m) return null;
+      return {
+        r: +m[1],
+        g: +m[2],
+        b: +m[3],
+        a: m[4] !== undefined ? +m[4] : 1,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  function toHex({ r, g, b }) {
+    const h = (n) => n.toString(16).padStart(2, "0");
+    return `#${h(r)}${h(g)}${h(b)}`.toUpperCase();
+  }
+
+  /** Format simpan: hex jika a≈1, else rgba() */
+  function formatCssColor({ r, g, b, a }) {
+    if (a >= 0.995) return toHex({ r, g, b });
+    // 2 desimal cukup; hilangkan trailing zero kasar
+    const aStr = Math.round(a * 100) / 100;
+    return `rgba(${r}, ${g}, ${b}, ${aStr})`;
+  }
+
+  function normalizeColorKey(value) {
+    const p = parseCssColor(value);
+    if (!p) return String(value || "").trim().toUpperCase();
+    return formatCssColor(p).toUpperCase();
+  }
+
+  // State picker custom (RGB dari input color + alpha dari slider)
+  let customRgb = { r: 240, g: 233, b: 251 };
+  let customAlpha = 1;
+  const parsedInitial = parseCssColor(settings.backgroundColor);
+  if (parsedInitial) {
+    customRgb = { r: parsedInitial.r, g: parsedInitial.g, b: parsedInitial.b };
+    customAlpha = parsedInitial.a;
+  }
+
+  const colorRail = createEl("div", { className: "image-sheet__sub-rail" });
+  const colorBack = createEl("button", {
+    className: "image-sheet__back-btn",
+    attrs: { type: "button", "aria-label": t("sheet.back") },
+    html: ICON.back,
+  });
+  colorBack.addEventListener("click", () => showPanel("main"));
+  const colorRailIcon = createEl("button", {
+    className: "image-sheet__rail-icon-btn is-active",
+    attrs: { type: "button", "aria-label": t("scene.color"), tabindex: "-1" },
+    html: ICON.color,
+  });
+
+  // Tombol pilih warna custom → icon di rail kiri (bukan di grid)
+  const isCustomActive = !!settings.backgroundColor && !/^var\(/.test(settings.backgroundColor);
+  const customRailBtn = createEl("label", {
+    className: "scene-sheet__rail-custom" + (isCustomActive ? " is-active" : ""),
+    attrs: { title: t("scene.customColor"), "aria-label": t("scene.customColor") },
+  });
+  customRailBtn.innerHTML = ICON.eyedropper;
+  const customInput = createEl("input", {
+    attrs: { type: "color", value: toHex(customRgb) },
+  });
+  customRailBtn.appendChild(customInput);
+  colorRail.append(colorBack, colorRailIcon, customRailBtn);
+
+  const colorBody = createEl("div", {
+    className: "image-sheet__sub-body scene-sheet__color-body",
+  });
+
+  // Chip opacity — selalu tampil, di atas card color preset
+  const opacityChip = createEl("div", { className: "scene-sheet__opacity-chip" });
+  const opacityIcon = createEl("span", {
+    className: "scene-sheet__opacity-icon",
+    html: ICON.opacity,
+  });
+  const opacitySlider = createEl("input", {
+    className: "scene-sheet__opacity-slider",
+    attrs: {
+      type: "range",
+      min: "0",
+      max: "100",
+      step: "1",
+      value: String(Math.round(customAlpha * 100)),
+      "aria-label": t("scene.opacity"),
+    },
+  });
+  const opacityValue = createEl("span", {
+    className: "scene-sheet__opacity-value",
+    text: `${Math.round(customAlpha * 100)}%`,
+  });
+  opacityChip.append(opacityIcon, opacitySlider, opacityValue);
+
+  const colorCard = createEl("div", { className: "scene-sheet__color-card" });
+
+  // Bar warna (sticky di atas card): full bar diisi warna aktif + kode + square-plus kanan
+  const colorBar = createEl("div", { className: "scene-sheet__color-bar" });
+  const colorBarCode = createEl("span", { className: "scene-sheet__color-bar-code" });
+  const colorBarAdd = createEl("button", {
+    className: "scene-sheet__color-bar-add",
+    attrs: {
+      type: "button",
+      "aria-label": t("scene.addColor"),
+      title: t("scene.addColor"),
+    },
+    html: ICON.plusSquare,
+  });
+  colorBar.append(colorBarCode, colorBarAdd);
+
+  const colorGridWrap = createEl("div", { className: "scene-sheet__color-grid-wrap" });
+  const colorGrid = createEl("div", { className: "scene-sheet__color-grid" });
+  const bgSwatches = {};
+
+  /** Resolve warna apa pun (hex / rgba / var(...)) ke {r,g,b,a} via computed style. */
+  function resolveAnyColor(value) {
+    const direct = parseCssColor(value);
+    if (direct) return direct;
+    if (!value) return null;
+    try {
+      const probe = document.createElement("div");
+      probe.style.cssText = "position:absolute;left:-9999px;width:1px;height:1px;";
+      probe.style.backgroundColor = value;
+      document.body.appendChild(probe);
+      const computed = getComputedStyle(probe).backgroundColor;
+      document.body.removeChild(probe);
+      const m = computed && computed.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?/);
+      if (!m) return null;
+      return {
+        r: +m[1],
+        g: +m[2],
+        b: +m[3],
+        a: m[4] !== undefined ? +m[4] : 1,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  function syncOpacityUi(alpha) {
+    const pct = Math.round(Math.max(0, Math.min(1, alpha)) * 100);
+    opacitySlider.value = String(pct);
+    opacityValue.textContent = `${pct}%`;
+  }
+
+  function resolveColorLabel(value) {
+    if (!value) return "—";
+    if (/^var\(/.test(value)) {
+      const found = BG_PRESETS.find((p) => p.hex === value);
+      if (!found) return value;
+      return found.labelKey ? t(found.labelKey) : found.label;
+    }
+    const p = parseCssColor(value);
+    if (p) {
+      if (p.a < 0.995) {
+        const aStr = Math.round(p.a * 100) / 100;
+        return `RGBA(${p.r}, ${p.g}, ${p.b}, ${aStr})`;
+      }
+      return toHex(p);
+    }
+    return String(value).toUpperCase();
+  }
+
+  function isColorInGrid(value) {
+    if (!value) return true;
+    // Preset var: cocok hanya jika exact key-nya ada di grid
+    if (/^var\(/.test(value)) return BG_PRESETS.some((p) => p.hex === value);
+    // Hex/rgba: bandingkan RGB+alpha (hue sama tapi opacity beda = warna baru)
+    const key = normalizeColorKey(value);
+    return (
+      BG_PRESETS.some((p) => normalizeColorKey(p.hex) === key) ||
+      extraCustomColors.some((c) => normalizeColorKey(c) === key)
+    );
+  }
+
+  function isLightColor(cssColor) {
+    try {
+      const p = resolveAnyColor(cssColor);
+      if (!p) return false;
+      const lum = (0.2126 * p.r + 0.7152 * p.g + 0.0722 * p.b) / 255;
+      const effective = lum * p.a + 0.72 * (1 - p.a);
+      return effective > 0.62;
+    } catch {
+      return false;
+    }
+  }
+
+  function applyCustomColor() {
+    const css = formatCssColor({ ...customRgb, a: customAlpha });
+    settings.backgroundColor = css;
+    markActiveSwatch(css);
+    updateColorBar();
+    applyScenePreview(wrapperEl, settings);
+  }
+
+  function updateColorBar() {
+    const val = settings.backgroundColor || "";
+    colorBar.style.setProperty("--scene-bar-color", val || "transparent");
+    colorBar.classList.toggle("is-light", isLightColor(val));
+    colorBarCode.textContent = resolveColorLabel(val);
+
+    const resolved = resolveAnyColor(val);
+    if (resolved) {
+      customRgb = { r: resolved.r, g: resolved.g, b: resolved.b };
+      customAlpha = resolved.a;
+      customInput.value = toHex(customRgb);
+      syncOpacityUi(customAlpha);
+    }
+
+    // Square plus: muncul jika warna (termasuk beda opacity) belum ada di grid
+    // Preset var yang exact match dianggap sudah di grid
+    const canAdd = !!val && !isColorInGrid(val);
+    colorBarAdd.disabled = !canAdd;
+    colorBarAdd.style.visibility = canAdd ? "visible" : "hidden";
+    customRailBtn.classList.toggle("is-active", !!val && !/^var\(/.test(val));
+  }
+
+  function markActiveSwatch(hex) {
+    const activeKey = normalizeColorKey(hex || "none");
+    for (const key in bgSwatches) {
+      const isVarMatch = /^var\(/.test(hex || "") && key === hex;
+      const isNormMatch = normalizeColorKey(key) === activeKey;
+      bgSwatches[key].classList.toggle("is-active", isVarMatch || isNormMatch);
+    }
+  }
+
+  function buildSwatch(key, bg, label) {
     const swatch = createEl("button", {
-      className: "scene-sheet__swatch" + (preset.hex ? "" : " scene-sheet__swatch--none"),
-      attrs: { type: "button", title: preset.label, "aria-label": preset.label },
+      className: "scene-sheet__swatch",
+      attrs: { type: "button", title: label, "aria-label": label },
     });
-    if (preset.hex) swatch.style.backgroundColor = preset.hex;
+    if (bg) swatch.style.backgroundColor = bg;
     swatch.addEventListener("click", () => {
-      settings.backgroundColor = preset.hex;
-      markActiveSwatch(preset.hex);
+      settings.backgroundColor = key;
+      // Slider realtime ikut alpha warna yang dipilih (preset rgba / custom)
+      const resolved = resolveAnyColor(key);
+      if (resolved) {
+        customRgb = { r: resolved.r, g: resolved.g, b: resolved.b };
+        customAlpha = resolved.a;
+        customInput.value = toHex(customRgb);
+        syncOpacityUi(customAlpha);
+      }
+      markActiveSwatch(key);
+      updateColorBar();
       applyScenePreview(wrapperEl, settings);
     });
     bgSwatches[key] = swatch;
-    bgGrid.appendChild(swatch);
+    return swatch;
   }
-  const customWrap = createEl("label", { className: "scene-sheet__custom-color" });
-  // Warna kustom cuma dianggap "aktif" kalau backgroundColor tersimpan
-  // BUKAN salah satu referensi var(--scene-bg-*) di atas (mis. hex literal
-  // dari input warna native ini sendiri) — dipakai juga sebagai nilai awal
-  // <input type="color"> (yang tidak menerima var() sebagai value).
-  const isCustomActive = !!settings.backgroundColor && !/^var\(/.test(settings.backgroundColor);
-  const customInput = createEl("input", {
-    attrs: { type: "color", value: isCustomActive ? settings.backgroundColor : "#F0E9FB" },
+
+  function rebuildColorGrid() {
+    colorGrid.innerHTML = "";
+    for (const k in bgSwatches) delete bgSwatches[k];
+    for (const preset of BG_PRESETS) {
+      colorGrid.appendChild(buildSwatch(preset.hex, preset.hex, preset.label));
+    }
+    for (const col of extraCustomColors) {
+      colorGrid.appendChild(buildSwatch(col, col, resolveColorLabel(col)));
+    }
+    markActiveSwatch(settings.backgroundColor);
+  }
+
+  colorBarAdd.addEventListener("click", () => {
+    const val = settings.backgroundColor;
+    if (!val || isColorInGrid(val)) return;
+    // Simpan resolved form (hex atau rgba) supaya opacity ikut tersimpan
+    const resolved = resolveAnyColor(val) || parseCssColor(val);
+    const normalized = resolved
+      ? formatCssColor(resolved)
+      : val;
+    if (!extraCustomColors.some((c) => normalizeColorKey(c) === normalizeColorKey(normalized))) {
+      extraCustomColors = [normalized, ...extraCustomColors].slice(0, 24);
+      saveCustomColors(extraCustomColors);
+      rebuildColorGrid();
+      updateColorBar();
+    }
   });
+
   customInput.addEventListener("input", () => {
-    settings.backgroundColor = customInput.value;
-    markActiveSwatch(customInput.value);
-    applyScenePreview(wrapperEl, settings);
+    const p = parseCssColor(customInput.value);
+    if (!p) return;
+    customRgb = { r: p.r, g: p.g, b: p.b };
+    // Pertahankan alpha dari slider
+    applyCustomColor();
   });
-  customWrap.appendChild(customInput);
-  customWrap.appendChild(createEl("span", { text: "Kustom" }));
-  bgGrid.appendChild(customWrap);
-  markActiveSwatch(settings.backgroundColor);
-  bgSection.appendChild(bgGrid);
-  sheet.appendChild(bgSection);
 
-  /* ---- Padding ---- */
-  const paddingSection = createEl("div", { className: "image-sheet__section" });
-  paddingSection.appendChild(createEl("div", { className: "image-sheet__label", text: "Padding" }));
-  const paddingGroup = createEl("div", { className: "scene-sheet__preset-group" });
-  const paddingButtons = {};
-  for (const key of PADDING_ORDER) {
-    const btn = createEl("button", {
-      className: "scene-sheet__preset-btn" + (key === settings.padding ? " is-active" : ""),
-      attrs: { type: "button" },
-      text: PADDING_LABELS[key],
-    });
-    btn.addEventListener("click", () => {
-      settings.padding = key;
-      for (const k in paddingButtons) paddingButtons[k].classList.toggle("is-active", k === key);
-      applyScenePreview(wrapperEl, settings);
-    });
-    paddingButtons[key] = btn;
-    paddingGroup.appendChild(btn);
-  }
-  paddingSection.appendChild(paddingGroup);
-  sheet.appendChild(paddingSection);
+  opacitySlider.addEventListener("input", () => {
+    customAlpha = Math.max(0, Math.min(1, (+opacitySlider.value || 0) / 100));
+    opacityValue.textContent = `${Math.round(customAlpha * 100)}%`;
+    // Pastikan RGB dari warna aktif (termasuk preset var yang di-resolve)
+    const resolved = resolveAnyColor(settings.backgroundColor);
+    if (resolved) {
+      customRgb = { r: resolved.r, g: resolved.g, b: resolved.b };
+    }
+    applyCustomColor();
+  });
 
-  /* ---- Edge Style ---- */
-  const edgeSection = createEl("div", { className: "image-sheet__section" });
-  edgeSection.appendChild(createEl("div", { className: "image-sheet__label", text: "Edge Style" }));
+  rebuildColorGrid();
+  updateColorBar();
+
+  colorGridWrap.appendChild(colorGrid);
+  colorCard.append(colorBar, colorGridWrap);
+  // Chip opacity di atas card, lebar sama dengan card
+  colorBody.append(opacityChip, colorCard);
+  panelColor.append(colorRail, colorBody);
+
+  /* ========== EDGE PANEL ========== */
+  const edgeRail = createEl("div", { className: "image-sheet__sub-rail" });
+  const edgeBack = createEl("button", {
+    className: "image-sheet__back-btn",
+    attrs: { type: "button", "aria-label": t("sheet.back") },
+    html: ICON.back,
+  });
+  edgeBack.addEventListener("click", () => showPanel("main"));
+  const edgeRailIcon = createEl("button", {
+    className: "image-sheet__rail-icon-btn is-active",
+    attrs: { type: "button", "aria-label": t("scene.edge"), tabindex: "-1" },
+    html: ICON.edge,
+  });
+  edgeRail.append(edgeBack, edgeRailIcon);
+
+  const edgeBody = createEl("div", { className: "image-sheet__sub-body image-sheet__sub-body--crop scene-sheet__edge-body" });
   const edgeGrid = createEl("div", { className: "scene-sheet__edge-grid" });
   const edgeButtons = {};
   for (const style of SCENE_EDGE_STYLES) {
     const btn = createEl("button", {
       className: "scene-sheet__edge-btn" + (style === settings.edgeStyle ? " is-active" : ""),
-      attrs: { type: "button" },
+      attrs: { type: "button", "aria-label": t(EDGE_KEYS[style] || style) },
     });
     btn.appendChild(buildEdgePreview(style));
-    btn.appendChild(createEl("span", { text: EDGE_LABELS[style] || style }));
     btn.addEventListener("click", () => {
       settings.edgeStyle = style;
       for (const k in edgeButtons) edgeButtons[k].classList.toggle("is-active", k === style);
@@ -453,39 +855,16 @@ function openSceneSheet({ editor, state, sceneId, mode }) {
     edgeButtons[style] = btn;
     edgeGrid.appendChild(btn);
   }
-  edgeSection.appendChild(edgeGrid);
-  sheet.appendChild(edgeSection);
+  edgeBody.appendChild(edgeGrid);
+  panelEdge.append(edgeRail, edgeBody);
 
-  /* ---- Aksi: Batal / Terapkan (persis pola image-sheet.js) ---- */
-  const actions = createEl("div", { className: "image-sheet__actions" });
-  const cancelBtn = createEl("button", {
-    className: "image-sheet__btn image-sheet__btn--ghost",
-    attrs: { type: "button" },
-    text: "Batal",
-  });
-  const applyBtn = createEl("button", {
-    className: "image-sheet__btn image-sheet__btn--primary",
-    attrs: { type: "button" },
-    text: "Terapkan",
-  });
-  actions.appendChild(cancelBtn);
-  actions.appendChild(applyBtn);
-  sheet.appendChild(actions);
-
+  /* ---- apply / cancel ---- */
   function doCancel() {
     if (mode === "insert") {
-      // Scene ini baru saja disisipkan lewat tombol toolbar — Batal berarti
-      // batal sisip sama sekali, bukan cuma buang pratinjau tampilannya.
       clearSceneSelection();
       editor.runCommand(deleteScene, sceneId);
     } else {
-      // Scene lama: buang pratinjau DOM, balik ke nilai model semula.
       editor.renderAll();
-      // BUG FIX (sama seperti catatan doCancel() di image-sheet.js):
-      // renderAll() di sini dipanggil LANGSUNG (bukan lewat runCommand),
-      // jadi tidak otomatis memicu state.emitChange() — tanpa ini, chip
-      // "Scene" yang tadinya nempel di elemen lama (sudah dibongkar total
-      // oleh renderAll()) tidak akan pernah dipasang ulang ke elemen baru.
       if (state.emitChange) state.emitChange({ type: "scene-cancel" });
     }
     close();
@@ -503,11 +882,6 @@ function openSceneSheet({ editor, state, sceneId, mode }) {
   cancelBtn.addEventListener("click", doCancel);
   applyBtn.addEventListener("click", doApply);
 
-  // ---- Kunci area catatan supaya keyboard TIDAK bisa muncul lagi ----
-  // Sama persis dengan toolbar/image-sheet.js: pointer-events: none di
-  // .note-content mencegah tap di judul/isi catatan memicu fokus (=>
-  // keyboard) selama sheet terbuka, TANPA mematikan scroll (yang ditangani
-  // .note-scroll-area, parent-nya, bukan elemen ini).
   const noteContentEl = qs(".note-content");
   function preventEditorFocus(e) {
     if (noteContentEl && noteContentEl.contains(e.target) && e.target !== noteContentEl) {
@@ -523,13 +897,6 @@ function openSceneSheet({ editor, state, sceneId, mode }) {
     document.removeEventListener("focusin", preventEditorFocus);
   }
 
-  // ---- Ruang scroll cadangan setinggi sheet ----
-  // Supaya block paling bawah di catatan (mis. Scene ini sendiri, kalau dia
-  // berada di ujung dokumen) tidak ketutup sheet, set custom property
-  // --scene-sheet-space (dibaca .note-scroll-area di layout.css) persis
-  // setinggi sheet yang benar-benar ter-render — sama pola dengan
-  // --image-sheet-space di image-sheet.js, cuma beda nama var supaya kedua
-  // sheet tidak saling menimpa kalau (secara teori) sempat tumpang tindih.
   const root = document.documentElement;
   let sheetResizeObserver = null;
   function setReservedSpace(px) {
@@ -563,26 +930,18 @@ function openSceneSheet({ editor, state, sceneId, mode }) {
   if (document.activeElement && typeof document.activeElement.blur === "function") {
     document.activeElement.blur();
   }
-  // Kunci area catatan SEKARANG JUGA (bukan nanti) supaya tap apa pun di
-  // judul/isi catatan selama sheet terbuka tidak sempat memicu keyboard
-  // muncul lagi sama sekali.
   lockNoteContent();
 
   document.body.appendChild(overlay);
   requestAnimationFrame(() => {
     overlay.classList.add("is-open");
-    // Tunggu transisi buka selesai sebelum mengukur tinggi sheet & geser
-    // Scene yang sedang dikustomisasi ke atas area sheet, supaya
-    // pengukurannya memakai layout final (bukan di tengah animasi).
     setTimeout(() => {
       startReservingSpace();
       wrapperEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }, 200);
   });
-
-  // registerActiveSheet(doCancel) sudah dipanggil di awal fungsi ini —
-  // tidak ada lagi yang perlu didaftarkan ulang di sini.
 }
+
 
 /* -------------------------------------------------------------------- */
 /* Entry point                                                           */

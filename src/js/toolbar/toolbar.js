@@ -48,29 +48,23 @@ import { initSceneFeature } from "./scene-sheet.js";
 import { initMusicFeature } from "./music-sheet.js";
 import { initToolbarStateSync } from "./toolbar-state-sync.js";
 import { isTitleBold } from "../editor/title-style.js";
+import { t } from "../i18n/i18n.js";
 
-const ALIGN_OPTIONS = [
-  {
-    value: "left",
-    label: "Rata Kiri",
-    icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="18" y2="18"/></svg>',
-  },
-  {
-    value: "center",
-    label: "Rata Tengah",
-    icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="5" y1="18" x2="19" y2="18"/></svg>',
-  },
-  {
-    value: "right",
-    label: "Rata Kanan",
-    icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="10" y1="12" x2="20" y2="12"/><line x1="6" y1="18" x2="20" y2="18"/></svg>',
-  },
-  {
-    value: "justify",
-    label: "Rata Kanan-Kiri",
-    icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>',
-  },
-];
+
+const ALIGN_ICONS = {
+  left: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="18" y2="18"/></svg>',
+  center: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="5" y1="18" x2="19" y2="18"/></svg>',
+  right: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="10" y1="12" x2="20" y2="12"/><line x1="6" y1="18" x2="20" y2="18"/></svg>',
+  justify: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>',
+};
+function getAlignOptions() {
+  return [
+    { value: "left", label: t("align.left"), icon: ALIGN_ICONS.left },
+    { value: "center", label: t("align.center"), icon: ALIGN_ICONS.center },
+    { value: "right", label: t("align.right"), icon: ALIGN_ICONS.right },
+    { value: "justify", label: t("align.justify"), icon: ALIGN_ICONS.justify },
+  ];
+}
 
 export function initToolbar({ toolbarEl, editor, state }) {
   const buttons = {
@@ -211,13 +205,13 @@ export function initToolbar({ toolbarEl, editor, state }) {
   let currentAlign = "left";
   function updateAlignIcon(align) {
     currentAlign = align || "left";
-    const opt = ALIGN_OPTIONS.find((o) => o.value === currentAlign) || ALIGN_OPTIONS[0];
+    const opt = getAlignOptions().find((o) => o.value === currentAlign) || getAlignOptions()[0];
     if (alignIconEl) alignIconEl.innerHTML = opt.icon;
   }
 
   buttons.align.addEventListener("click", () => {
     const panel = createEl("div", { className: "toolbar-panel__list" });
-    for (const opt of ALIGN_OPTIONS) {
+    for (const opt of getAlignOptions()) {
       const item = createEl("button", {
         className: "toolbar-panel__item toolbar-panel__item--align" + (opt.value === currentAlign ? " is-active" : ""),
         attrs: { type: "button" },

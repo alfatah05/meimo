@@ -836,7 +836,19 @@ export function createEditor({ state, bodyEl, titleEl }) {
    * yang terseleksi. */
   function restoreSelection(sel) {
     if (!sel) return;
-    bodyEl.focus();
+    // BUGFIX (lanjutan): guard sebelumnya pakai `document.activeElement !==
+    // bodyEl` — tapi block di dalam Scene dirender sebagai pulau
+    // contenteditable TERPISAH (`.editor-scene__body`, nested di dalam
+    // wrapper `contenteditable="false"`, lihat renderSceneWrapper() di
+    // serializer.js). Begitu caret ada di dalam Scene, activeElement
+    // sungguhan adalah div Scene itu, BUKAN bodyEl — jadi perbandingan
+    // `!==` selalu true dan bodyEl.focus() tetap dipanggil tiap karakter,
+    // menarik fokus KELUAR dari pulau Scene tiap kali (persis penyebab
+    // blink/keyboard stuck yang masih muncul khusus di dalam Scene).
+    // `.contains()` menganggap fokus di pulau manapun di bawah bodyEl
+    // (termasuk pulau Scene) sebagai "sudah fokus", jadi tidak perlu
+    // direbut lagi.
+    if (!bodyEl.contains(document.activeElement)) bodyEl.focus();
     selectionApi.setModelSelection(bodyEl, sel);
   }
 
@@ -866,6 +878,28 @@ export function createEditor({ state, bodyEl, titleEl }) {
   renderAll();
   if (titleEl) applyTitleStyle(titleEl, state.getTitleStyle ? state.getTitleStyle() : null);
 
+  /** Fokuskan kursor ke akhir baris/block paling bawah dokumen. Dipakai
+   * antara lain oleh FAB "gulir ke bawah" (lihat editor/scroll-bottom-fab.js)
+   * setelah scroll otomatis sampai bawah.
+   *
+   * BUGFIX: jangan biarkan browser restore seleksi/caret lama saat focus()
+   * (blink sekejap ke posisi kursor sebelumnya di atas). Hapus range dulu,
+   * fokus tanpa scroll, lalu pasang seleksi ke akhir secara sinkron. */
+  function focusEnd() {
+    const blocks = state.getDocument().blocks;
+    if (!blocks.length) return;
+    const lastIndex = blocks.length - 1;
+    const sel = window.getSelection();
+    if (sel) sel.removeAllRanges();
+    bodyEl.focus({ preventScroll: true });
+    selectionApi.setModelSelection(bodyEl, {
+      startBlockIndex: lastIndex,
+      startOffset: blockTextLength(blocks[lastIndex]),
+      endBlockIndex: lastIndex,
+      endOffset: blockTextLength(blocks[lastIndex]),
+    });
+  }
+
   return {
     bodyEl,
     titleEl,
@@ -877,6 +911,8 @@ export function createEditor({ state, bodyEl, titleEl }) {
     canRedo: () => (state.canRedo ? state.canRedo() : false),
     getModelSelection: () => selectionApi.getModelSelection(bodyEl),
     restoreSelection,
+    focusEnd,
+    rerenderBlockAt,
     updateScene,
     getMusicTargetAtCursor,
     setSectionMusic,

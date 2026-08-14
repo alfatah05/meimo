@@ -38,6 +38,7 @@ import {
 import * as musicService from "../services/music-service.js";
 import * as audioPlayerService from "../services/audio-player-service.js";
 import { registerActiveSheet, clearActiveSheet } from "./active-sheet.js";
+import { t } from "../i18n/i18n.js";
 
 const PLAY_ICON =
   '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M8 5v14l11-7z"/></svg>';
@@ -80,7 +81,7 @@ function setButtonPlayingVisual(btn, playing) {
   btn.classList.toggle("is-playing", playing);
   const icon = qs(".music-player__icon", btn);
   if (icon) icon.innerHTML = playing ? PAUSE_ICON : PLAY_ICON;
-  btn.setAttribute("aria-label", playing ? "Jeda musik" : "Putar musik");
+  btn.setAttribute("aria-label", playing ? t("music.pause") : t("music.play"));
 }
 
 function buildMusicButton(key, meta, { onSingleTap, onDoubleTap }) {
@@ -90,13 +91,13 @@ function buildMusicButton(key, meta, { onSingleTap, onDoubleTap }) {
       type: "button",
       "data-music-key": key,
       "data-asset-id": meta.assetId || "",
-      "aria-label": "Putar musik",
+      "aria-label": t("music.play"),
       contenteditable: "false",
     },
   });
   btn.appendChild(createEl("span", { className: "music-player__icon", html: PLAY_ICON }));
   btn.appendChild(
-    createEl("span", { className: "music-player__label", text: meta.fileName || "Musik" })
+    createEl("span", { className: "music-player__label", text: meta.fileName || t("music.fallbackName") })
   );
   setButtonPlayingVisual(btn, audioPlayerService.isKeyPlaying(key));
   wireButtonTap(btn, {
@@ -213,12 +214,7 @@ function enforceActiveKeyStillValid(state) {
  *   lihat block-model.js findMusicTargetAt()/parseMusicKey().
  */
 function openMusicSheet({ editor, state, target }) {
-  // Daftarkan `doCancel` (didefinisikan di bawah, aman dirujuk di sini
-  // berkat function hoisting) sebagai sheet aktif — otomatis membatalkan
-  // & menutup sheet lain (Gambar/Scene/Musik) yang sebelumnya terbuka,
-  // kalau ada. Tidak ada guard early-return di fungsi ini (beda dari
-  // openImageSheet/openSceneSheet), jadi aman didaftarkan langsung di
-  // baris pertama. Lihat active-sheet.js.
+  // Daftarkan `doCancel` sebagai sheet aktif — otomatis menutup sheet lain.
   registerActiveSheet(doCancel);
 
   const key = musicKeyForTarget(target);
@@ -231,40 +227,98 @@ function openMusicSheet({ editor, state, target }) {
   let pendingFileName = null;
   let isBusy = false;
 
+  const ICON = {
+    music: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
+    delete: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+    check: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+  };
+
   const overlay = createEl("div", { className: "music-sheet-overlay image-sheet-overlay" });
-  const sheet = createEl("div", { className: "music-sheet image-sheet" });
+  const sheet = createEl("div", { className: "music-sheet image-sheet image-sheet--compact" });
   overlay.appendChild(sheet);
 
-  // ---- Judul "Musik" + tombol Hapus Musik (icon-only, pojok kanan atas,
-  // konsisten dengan scene-sheet.js) — HANYA muncul kalau section ini
-  // SUDAH punya musik (hasMusicAtOpen). Section "Berkas Musik" + tombol
-  // "Pilih Lagu" di bawah digabung jadi SATU section (bukan dua section
-  // terpisah dengan gap ganda seperti sebelumnya) supaya keduanya
-  // kelihatan sebagai satu kelompok yang rapat & rapi, bukan dua blok
-  // yang mengambang sendiri-sendiri.
-  const titleRow = createEl("div", { className: "image-sheet__title scene-sheet__title-row" });
-  titleRow.appendChild(createEl("span", { text: "Musik" }));
+  const mainCol = createEl("div", { className: "music-sheet__main-col" });
+
+  /* ---- Pilih lagu: kiri nama (transparan) + kanan icon 40px ---- */
+  const fileInput = createEl("input", { attrs: { type: "file", accept: "audio/*" } });
+  fileInput.hidden = true;
+
+  const pickBtn = createEl("button", {
+    className: "music-sheet__pick-btn",
+    attrs: { type: "button", "aria-label": t("music.pick") },
+  });
+  const pickName = createEl("span", { className: "music-sheet__pick-name", text: t("music.pick") });
+  const pickIcon = createEl("span", {
+    className: "music-sheet__pick-icon",
+    html: ICON.music,
+  });
+  pickBtn.append(pickName, pickIcon);
+
+  function updateFileLabel() {
+    if (pendingFileName) pickName.textContent = pendingFileName;
+    else if (existing && existing.fileName) pickName.textContent = existing.fileName;
+    else pickName.textContent = t("music.pick");
+    pickBtn.classList.toggle("has-file", !!(pendingFileName || (existing && existing.fileName)));
+  }
+  updateFileLabel();
+
+  pickBtn.addEventListener("click", () => {
+    if (isBusy) return;
+    fileInput.click();
+  });
+  fileInput.addEventListener("change", () => {
+    const file = fileInput.files && fileInput.files[0];
+    if (!file) return;
+    pendingFile = file;
+    pendingMimeType = file.type;
+    pendingFileName = file.name;
+    pendingBytesPromise = file.arrayBuffer();
+    updateFileLabel();
+    updateApplyState();
+  });
+
+  mainCol.append(pickBtn, fileInput);
+
+  // Spacer biar actions nempel bawah
+  mainCol.appendChild(createEl("div", { className: "music-sheet__spacer" }));
+
+  /* ---- Batal / Terapkan / Delete ---- */
+  const actions = createEl("div", { className: "image-sheet__actions music-sheet__actions-row" });
+  const cancelBtn = createEl("button", {
+    className: "image-sheet__btn image-sheet__btn--ghost",
+    attrs: { type: "button" },
+    text: t("sheet.cancel"),
+  });
+  const applyBtn = createEl("button", {
+    className: "image-sheet__btn image-sheet__btn--primary",
+    attrs: { type: "button" },
+    text: t("sheet.apply"),
+  });
+  actions.append(cancelBtn, applyBtn);
+
   let deleteArmed = false;
   let deleteArmTimer = null;
   let deleteBtn = null;
   if (hasMusicAtOpen) {
     deleteBtn = createEl("button", {
-      className: "scene-sheet__delete-icon-btn",
-      attrs: { type: "button", "aria-label": "Hapus Musik" },
-      html:
-        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+      className: "image-sheet__icon-btn image-sheet__icon-btn--danger music-sheet__delete-btn",
+      attrs: { type: "button", "aria-label": t("music.delete") },
+      html: ICON.delete,
     });
+    function resetDeleteArm() {
+      deleteArmed = false;
+      deleteBtn.classList.remove("is-armed");
+      deleteBtn.innerHTML = ICON.delete;
+      deleteBtn.setAttribute("aria-label", t("music.delete"));
+    }
     deleteBtn.addEventListener("click", () => {
       if (isBusy) return;
       if (!deleteArmed) {
         deleteArmed = true;
         deleteBtn.classList.add("is-armed");
-        deleteBtn.setAttribute("aria-label", "Ketuk lagi untuk hapus Musik");
-        deleteArmTimer = setTimeout(() => {
-          deleteArmed = false;
-          deleteBtn.classList.remove("is-armed");
-          deleteBtn.setAttribute("aria-label", "Hapus Musik");
-        }, 3000);
+        deleteBtn.innerHTML = ICON.check;
+        deleteBtn.setAttribute("aria-label", t("music.deleteConfirm"));
+        deleteArmTimer = setTimeout(resetDeleteArm, 3000);
         return;
       }
       clearTimeout(deleteArmTimer);
@@ -272,73 +326,15 @@ function openMusicSheet({ editor, state, target }) {
       editor.removeSectionMusic(target);
       close();
     });
-    titleRow.appendChild(deleteBtn);
+    actions.appendChild(deleteBtn);
   }
-  sheet.appendChild(titleRow);
+  mainCol.appendChild(actions);
 
-  const infoSection = createEl("div", { className: "image-sheet__section" });
-  infoSection.appendChild(createEl("div", { className: "image-sheet__label", text: "Berkas Musik" }));
-  const fileLabelEl = createEl("div", { className: "music-sheet__file-label" });
-  infoSection.appendChild(fileLabelEl);
-
-  function updateFileLabel() {
-    if (pendingFileName) fileLabelEl.textContent = pendingFileName;
-    else if (existing && existing.fileName) fileLabelEl.textContent = existing.fileName;
-    else fileLabelEl.textContent = "Belum ada musik dipilih";
-  }
-  updateFileLabel();
-
-  /* ---- Pilih Lagu (menyatu dalam infoSection, lihat komentar atas) ---- */
-  const fileInput = createEl("input", { attrs: { type: "file", accept: "audio/*" } });
-  fileInput.hidden = true;
-  const uploadBtn = createEl("button", {
-    className: "image-sheet__upload-btn music-sheet__upload-btn",
-    attrs: { type: "button" },
-    html:
-      '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg><span>Pilih Lagu</span>',
-  });
-  uploadBtn.addEventListener("click", () => fileInput.click());
-  fileInput.addEventListener("change", () => {
-    const file = fileInput.files && fileInput.files[0];
-    if (!file) return;
-    pendingFile = file;
-    pendingMimeType = file.type;
-    pendingFileName = file.name;
-    // Baca ArrayBuffer SEKARANG JUGA (bukan nanti saat "Terapkan" ditekan)
-    // — pola & alasannya sama seperti toolbar/image-sheet.js fileInput
-    // change handler (referensi file dari picker native bisa jadi tidak
-    // valid lagi kalau baru dibaca belakangan).
-    pendingBytesPromise = file.arrayBuffer();
-    updateFileLabel();
-    updateApplyState();
-  });
-  infoSection.appendChild(uploadBtn);
-  infoSection.appendChild(fileInput);
-  sheet.appendChild(infoSection);
-
-  /* ---- Aksi: Batal / Terapkan ---- */
-  const actions = createEl("div", { className: "image-sheet__actions" });
-  const cancelBtn = createEl("button", {
-    className: "image-sheet__btn image-sheet__btn--ghost",
-    attrs: { type: "button" },
-    text: "Batal",
-  });
-  const applyBtn = createEl("button", {
-    className: "image-sheet__btn image-sheet__btn--primary",
-    attrs: { type: "button" },
-    text: "Terapkan",
-  });
-  actions.appendChild(cancelBtn);
-  actions.appendChild(applyBtn);
-  sheet.appendChild(actions);
-
-  const errorEl = createEl("div", { className: "image-sheet__error" });
-  sheet.appendChild(errorEl);
+  const errorEl = createEl("div", { className: "image-sheet__error music-sheet__error" });
+  mainCol.appendChild(errorEl);
+  sheet.appendChild(mainCol);
 
   function updateApplyState() {
-    // Mode "insert" (belum pernah ada musik) wajib pilih lagu dulu; mode
-    // "edit" (sudah ada musik) boleh langsung Terapkan tanpa mengganti
-    // apa pun (jadi no-op, cukup menutup sheet).
     applyBtn.disabled = !hasMusicAtOpen && !pendingFile;
   }
   updateApplyState();
@@ -352,8 +348,9 @@ function openMusicSheet({ editor, state, target }) {
     isBusy = busy;
     cancelBtn.disabled = busy;
     if (deleteBtn) deleteBtn.disabled = busy;
+    pickBtn.disabled = busy;
     applyBtn.disabled = busy || (!hasMusicAtOpen && !pendingFile);
-    applyBtn.textContent = busy ? "Menyimpan…" : "Terapkan";
+    applyBtn.textContent = busy ? t("sheet.saving") : t("sheet.apply");
   }
 
   function withApplyTimeout(promise, ms = 26000) {
@@ -376,7 +373,6 @@ function openMusicSheet({ editor, state, target }) {
     if (isBusy || applyBtn.disabled) return;
 
     if (!pendingFile) {
-      // Tidak ada file baru dipilih — cuma menutup sheet, model tidak berubah.
       close();
       return;
     }
@@ -398,16 +394,14 @@ function openMusicSheet({ editor, state, target }) {
       setBusy(false);
       const isFileReadError = err && (err.name === "NotReadableError" || /could not be read/i.test(err.message || ""));
       errorEl.textContent = isFileReadError
-        ? 'Gagal membaca berkas musik yang dipilih. Coba pilih ulang lewat "Pilih Lagu".'
-        : "Gagal menyimpan musik. Coba tekan Terapkan sekali lagi.";
+        ? t("music.err.read")
+        : t("music.err.save");
     }
   }
 
   cancelBtn.addEventListener("click", doCancel);
   applyBtn.addEventListener("click", doApply);
 
-  // ---- Kunci area catatan supaya keyboard TIDAK bisa muncul lagi ----
-  // Pola sama persis dengan image-sheet.js/scene-sheet.js.
   const noteContentEl = qs(".note-content");
   function preventEditorFocus(e) {
     if (noteContentEl && noteContentEl.contains(e.target) && e.target !== noteContentEl) {
@@ -423,10 +417,6 @@ function openMusicSheet({ editor, state, target }) {
     document.removeEventListener("focusin", preventEditorFocus);
   }
 
-  // ---- Ruang scroll cadangan setinggi sheet ----
-  // Sama pola dengan --image-sheet-space/--scene-sheet-space (layout.css):
-  // editor tetap bisa di-scroll penuh selama sheet terbuka, konten paling
-  // bawah tidak ketutup sheet.
   const root = document.documentElement;
   let sheetResizeObserver = null;
   function setReservedSpace(px) {
@@ -466,10 +456,8 @@ function openMusicSheet({ editor, state, target }) {
     overlay.classList.add("is-open");
     setTimeout(() => startReservingSpace(), 200);
   });
-
-  // registerActiveSheet(doCancel) sudah dipanggil di awal fungsi ini —
-  // tidak ada lagi yang perlu didaftarkan ulang di sini.
 }
+
 
 /* -------------------------------------------------------------------- */
 /* Entry point                                                           */

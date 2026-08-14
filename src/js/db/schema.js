@@ -13,7 +13,8 @@
 export const DB_NAME = "personal-notes-db";
 // v2: tambah object store FONTS (font kustom yang diunduh dari Font Library
 // untuk fitur Font Family di editor — lihat src/js/services/font-service.js).
-export const DB_VERSION = 2;
+// v3: object store SETTINGS (preferensi user, mis. API key AI + model).
+export const DB_VERSION = 3;
 
 /** Versi skema dokumen (top-level `schemaVersion`), lihat DOCUMENT_MODEL.md §2. */
 export const DOCUMENT_SCHEMA_VERSION = 1;
@@ -23,6 +24,7 @@ export const STORES = {
   NOTES: "notes",
   ASSETS: "assets",
   FONTS: "fonts",
+  SETTINGS: "settings",
 };
 
 /**
@@ -67,6 +69,11 @@ export function applyUpgrade(db) {
   if (fontsStore) {
     fontsStore.createIndex("installedAt", "installedAt", { unique: false });
   }
+
+  // Preferensi user (key-value): API key AI, model AI, dsb.
+  if (!db.objectStoreNames.contains(STORES.SETTINGS)) {
+    db.createObjectStore(STORES.SETTINGS, { keyPath: "key" });
+  }
 }
 
 /** Metadata default untuk dokumen baru — lihat DOCUMENT_MODEL.md §3. */
@@ -109,6 +116,8 @@ export function createDefaultCardStyle() {
     // Opacity gambar latar, 0 (transparan penuh) s/d 1 (penuh terlihat).
     // Hanya berlaku kalau bgImageAssetId terisi.
     bgImageOpacity: 1,
+    // Sembunyikan cuplikan isi catatan di kartu (judul tetap tampil).
+    hideSnippet: false,
   };
 }
 

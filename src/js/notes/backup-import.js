@@ -21,8 +21,10 @@ import { exportAllNotes } from "../services/backup-service.js";
 import { importMeimoFile } from "../services/meimo-import.js";
 import { importMeimoBackupZip } from "../services/backup-restore.js";
 import { showToast } from "../../components/toast.js";
+import { t, initI18n } from "../i18n/i18n.js";
 
 async function boot() {
+  initI18n();
   const backupBtn = document.getElementById("btnBackupAll");
   const importBtn = document.getElementById("btnImportMeimo");
   const importInput = document.getElementById("importFileInput");
@@ -36,12 +38,12 @@ async function boot() {
         const { noteCount } = await exportAllNotes();
         showToast(
           noteCount > 0
-            ? `Cadangan ${noteCount} catatan disimpan (lengkap dengan gambar/musik).`
-            : "Belum ada catatan untuk dicadangkan."
+            ? t("backup.exportCount", { n: noteCount })
+            : t("backup.exportEmpty")
         );
       } catch (err) {
         console.error("Gagal membuat cadangan:", err);
-        showToast("Gagal membuat cadangan. Coba lagi.", { tone: "danger" });
+        showToast(t("backup.exportFail"), { tone: "danger" });
       } finally {
         backupBtn.disabled = false;
       }
@@ -59,10 +61,10 @@ async function boot() {
       importBtn.disabled = true;
       try {
         const { title } = await importMeimoFile(file);
-        showToast(`"${title}" berhasil diimpor.`);
+        showToast(t("backup.importOk", { title }));
       } catch (err) {
         console.error("Gagal mengimpor .meimo:", err);
-        showToast(err.message || "Gagal mengimpor file. Pastikan ini file .meimo yang valid.", {
+        showToast(err.message || t("backup.importFail"), {
           tone: "danger",
         });
       } finally {
@@ -83,22 +85,22 @@ async function boot() {
       try {
         const { total, imported, failures } = await importMeimoBackupZip(file);
         if (failures.length === 0) {
-          showToast(`${imported.length} dari ${total} catatan berhasil diimpor.`);
+          showToast(t("backup.importZipPartial", { n: imported.length, total }));
         } else if (imported.length === 0) {
           // Semua entry .meimo yang ADA di dalam zip gagal diimpor (bukan
           // "zip tidak punya .meimo sama sekali" — itu sudah ditolak lebih
           // dulu lewat throw di importMeimoBackupZip() dan masuk ke catch
           // di bawah, bukan lewat cabang ini).
-          showToast(`Gagal mengimpor semua ${total} catatan dari zip ini.`, { tone: "danger" });
+          showToast(t("backup.importZipFailAll", { total }), { tone: "danger" });
         } else {
           showToast(
-            `${imported.length} dari ${total} catatan berhasil diimpor (${failures.length} gagal).`,
+            t("backup.importZipPartialFail", { n: imported.length, total, fail: failures.length }),
             { tone: "danger", duration: 4200 }
           );
         }
       } catch (err) {
         console.error("Gagal mengimpor .zip cadangan:", err);
-        showToast(err.message || "Gagal mengimpor file. Pastikan ini file .zip cadangan yang valid.", {
+        showToast(err.message || t("backup.importZipFail"), {
           tone: "danger",
         });
       } finally {
@@ -108,8 +110,15 @@ async function boot() {
   }
 }
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", boot);
-} else {
-  boot();
+/** Init untuk SPA / multi-page. */
+export async function initBackup() {
+  return boot();
+}
+
+if (!window.__MEIMO_SPA__) {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
 }

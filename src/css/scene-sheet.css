@@ -1,160 +1,511 @@
 /* ==========================================================================
    scene-sheet.css
-   Bottom sheet kustomisasi Scene (Background Color / Padding / Edge Style)
-   — dibuka dari toolbar/scene-sheet.js. Struktur dasar overlay & sheet
-   (posisi, animasi naik dari bawah, judul, section, label, tombol
-   Batal/Terapkan) SENGAJA dipakai bareng dari image-sheet.css lewat class
-   ganda (mis. `class="scene-sheet-overlay image-sheet-overlay"`), persis
-   seperti bottom sheet gambar — file ini HANYA berisi bagian yang khas
-   Scene: preset warna tambahan, grup preset Padding, grid preview Edge
-   Style.
+   Bottom sheet Scene — layout compact disamakan dengan image-sheet
+   (tinggi, padding, gap, warna chip). File ini berisi gaya khas Scene.
+   Struktur dasar overlay/sheet memakai class image-sheet*.
    ========================================================================== */
 
-/* ---- Background Color: strip yang bisa digeser horizontal ----
-   Dulu dipakai grid 4-kolom yang bisa "makan tempat" vertikal begitu
-   presetnya banyak — sekarang satu baris flex, scroll ke samping, sama
-   semangatnya dengan .color-bar__swatch (topbar) supaya konsisten dan
-   preset boleh terus ditambah tanpa mendorong bagian sheet di bawahnya.
-   Padding kiri-kanan SENGAJA `--space-sm` (8px, bukan cuma `--space-2xs`
-   2px seperti sebelumnya) dan TIDAK dikompensasi habis oleh margin negatif
-   (cuma `-space-2xs`) — swatch paling pojok (kiri saat scroll ke awal,
-   kanan saat scroll mentok ke swatch/input warna kustom terakhir) jadi
-   punya ruang napas ~6px, cukup untuk ring `.is-active` (box-shadow 4px,
-   lihat di bawah) supaya tidak ke-crop `overflow-x: auto` di elemen yang
-   sama saat swatch di ujung itu yang aktif. */
-.scene-sheet__color-strip {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  padding: var(--space-2xs) var(--space-sm) var(--space-xs);
-  margin: 0 calc(var(--space-2xs) * -1);
+/* Chip warna yang sama dengan image-sheet menus */
+.scene-sheet.image-sheet--compact {
+  /* sedikit lebih tinggi dari image compact supaya chip padding visual + label muat */
+  height: calc(218px + env(safe-area-inset-bottom, 0px));
 }
 
-.scene-sheet__color-strip::-webkit-scrollbar {
-  display: none;
+.scene-sheet .image-sheet__panel--main {
+  padding: 12px 16px;
+}
+
+.scene-sheet__main-col {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+/* 5 chip padding — visual inset + label biar user paham fungsinya */
+.scene-sheet__pad-row {
+  display: flex;
+  gap: 5px;
+  height: 48px;
+  flex: 0 0 48px;
+}
+
+.scene-sheet__pad-chip {
+  flex: 1;
+  min-width: 0;
+  height: 48px;
+  border: none;
+  border-radius: 5px;
+  background-color: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--color-text-primary) 14%, var(--color-surface)) 38%,
+    var(--color-surface)
+  );
+  color: var(--color-text-secondary);
+  font-size: 10px;
+  font-weight: var(--weight-medium);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 4px 2px 3px;
+  box-sizing: border-box;
+}
+
+.scene-sheet__pad-chip.is-active {
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.scene-sheet__pad-chip.is-active .scene-sheet__pad-visual {
+  border-color: var(--color-accent);
+  background-color: color-mix(in srgb, var(--color-accent) 18%, transparent);
+}
+
+.scene-sheet__pad-chip.is-active .scene-sheet__pad-visual-inner {
+  background-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-surface));
+}
+
+.scene-sheet__pad-visual {
+  width: 22px;
+  height: 16px;
+  border: 1.5px solid currentColor;
+  border-radius: 2px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+
+.scene-sheet__pad-visual-inner {
+  flex: 1;
+  background-color: color-mix(in srgb, var(--color-text-secondary) 35%, var(--color-surface));
+  border-radius: 1px;
+  box-sizing: border-box;
+}
+
+/* Inset visual mewakili besar padding: makin besar gap outer→inner */
+.scene-sheet__pad-visual--none {
+  padding: 0;
+}
+.scene-sheet__pad-visual--none .scene-sheet__pad-visual-inner {
+  background-color: transparent;
+  border: 1px dashed color-mix(in srgb, currentColor 50%, transparent);
+}
+
+.scene-sheet__pad-visual--sm {
+  padding: 1.5px;
+}
+
+.scene-sheet__pad-visual--md {
+  padding: 3px;
+}
+
+.scene-sheet__pad-visual--lg {
+  padding: 4.5px;
+}
+
+.scene-sheet__pad-visual--xl {
+  padding: 6px;
+}
+
+.scene-sheet__pad-label {
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* 2 chip besar: Warna + Tepi */
+.scene-sheet__big-row {
+  display: flex;
+  gap: 5px;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 80px;
+  max-height: 80px;
+}
+
+.scene-sheet__big-btn {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: none;
+  border-radius: 5px;
+  background-color: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--color-text-primary) 14%, var(--color-surface)) 38%,
+    var(--color-surface)
+  );
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: var(--weight-medium);
+  padding: 4px;
+}
+
+.scene-sheet__big-btn svg {
+  width: 22px;
+  height: 22px;
+}
+
+.scene-sheet__big-btn span {
+  line-height: 1.1;
+}
+
+/* Actions row: Batal / Terapkan (+ delete icon) */
+.scene-sheet__actions-row {
+  height: 40px;
+  flex: 0 0 40px;
+  display: flex;
+  gap: 5px;
+  margin: 0;
+}
+
+.scene-sheet__delete-btn {
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+}
+
+/* ---- Color child: card penuh kanan + bar warna sticky + grid scroll ---- */
+.scene-sheet__color-body {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 10px 15px !important; /* atas-bawah 10px, kiri-kanan 15px — rail kiri tidak tertutup */
+  box-sizing: border-box;
+}
+
+.scene-sheet__color-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: 10px;
+  background-color: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--color-text-primary) 10%, var(--color-surface)) 50%,
+    var(--color-surface)
+  );
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* Bar warna: nempel di atas card, tidak ikut scroll.
+   Seluruh bar diisi warna aktif (bukan lingkaran preview).
+   Checkerboard di belakang supaya alpha kelihatan. */
+.scene-sheet__color-bar {
+  flex: 0 0 35px;
+  height: 35px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px 0 10px;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--color-border);
+  /* layer 1: warna aktif, layer 2: background editor sesuai tema */
+  background-image:
+    linear-gradient(var(--scene-bar-color, transparent), var(--scene-bar-color, transparent)),
+    linear-gradient(var(--color-bg), var(--color-bg));
+  background-size: auto, auto;
+  position: relative;
+  overflow: hidden;
+}
+
+.scene-sheet__color-bar-code {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: var(--weight-medium);
+  color: #fff;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.35);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+/* Teks gelap otomatis jika bar terlalu terang */
+.scene-sheet__color-bar.is-light .scene-sheet__color-bar-code {
+  color: #1a1a1a;
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.5);
+}
+
+.scene-sheet__color-bar-add {
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #fff;
+  padding: 0;
+  cursor: pointer;
+  margin-left: auto; /* align kanan di dalam bar */
+}
+
+.scene-sheet__color-bar.is-light .scene-sheet__color-bar-add {
+  color: #1a1a1a;
+}
+
+.scene-sheet__color-bar-add:hover,
+.scene-sheet__color-bar-add:focus-visible {
+  background-color: rgba(255, 255, 255, 0.22);
+}
+
+.scene-sheet__color-bar.is-light .scene-sheet__color-bar-add:hover,
+.scene-sheet__color-bar.is-light .scene-sheet__color-bar-add:focus-visible {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.scene-sheet__color-bar-add:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.scene-sheet__color-bar-add svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Chip opacity — selalu tampil di atas card, lebar sama card, tinggi 40px */
+.scene-sheet__opacity-chip {
+  flex: 0 0 40px;
+  height: 40px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  margin-bottom: 8px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background-color: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--color-text-primary) 10%, var(--color-surface)) 50%,
+    var(--color-surface)
+  );
+}
+
+.scene-sheet__opacity-icon {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+}
+
+.scene-sheet__opacity-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.scene-sheet__opacity-slider {
+  flex: 1;
+  min-width: 0;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: linear-gradient(
+    to right,
+    transparent,
+    color-mix(in srgb, var(--color-text-primary) 55%, transparent)
+  );
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.scene-sheet__opacity-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  border: 2px solid var(--color-surface);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent) 40%, transparent);
+  cursor: pointer;
+}
+
+.scene-sheet__opacity-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  border: 2px solid var(--color-surface);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent) 40%, transparent);
+  cursor: pointer;
+}
+
+.scene-sheet__opacity-value {
+  flex: 0 0 36px;
+  width: 36px;
+  text-align: right;
+  font-size: 11px;
+  font-weight: var(--weight-medium);
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Area grid: scroll vertikal, scrollbar disembunyikan */
+.scene-sheet__color-grid-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 10px;
+  box-sizing: border-box;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge legacy */
+}
+
+.scene-sheet__color-grid-wrap::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
+.scene-sheet__color-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 34px);
+  gap: 8px;
+  justify-content: start;
+  align-content: start;
+  width: 100%;
 }
 
 .scene-sheet__swatch {
-  flex: 0 0 auto;
   width: 34px;
   height: 34px;
-  border-radius: var(--radius-full);
+  border-radius: 50%;
   border: 1px solid var(--color-border);
   background-color: var(--color-text-primary);
-  transition: transform var(--duration-instant) var(--ease-out);
-}
-
-.scene-sheet__swatch:hover {
-  transform: scale(1.08);
+  padding: 0;
+  box-sizing: border-box;
 }
 
 .scene-sheet__swatch.is-active {
-  box-shadow: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-accent);
 }
 
-/* Item terakhir di strip: input warna kustom native. */
-.scene-sheet__custom-color {
-  flex: 0 0 auto;
+.scene-sheet__swatch--none {
+  background: repeating-conic-gradient(var(--color-border) 0% 25%, transparent 0% 50%) 50% / 12px 12px;
+}
+
+/* Custom picker di rail kiri (icon saja) */
+.scene-sheet__rail-custom {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 2px;
-  font-size: 10px;
+  justify-content: center;
+  border: none;
+  border-radius: 0;
+  background: transparent;
   color: var(--color-text-secondary);
-  cursor: pointer;
-}
-
-.scene-sheet__custom-color input[type="color"] {
-  width: 34px;
-  height: 34px;
   padding: 0;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-xs);
   cursor: pointer;
 }
 
-/* ---- Padding: preset pill ---- */
-.scene-sheet__preset-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-xs);
-}
-
-.scene-sheet__preset-btn {
-  padding: var(--space-xs) var(--space-sm);
-  border-radius: var(--radius-full);
-  border: 1px solid var(--color-border);
-  background-color: var(--color-surface);
-  color: var(--color-text-secondary);
-  font-size: var(--text-xs);
-}
-
-.scene-sheet__preset-btn.is-active {
-  border-color: var(--color-accent);
-  background-color: var(--color-accent-soft);
+.scene-sheet__rail-custom.is-active {
   color: var(--color-accent);
-  font-weight: var(--weight-medium);
 }
 
-/* ---- Edge Style: strip tombol (preview bentuk) yang bisa digeser
-   horizontal — dulu grid 3-kolom yang tingginya bertambah begitu preset
-   Edge Style baru ditambahkan (kini ada 7), sekarang satu baris tetap
-   tanpa mendorong section lain di bawahnya. */
-.scene-sheet__edge-grid {
-  display: flex;
-  align-items: stretch;
-  gap: var(--space-xs);
+.scene-sheet__rail-custom svg {
+  width: 20px;
+  height: 20px;
+  pointer-events: none;
+}
+
+.scene-sheet__rail-custom input[type="color"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  border: none;
+  padding: 0;
+}
+
+/* ---- Edge child: 2 baris, chip 100×80, scroll horizontal ---- */
+.scene-sheet__edge-body {
   overflow-x: auto;
   overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  padding: var(--space-2xs) var(--space-2xs) var(--space-xs);
-  margin: 0 calc(var(--space-2xs) * -1);
 }
 
-.scene-sheet__edge-grid::-webkit-scrollbar {
-  display: none;
+.scene-sheet__edge-grid {
+  display: grid;
+  grid-template-rows: repeat(2, 80px);
+  grid-auto-flow: column;
+  grid-auto-columns: 100px;
+  gap: 8px;
+  align-content: start;
+  height: calc(2 * 80px + 8px);
+  width: max-content;
+  min-width: min-content;
 }
 
 .scene-sheet__edge-btn {
-  flex: 0 0 auto;
-  width: 96px;
+  width: 100px;
+  height: 80px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: var(--space-xs);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  background-color: var(--color-surface);
+  align-items: stretch;
+  justify-content: center;
+  gap: 0;
+  padding: 6px;
+  border-radius: 5px;
+  border: none;
+  background-color: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--color-text-primary) 14%, var(--color-surface)) 38%,
+    var(--color-surface)
+  );
   color: var(--color-text-secondary);
-  font-size: 11px;
+  box-sizing: border-box;
 }
 
 .scene-sheet__edge-btn.is-active {
-  border-color: var(--color-accent);
   background-color: var(--color-accent-soft);
   color: var(--color-accent);
-  font-weight: var(--weight-medium);
 }
 
 .scene-sheet__edge-preview {
   width: 100%;
-  height: 46px;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  border-radius: var(--radius-xs);
+  border-radius: 4px;
   overflow: hidden;
 }
 
 .scene-sheet__edge-preview-bar {
-  height: 10px;
+  height: 12px;
   width: 100%;
-  background-color: var(--color-accent);
+  background-color: currentColor;
   flex-shrink: 0;
   opacity: 0.55;
 }
@@ -162,17 +513,11 @@
 .scene-sheet__edge-preview-body {
   flex: 1;
   width: 100%;
-  background-color: var(--color-accent);
-  opacity: 0.3;
+  background-color: currentColor;
+  opacity: 0.28;
 }
 
-/* ---- Baris tombol aksi gaya "kartu" (ikon + label, berjejer sejajar) —
-   nama class-nya historis dari sheet Scene, TAPI class ini sekarang
-   dipakai HANYA oleh toolbar/music-sheet.js (tombol "Hapus Musik" dkk.) —
-   JANGAN dihapus/direname tanpa mengecek music-sheet.js. Sheet Scene
-   sendiri sudah tidak pakai lagi sama sekali (Duplicate Scene dihapus
-   total, Delete Scene pindah jadi icon button di title row — lihat
-   .scene-sheet__title-row / .scene-sheet__delete-icon-btn di bawah). ---- */
+/* ---- Legacy (music-sheet masih memakai class actions) ---- */
 .scene-sheet__actions {
   display: flex;
   flex-direction: row;
@@ -181,7 +526,7 @@
 
 .scene-sheet__action-btn {
   flex: 1;
-  min-width: 0; /* boleh menyusut di bawah lebar konten intrinsik (ikon+teks) supaya dua tombol tetap muat sejajar di layar sempit */
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -198,45 +543,34 @@
 }
 
 .scene-sheet__action-btn span {
-  white-space: normal;
   line-height: 1.2;
 }
 
 .scene-sheet__action-btn--danger {
-  color: var(--color-danger);
+  color: var(--color-danger, #e11);
+  border-color: color-mix(in srgb, var(--color-danger, #e11) 35%, var(--color-border));
 }
 
-.scene-sheet__action-btn--danger.is-armed {
-  border-color: var(--color-danger);
-  background-color: rgba(var(--shadow-color), 0.04);
-}
-
-/* ---- Title row sheet Scene: judul "Scene" + tombol Hapus Scene
-   icon-only di pojok kanan atas (mode "edit" saja, lihat scene-sheet.js).
-   Reset margin-bottom bawaan .image-sheet__title karena di sini
-   dibungkus flex row, bukan teks polos lagi. ---- */
 .scene-sheet__title-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-xs);
+  gap: var(--space-sm);
 }
 
 .scene-sheet__delete-icon-btn {
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-sm);
-  border: 1px solid transparent;
-  background-color: transparent;
-  color: var(--color-text-secondary);
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--color-danger, #e11);
+  padding: 0;
 }
 
 .scene-sheet__delete-icon-btn.is-armed {
-  color: var(--color-danger);
-  border-color: var(--color-danger);
-  background-color: rgba(var(--shadow-color), 0.04);
+  background-color: rgba(220, 38, 38, 0.18);
 }

@@ -17,6 +17,7 @@ import { createEl } from "../utils/dom.js";
 import { formatRelativeDate } from "../utils/date-format.js";
 import { showToast } from "../../components/toast.js";
 import { confirmDialog } from "../../components/modal.js";
+import { t, initI18n } from "../i18n/i18n.js";
 
 function byTrashedAtDesc(a, b) {
   return new Date(b.metadata.trashedAt || 0).getTime() - new Date(a.metadata.trashedAt || 0).getTime();
@@ -27,46 +28,46 @@ function createTrashCard(note, onChange) {
 
   const header = createEl("div", { className: "note-card__header" });
   header.appendChild(
-    createEl("div", { className: "note-card__title", text: note.title || "Tanpa judul" })
+    createEl("div", { className: "note-card__title", text: note.title || t("note.untitled") })
   );
 
   const snippet = createEl("p", {
     className: "note-card__snippet",
-    text: getSnippet(note) || "Catatan kosong.",
+    text: getSnippet(note) || t("note.empty"),
   });
 
   const footer = createEl("div", { className: "note-card__footer" });
   footer.appendChild(
-    createEl("span", { text: `Dihapus ${formatRelativeDate(note.metadata.trashedAt)}` })
+    createEl("span", { text: t("trash.deletedAt", { date: formatRelativeDate(note.metadata.trashedAt) }) })
   );
 
   const actions = createEl("div", { className: "trash-card__actions" });
   const restoreBtn = createEl("button", {
     className: "trash-card__btn",
-    text: "Pulihkan",
+    text: t("trash.restore"),
     attrs: { type: "button" },
   });
   const deleteBtn = createEl("button", {
     className: "trash-card__btn trash-card__btn--danger",
-    text: "Hapus Permanen",
+    text: t("trash.deleteForever"),
     attrs: { type: "button" },
   });
 
   restoreBtn.addEventListener("click", async () => {
     await restoreFromTrash(note.id);
-    showToast("Catatan dipulihkan.");
+    showToast(t("note.restored"));
     onChange();
   });
 
   deleteBtn.addEventListener("click", async () => {
     const confirmed = await confirmDialog({
-      title: "Hapus permanen?",
-      message: `"${note.title || "Catatan tanpa judul"}" akan dihapus permanen dan tidak bisa dikembalikan.`,
-      confirmLabel: "Hapus Permanen",
+      title: t("note.deleteForeverTitle"),
+      message: t("note.deleteForeverBody"),
+      confirmLabel: t("trash.deleteForever"),
     });
     if (!confirmed) return;
     await permanentlyDeleteNote(note.id);
-    showToast("Catatan dihapus permanen.");
+    showToast(t("note.deletedForever"));
     onChange();
   });
 
@@ -76,6 +77,10 @@ function createTrashCard(note, onChange) {
 }
 
 async function boot() {
+  initI18n();
+  return _bootTrash();
+}
+async function _bootTrash() {
   const grid = document.getElementById("trashGrid");
   const section = document.getElementById("trashSection");
   const sectionSkeleton = document.getElementById("trashSectionSkeleton");
@@ -104,8 +109,15 @@ async function boot() {
   await load();
 }
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", boot);
-} else {
-  boot();
+/** Init untuk SPA / multi-page. */
+export async function initTrash() {
+  return boot();
+}
+
+if (!window.__MEIMO_SPA__) {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
 }

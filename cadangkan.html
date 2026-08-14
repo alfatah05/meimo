@@ -1,16 +1,24 @@
 <!DOCTYPE html>
-<html lang="id" data-theme="light">
+<html lang="id" data-theme="dark">
 <head>
 <meta charset="UTF-8">
-<!-- Opt-in Cross-Document View Transition SEDINI mungkin di <head>
-     (bukan cuma di view-transitions.css). Chrome/WebView sering melewati
-     animasi navigasi MAJU kalau @view-transition belum terbaca saat
-     dokumen baru di-parse; back/bfcache tetap jalan karena stylesheet
-     sudah di memori. Lihat Chromium issue 348683476. -->
 <style>
-@view-transition { navigation: auto; }
+/* BUGFIX v1.19.1: aturan opt-in @view-transition ini SENGAJA inline di
+   sini (bukan di file eksternal src/css/view-transitions.css), dan
+   SENGAJA ditaruh sepaling-atas mungkin di <head>. Sebelumnya aturan ini
+   ada di dalam view-transitions.css yang posisi <link>-nya jauh di bawah
+   ~10 stylesheet lain — kalau file itu belum selesai di-fetch/parse pas
+   user buru-buru pindah halaman (terutama kunjungan pertama / cache
+   masih dingin), browser belum sempat "kenal" opt-in ini, jadi animasi
+   transisi halaman kadang dilewat begitu saja. Inline <style> dijamin
+   langsung tersedia tanpa nunggu network sama sekali, jadi animasinya
+   konsisten selalu jalan. Keyframes & style pseudo-element lain tetap di
+   view-transitions.css seperti biasa. */
+@view-transition {
+  navigation: auto;
+}
 </style>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content, minimum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Cadangkan &amp; Impor — Catatan</title>
 
 <!-- ============ PWA: Manifest, Theme Color, App Icon, Splash Screen ============ -->
@@ -25,46 +33,12 @@
   // src/css/themes.css.
   (function () {
     var THEME_COLORS = { light: "#FFFFFF", dark: "#17181C", sepia: "#F4ECD8", paper: "#FBFAF5", oled: "#000000" };
-    var t = null;
     try {
-      t = localStorage.getItem("notes-app-theme");
+      var t = localStorage.getItem("notes-app-theme");
       if (t) document.documentElement.setAttribute("data-theme", t);
       var meta = document.querySelector('meta[name="theme-color"]');
       if (meta) meta.setAttribute("content", THEME_COLORS[t] || THEME_COLORS.light);
     } catch (e) {}
-    // System bars native sedini mungkin (sebelum module native-bridge jalan).
-    // Plugin Capacitor kadang belum inject di frame pertama cold start —
-    // poll singkat sampai siap, supaya warna bar langsung cocok tema
-    // (bukan nunggu refresh).
-    function applyNativeBars() {
-      try {
-        var Cap = window.Capacitor;
-        if (!Cap || !Cap.isNativePlatform || !Cap.isNativePlatform()) return false;
-        var id = document.documentElement.getAttribute("data-theme") || "light";
-        var color = THEME_COLORS[id] || THEME_COLORS.light;
-        var dark = id === "dark" || id === "oled";
-        var SB = Cap.Plugins && Cap.Plugins.StatusBar;
-        if (SB) {
-          if (SB.setOverlaysWebView) SB.setOverlaysWebView({ overlay: true });
-          if (SB.setBackgroundColor) SB.setBackgroundColor({ color: color });
-          if (SB.setStyle) SB.setStyle({ style: dark ? "DARK" : "LIGHT" });
-        }
-        var NB = Cap.Plugins && Cap.Plugins.NavigationBar;
-        if (NB && NB.setNavigationBarColor) {
-          NB.setNavigationBarColor({ color: color, darkButtons: !dark });
-        } else if (NB && NB.setColor) {
-          NB.setColor({ color: color });
-        }
-        return !!(SB || NB);
-      } catch (e) { return false; }
-    }
-    if (!applyNativeBars()) {
-      var n = 0;
-      var timer = setInterval(function () {
-        n++;
-        if (applyNativeBars() || n >= 60) clearInterval(timer);
-      }, 50);
-    }
   })();
 </script>
 <link rel="icon" href="/assets/icons/favicon.ico" sizes="any">
@@ -81,13 +55,13 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/src/css/variables.css">
 <link rel="stylesheet" href="/src/css/themes.css">
+<link rel="stylesheet" href="/src/css/view-transitions.css">
 <link rel="stylesheet" href="/src/css/base.css">
 <link rel="stylesheet" href="/src/css/typography.css">
 <link rel="stylesheet" href="/src/css/layout.css">
 <link rel="stylesheet" href="/src/css/notes-list.css">
 <link rel="stylesheet" href="/src/css/toolbar.css">
 <link rel="stylesheet" href="/src/css/animations.css">
-<link rel="stylesheet" href="/src/css/view-transitions.css">
 <link rel="stylesheet" href="/src/css/responsive.css">
 <link rel="stylesheet" href="/src/css/components.css">
 <link rel="stylesheet" href="/src/css/backup-import.css">
@@ -99,13 +73,13 @@
   <!-- ============ HEADER (Cadangkan & Impor) ============ -->
   <header class="home-header">
     <div style="display:flex; align-items:center; gap: var(--space-sm);">
-      <a href="/library" class="note-back-btn" aria-label="Kembali">
+      <a href="/library" class="note-back-btn" aria-label="Back" data-i18n-aria="nav.back">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <line x1="19" y1="12" x2="5" y2="12"></line>
           <polyline points="12 19 5 12 12 5"></polyline>
         </svg>
       </a>
-      <div class="home-greeting">Cadangkan &amp; Impor</div>
+      <div class="home-greeting" data-i18n="backup.title">Backup &amp; Import</div>
     </div>
   </header>
 
@@ -124,8 +98,8 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg>
           </span>
           <span class="backup-action-btn__text">
-            <span class="backup-action-btn__title">Cadangkan Semua Catatan</span>
-            <span class="backup-action-btn__desc">Unduh semua catatan sebagai .meimo (dengan gambar/musik), dibungkus satu file .zip</span>
+            <span class="backup-action-btn__title" data-i18n="backup.exportAll">Back up all notes</span>
+            <span class="backup-action-btn__desc" data-i18n="backup.exportAll.desc">Download a .zip of all notes and assets.</span>
           </span>
         </button>
 
@@ -134,8 +108,8 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V9"/><path d="M7 14l5-5 5 5"/><path d="M4 5h16"/></svg>
           </span>
           <span class="backup-action-btn__text">
-            <span class="backup-action-btn__title">Impor Catatan (.meimo)</span>
-            <span class="backup-action-btn__desc">Masukkan satu file .meimo jadi catatan baru, lengkap dengan gambar/musiknya</span>
+            <span class="backup-action-btn__title" data-i18n="backup.importMeimo">Import note (.meimo)</span>
+            <span class="backup-action-btn__desc" data-i18n="backup.importMeimo.desc">Import one .meimo file as a new note, including images/music</span>
           </span>
         </button>
         <input type="file" id="importFileInput" accept=".meimo" hidden>
@@ -150,8 +124,8 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M12 9v6"/><path d="M9.5 12.5L12 15l2.5-2.5"/></svg>
           </span>
           <span class="backup-action-btn__text">
-            <span class="backup-action-btn__title">Impor Cadangan (.zip)</span>
-            <span class="backup-action-btn__desc">Masukkan satu file .zip cadangan, semua .meimo di dalamnya langsung diimpor sekaligus</span>
+            <span class="backup-action-btn__title" data-i18n="backup.importZip">Import backup (.zip)</span>
+            <span class="backup-action-btn__desc" data-i18n="backup.importZip.desc">Restore notes from a Meimo backup zip.</span>
           </span>
         </button>
         <input type="file" id="importBackupZipInput" accept=".zip" hidden>
@@ -166,8 +140,6 @@
 
 <!-- ============ PWA: Service Worker (mode offline) ============ -->
 <script type="module" src="/src/js/pwa/sw-register.js"></script>
-<script type="module" src="/src/js/pwa/native-bridge.js"></script>
-<script type="module" src="/src/js/utils/view-transition-nav.js"></script>
 <script type="module" src="/src/js/pwa/install-prompt.js"></script>
 <script type="module" src="/src/js/utils/native-feel.js"></script>
 

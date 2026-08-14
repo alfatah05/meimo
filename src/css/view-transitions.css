@@ -8,17 +8,26 @@
    navigasi normal tanpa animasi apa pun — aman dipasang di semua halaman,
    tidak butuh feature-detect manual.
 
+   PENTING soal urutan load: aturan opt-in `@view-transition { navigation:
+   auto; }` SUDAH DIPINDAH jadi inline <style> paling atas di <head>
+   setiap halaman (lihat komentar "BUGFIX" di masing-masing .html) —
+   BUKAN lagi di file eksternal ini. Alasannya: aturan itu harus sudah
+   "dibaca" browser SEBELUM navigasi terjadi; kalau cuma di file CSS
+   eksternal yang posisinya jauh di bawah <link> lain, pas cache masih
+   dingin (kunjungan pertama) atau user buru-buru pindah halaman, file
+   ini bisa saja belum selesai di-fetch/parse duluan, jadi opt-in-nya
+   "telat" dan animasinya dilewat browser. Inline <style> di <head>
+   dijamin selalu tersedia instan, tanpa nunggu network sama sekali.
+   Sisa file ini (keyframes & override pseudo-element) tetap di sini
+   sebagai file eksternal biasa — cukup dipastikan <link>-nya dipindah ke
+   awal urutan CSS (bukan lagi mepet ke belakang) supaya lebih cepat
+   ready juga.
+
    Efek yang diminta: halaman baru "mantul" tipis dari bawah ke atas
    (~50px) sambil fade in; halaman lama fade out sambil geser naik sedikit
    supaya kesan perpindahannya menyatu, bukan dua animasi yang tidak
    berhubungan.
    ========================================================================== */
-
-/* Opt-in juga di-inline di <head> tiap HTML (lihat komentar di sana).
-   Aturan ini tetap ada sebagai cadangan + tempat animasi di bawah. */
-@view-transition {
-  navigation: auto;
-}
 
 /* Matikan animasi default browser (cross-fade datar) di kedua snapshot
    root, ganti pakai keyframes sendiri di bawah. */

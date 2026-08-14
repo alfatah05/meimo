@@ -16,14 +16,7 @@
   top: 0;
   z-index: var(--z-sticky);
   background-color: var(--color-bg);
-  /* Safe-area inset top: di Capacitor Android (edge-to-edge) status bar
-     menutupi konten kalau padding-top tidak ditambah env(safe-area-inset-top).
-     Editor sudah punya ini di .note-topbar — halaman Home/Arsip/dll harus
-     konsisten supaya judul & tombol header tidak ketutup notifikasi bar. */
-  padding-top: calc(var(--space-xl) + env(safe-area-inset-top, 0px));
-  padding-bottom: var(--space-md);
-  padding-left: max(var(--space-md), env(safe-area-inset-left, 0px));
-  padding-right: max(var(--space-md), env(safe-area-inset-right, 0px));
+  padding: var(--space-xl) var(--space-md) var(--space-md);
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);
@@ -39,12 +32,7 @@
      pendek/kosong. Dipakai index.html, trash.html, font-manager.html,
      cadangkan.html — SEMUA halaman yang pakai class .home-content ini. */
   position: relative;
-  /* Safe-area inset bottom: ruang ekstra di atas navigation bar / gesture
-     bar Android supaya konten & FAB tidak ketutup. */
-  padding-top: 0;
-  padding-bottom: calc(var(--space-5xl) + env(safe-area-inset-bottom, 0px));
-  padding-left: max(var(--space-md), env(safe-area-inset-left, 0px));
-  padding-right: max(var(--space-md), env(safe-area-inset-right, 0px));
+  padding: 0 var(--space-md) var(--space-5xl);
   max-width: var(--container-max-width);
   width: 100%;
   margin: 0 auto;
@@ -395,20 +383,35 @@
      jadi ini tidak mengubah struktur HTML ataupun mekanisme scroll
      (overflow-y:auto) sama sekali. */
   position: relative;
-  /* --image-sheet-space, --scene-sheet-space & --music-sheet-space ditulis/
-     di-reset oleh toolbar/image-sheet.js, toolbar/scene-sheet.js, dan
-     toolbar/music-sheet.js masing-masing, persis setinggi bottom sheet yang
-     sedang terbuka (0px kalau tertutup), supaya konten paling bawah tetap
-     bisa di-scroll sampai terlihat di atas sheet, bukan ketiban/ketutup
-     olehnya. Ketiganya dijumlahkan (bukan salah satu) karena masing-masing
-     sheet punya var sendiri; dalam praktiknya cuma satu yang pernah
-     non-zero di saat bersamaan (sheet lain sudah ditutup duluan lewat
-     coordinator satu-sheet-aktif global, lihat toolbar/active-sheet.js).
+  /* --image-sheet-space, --scene-sheet-space, --music-sheet-space &
+     --ai-sheet-space ditulis/di-reset oleh toolbar/image-sheet.js,
+     toolbar/scene-sheet.js, toolbar/music-sheet.js, dan editor/ai-sheet.js
+     masing-masing, persis setinggi bottom sheet yang sedang terbuka (0px
+     kalau tertutup), supaya konten paling bawah tetap bisa di-scroll sampai
+     terlihat di atas sheet, bukan ketiban/ketutup olehnya. Semuanya
+     dijumlahkan (bukan salah satu) karena masing-masing sheet punya var
+     sendiri; dalam praktiknya cuma satu yang pernah non-zero di saat
+     bersamaan (sheet lain sudah ditutup duluan lewat coordinator
+     satu-sheet-aktif global, lihat toolbar/active-sheet.js).
      `--editor-footer-space` sendiri (dari viewport-pin.js) SUDAH termasuk
      ruang "napas" ekstra (FOOTER_CONTENT_GAP_PX) di luar cuma safe-area —
      bukan lagi mepet ke tepi, supaya baris terakhir catatan sepadan
-     jaraknya dengan judul di atas topbar. */
-  padding-bottom: calc(var(--editor-footer-space, calc(var(--space-5xl) + env(safe-area-inset-bottom, 0px))) + var(--image-sheet-space, 0px) + var(--scene-sheet-space, 0px) + var(--music-sheet-space, 0px));
+     jaraknya dengan judul di atas topbar.
+
+     Seluruh perhitungan di atas dibungkus `max(..., 50dvh)` supaya baris
+     PALING BAWAH catatan selalu bisa di-scroll sampai kira-kira TENGAH
+     layar (50% tinggi viewport) — bukan cuma pas ada sheet/keyboard
+     terbuka. Tanpa ini, begitu sheet ditutup & keyboard turun, ruang
+     scroll balik mepet ke FOOTER_CONTENT_GAP_PX (~56px) lagi, jadi baris
+     terakhir keburu nempel ke tepi bawah layar walau user masih ingin
+     scroll lebih jauh (mis. buat lihat baris terakhir lebih nyaman tanpa
+     ketutup jari/thumb saat pegang HP). `50dvh` dipakai (bukan `50vh`)
+     supaya ikut menyesuaikan saat address bar browser mobile
+     kolaps/muncul, konsisten dengan `--app-height` (lihat viewport-pin.js). */
+  padding-bottom: max(
+    calc(var(--editor-footer-space, calc(var(--space-5xl) + env(safe-area-inset-bottom, 0px))) + var(--image-sheet-space, 0px) + var(--scene-sheet-space, 0px) + var(--music-sheet-space, 0px) + var(--ai-sheet-space, 0px)),
+    50dvh
+  );
   /* SENGAJA tanpa transition di sini. viewport-pin.js sudah menulis ulang
      --editor-footer-space lewat requestAnimationFrame yang di-sync ke
      event visualViewport (yang sendirinya sudah "beranimasi" mengikuti
@@ -484,22 +487,21 @@
 .fab {
   position: fixed;
   right: var(--space-lg);
-  /* Naikkan di atas navigation bar / gesture bar Android. */
-  bottom: calc(var(--space-lg) + env(safe-area-inset-bottom, 0px));
+  bottom: var(--space-lg);
   z-index: var(--z-fab);
   width: 56px;
   height: 56px;
   border-radius: var(--radius-full);
   background-color: var(--color-accent);
   color: #FFFFFF;
-  box-shadow: 0 6px 18px rgba(74, 85, 199, 0.35);
+  box-shadow: 0 6px 18px rgba(var(--shadow-color), 0.22);
   transition: transform var(--anim-slide) var(--ease-standard),
               box-shadow var(--duration-fast) var(--ease-out);
 }
 
 .fab:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 22px rgba(74, 85, 199, 0.4);
+  box-shadow: 0 10px 22px rgba(var(--shadow-color), 0.28);
 }
 
 .fab:active {

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<style>
+/* BUGFIX v1.19.1: aturan opt-in @view-transition ini SENGAJA inline di
+   sini (bukan di file eksternal src/css/view-transitions.css), dan
+   SENGAJA ditaruh sepaling-atas mungkin di <head>. Sebelumnya aturan ini
+   ada di dalam view-transitions.css yang posisi <link>-nya jauh di bawah
+   ~10 stylesheet lain — kalau file itu belum selesai di-fetch/parse pas
+   user buru-buru pindah halaman (terutama kunjungan pertama / cache
+   masih dingin), browser belum sempat "kenal" opt-in ini, jadi animasi
+   transisi halaman kadang dilewat begitu saja. Inline <style> dijamin
+   langsung tersedia tanpa nunggu network sama sekali, jadi animasinya
+   konsisten selalu jalan. Keyframes & style pseudo-element lain tetap di
+   view-transitions.css seperti biasa. */
+@view-transition {
+  navigation: auto;
+}
+</style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Privacy Policy — Meimo</title>
+
+<!-- ============ PWA: Manifest, Theme Color, App Icon, Splash Screen ============ -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1E1E1E">
+<script>
+  // Terapkan tema tersimpan SEBELUM stylesheet dirender, supaya tidak ada
+  // kedip ke tema default — sekalian sinkronkan warna status bar
+  // (meta theme-color) dengan warna background tema tersebut. Peta warna
+  // di bawah HARUS sama dengan `swatch` di THEMES (lihat
+  // src/js/themes/theme-manager.js) & --color-bg per tema di
+  // src/css/themes.css.
+  (function () {
+    var THEME_COLORS = { light: "#FFFFFF", dark: "#17181C", sepia: "#F4ECD8", paper: "#FBFAF5", oled: "#000000" };
+    try {
+      var t = localStorage.getItem("notes-app-theme");
+      if (t) document.documentElement.setAttribute("data-theme", t);
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute("content", THEME_COLORS[t] || THEME_COLORS.light);
+    } catch (e) {}
+  })();
+</script>
+<link rel="icon" href="/assets/icons/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="192x192" href="/assets/icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/assets/icons/icon-512.png">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link rel="apple-touch-startup-image" href="/assets/splash/splash-screen.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Meimo">
+<meta name="mobile-web-app-capable" content="yes">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/src/css/variables.css">
+<link rel="stylesheet" href="/src/css/themes.css">
+<link rel="stylesheet" href="/src/css/view-transitions.css">
+<link rel="stylesheet" href="/src/css/base.css">
+<link rel="stylesheet" href="/src/css/typography.css">
+<link rel="stylesheet" href="/src/css/layout.css">
+<link rel="stylesheet" href="/src/css/toolbar.css">
+<link rel="stylesheet" href="/src/css/animations.css">
+<link rel="stylesheet" href="/src/css/responsive.css">
+<link rel="stylesheet" href="/src/css/components.css">
+<link rel="stylesheet" href="/src/css/about.css">
+</head>
+<body>
+
+<div class="page">
+
+  <header class="home-header">
+    <div style="display:flex; align-items:center; gap: var(--space-sm);">
+      <a href="/about" class="note-back-btn" aria-label="Back to About">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+      </a>
+      <div class="home-greeting">Privacy Policy</div>
+    </div>
+  </header>
+
+  <main class="home-content">
+
+    <section class="about-section">
+      <div class="about-section__title">Summary</div>
+      <p>Meimo respects your privacy. Notes you write are stored on your own device. We do not operate a server that stores the content of your notes.</p>
+    </section>
+
+    <section class="about-section">
+      <div class="about-section__title">Data stored on your device</div>
+      <p>Notes, images, music, theme preferences, fonts you install, and your AI API key (if provided) are stored locally on your device. This data is not uploaded to Meimo servers.</p>
+    </section>
+
+    <section class="about-section">
+      <div class="about-section__title">AI features</div>
+      <p>If you enable AI Features and enter your own Gemini API key, text requests are sent directly from your device to Google (Gemini) using that key. Meimo does not store or forward your API key to our servers. Use of Google services is subject to Google’s privacy policy.</p>
+    </section>
+
+    <section class="about-section">
+      <div class="about-section__title">Backup &amp; import</div>
+      <p>Backup files you download (for example .zip or .meimo) remain under your control. We do not receive a copy of those files unless you share them yourself outside the app.</p>
+    </section>
+
+    <section class="about-section">
+      <div class="about-section__title">Analytics &amp; ads</div>
+      <p>Meimo does not show ads and does not collect user-behavior analytics for advertising.</p>
+    </section>
+
+    <section class="about-section">
+      <div class="about-section__title">Policy changes</div>
+      <p>This policy may be updated as the app evolves. The latest version is always available on this page.</p>
+    </section>
+
+    <section class="about-section">
+      <div class="about-section__title">Contact</div>
+      <p>For privacy questions, contact the contributor via the links on the About page.</p>
+    </section>
+
+    <div class="about-footer-note">
+      <a href="/about" class="about-footer-note__link">Back to About</a>
+    </div>
+
+  </main>
+
+</div>
+
+<script type="module" src="/src/js/pwa/sw-register.js"></script>
+<script type="module" src="/src/js/utils/native-feel.js"></script>
+
+</body>
+</html>

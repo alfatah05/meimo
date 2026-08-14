@@ -34,7 +34,6 @@
 
 import * as documentService from "./document-service.js";
 import { buildZipBlob } from "../utils/zip-writer.js";
-import { saveOrShareBlob } from "../pwa/native-bridge.js";
 
 
 // Versi format file .meimo itu sendiri (BEDA dari DOCUMENT_SCHEMA_VERSION
@@ -120,17 +119,15 @@ export function safeFileNameFromTitle(title) {
   return cleaned || "Catatan tanpa judul";
 }
 
-// BUGFIX (dukungan app native Capacitor): lihat komentar sama di
-// backup-service.js — triggerBlobDownload() di sini dipertahankan supaya
-// pemanggil di bawah tidak berubah, tapi kini didelegasikan ke
-// saveOrShareBlob() yang otomatis pilih jalur benar (web vs native).
-async function triggerBlobDownload(blob, fileName) {
-  try {
-    await saveOrShareBlob(blob, fileName);
-  } catch (err) {
-    console.error("Gagal menyimpan/membagikan file .meimo:", err);
-    throw err;
-  }
+function triggerBlobDownload(blob, fileName) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 /**
@@ -202,7 +199,7 @@ export async function exportNoteAsMeimo(doc) {
   const zipBlob = new Blob([bytes], { type: MEIMO_MIME_TYPE });
 
   const fileName = `${safeFileNameFromTitle(doc.title)}.meimo`;
-  await triggerBlobDownload(zipBlob, fileName);
+  triggerBlobDownload(zipBlob, fileName);
 
   return { assetCount, fileName };
 }

@@ -1,26 +1,16 @@
 /**
  * image-clip-shapes.js
- * Daftar bentuk crop gambar (bintang, love/hati, dll) dipakai bareng oleh:
- *   - toolbar/image-sheet.js: render strip ikon pilihan bentuk (scroll ke
- *     samping) di bottom sheet Sisipkan/Edit Gambar.
- *   - editor/serializer.js: menerapkan crop sungguhan ke block gambar yang
- *     sudah di-render di dokumen.
+ * Daftar bentuk crop gambar dipakai oleh:
+ *   - toolbar/image-sheet.js (ikon pilihan di sheet)
+ *   - editor/serializer.js (clip sungguhan di dokumen)
  *
- * Setiap bentuk (selain "none") punya path data SVG yang digambar dalam
- * kotak satuan 0..1 x 0..1 ("unit square") — path yang SAMA dipakai dua
- * kali dengan cara berbeda:
- *   1. Sebagai isi <path> ikon kecil di sheet (viewBox="0 0 1 1", di-fill
- *      warna currentColor) — cuma buat pratinjau bentuknya di tombol.
- *   2. Sebagai isi <clipPath clipPathUnits="objectBoundingBox"> yang
- *      di-suntik sekali ke DOM (lihat ensureClipDefsInjected) — inilah yang
- *      benar-benar memotong gambar. clipPathUnits="objectBoundingBox"
- *      penting supaya path 0..1 otomatis mengikuti lebar/tinggi kotak
- *      gambar berapa pun ukurannya (ikut slider Lebar/Tinggi di sheet),
- *      tanpa perlu dihitung ulang tiap kali ukuran berubah.
+ * Path digambar di unit square 0..1 × 0..1 (objectBoundingBox).
  */
 
 export const IMAGE_CLIP_SHAPES = [
   { id: "none", label: "Persegi", d: null },
+
+  // ---- Favorit yang tetap ----
   {
     id: "star",
     label: "Bintang",
@@ -37,72 +27,177 @@ export const IMAGE_CLIP_SHAPES = [
     d: "M1,0.5 C1,0.7761 0.7761,1 0.5,1 C0.2239,1 0,0.7761 0,0.5 C0,0.2239 0.2239,0 0.5,0 C0.7761,0 1,0.2239 1,0.5 Z",
   },
   {
-    id: "hexagon",
-    label: "Segi Enam",
-    d: "M0.25,0.05 L0.75,0.05 L1,0.5 L0.75,0.95 L0.25,0.95 L0,0.5 Z",
-  },
-  {
-    id: "diamond",
-    label: "Wajik",
-    d: "M0.5,0 L1,0.5 L0.5,1 L0,0.5 Z",
-  },
-  {
-    id: "triangle",
-    label: "Segitiga",
-    d: "M0.5,0.02 L0.98,0.95 L0.02,0.95 Z",
-  },
-  {
     id: "blob",
     label: "Blob",
     d: "M0.15,0.35 C0.05,0.55 0.1,0.8 0.35,0.9 C0.6,1 0.85,0.9 0.92,0.65 C1,0.4 0.9,0.15 0.65,0.08 C0.4,0 0.25,0.15 0.15,0.35 Z",
-  },
-  {
-    id: "pentagon",
-    label: "Segi Lima",
-    d: "M0.5,0 L0.98,0.37 L0.79,0.95 L0.21,0.95 L0.02,0.37 Z",
-  },
-  {
-    id: "octagon",
-    label: "Segi Delapan",
-    d: "M0.29,0.02 L0.71,0.02 L0.98,0.29 L0.98,0.71 L0.71,0.98 L0.29,0.98 L0.02,0.71 L0.02,0.29 Z",
-  },
-  {
-    id: "cross",
-    label: "Plus",
-    d: "M0.35,0.02 L0.65,0.02 L0.65,0.35 L0.98,0.35 L0.98,0.65 L0.65,0.65 L0.65,0.98 L0.35,0.98 L0.35,0.65 L0.02,0.65 L0.02,0.35 L0.35,0.35 Z",
-  },
-  {
-    id: "arrow",
-    label: "Panah",
-    d: "M0.02,0.32 L0.55,0.32 L0.55,0.12 L0.98,0.5 L0.55,0.88 L0.55,0.68 L0.02,0.68 Z",
-  },
-  {
-    id: "drop",
-    label: "Tetesan",
-    d: "M0.5,0.02 C0.72,0.32 0.92,0.55 0.92,0.72 C0.92,0.89 0.73,0.98 0.5,0.98 C0.27,0.98 0.08,0.89 0.08,0.72 C0.08,0.55 0.28,0.32 0.5,0.02 Z",
   },
   {
     id: "arch",
     label: "Gapura",
     d: "M0.1,0.98 L0.1,0.5 C0.1,0.22 0.28,0.02 0.5,0.02 C0.72,0.02 0.9,0.22 0.9,0.5 L0.9,0.98 Z",
   },
+
+  // ---- Kreatif: kertas / tiket / perangko ----
   {
-    id: "blossom",
-    label: "Kelopak",
-    d: "M0.8,0.28 C0.8,0.4457 0.6657,0.58 0.5,0.58 C0.3343,0.58 0.2,0.4457 0.2,0.28 C0.2,0.1143 0.3343,-0.02 0.5,-0.02 C0.6657,-0.02 0.8,0.1143 0.8,0.28 Z M1.02,0.5 C1.02,0.6657 0.8857,0.8 0.72,0.8 C0.5543,0.8 0.42,0.6657 0.42,0.5 C0.42,0.3343 0.5543,0.2 0.72,0.2 C0.8857,0.2 1.02,0.3343 1.02,0.5 Z M0.8,0.72 C0.8,0.8857 0.6657,1.02 0.5,1.02 C0.3343,1.02 0.2,0.8857 0.2,0.72 C0.2,0.5543 0.3343,0.42 0.5,0.42 C0.6657,0.42 0.8,0.5543 0.8,0.72 Z M0.58,0.5 C0.58,0.6657 0.4457,0.8 0.28,0.8 C0.1143,0.8 -0.02,0.6657 -0.02,0.5 C-0.02,0.3343 0.1143,0.2 0.28,0.2 C0.4457,0.2 0.58,0.3343 0.58,0.5 Z",
+    // Perangko — kotak dengan scallop di keempat sisi
+    id: "stamp",
+    label: "Perangko",
+    d:
+      "M0.08,0.02 " +
+      "C0.12,0.06 0.16,0.06 0.20,0.02 L0.28,0.02 C0.32,0.06 0.36,0.06 0.40,0.02 L0.48,0.02 C0.52,0.06 0.56,0.06 0.60,0.02 L0.68,0.02 C0.72,0.06 0.76,0.06 0.80,0.02 L0.88,0.02 C0.92,0.06 0.94,0.08 0.98,0.12 " +
+      "L0.98,0.20 C0.94,0.24 0.94,0.28 0.98,0.32 L0.98,0.40 C0.94,0.44 0.94,0.48 0.98,0.52 L0.98,0.60 C0.94,0.64 0.94,0.68 0.98,0.72 L0.98,0.80 C0.94,0.84 0.94,0.88 0.98,0.88 " +
+      "C0.94,0.92 0.92,0.94 0.88,0.98 L0.80,0.98 C0.76,0.94 0.72,0.94 0.68,0.98 L0.60,0.98 C0.56,0.94 0.52,0.94 0.48,0.98 L0.40,0.98 C0.36,0.94 0.32,0.94 0.28,0.98 L0.20,0.98 C0.16,0.94 0.12,0.94 0.08,0.98 " +
+      "C0.04,0.94 0.02,0.92 0.02,0.88 L0.02,0.80 C0.06,0.76 0.06,0.72 0.02,0.68 L0.02,0.60 C0.06,0.56 0.06,0.52 0.02,0.48 L0.02,0.40 C0.06,0.36 0.06,0.32 0.02,0.28 L0.02,0.20 C0.06,0.16 0.06,0.12 0.02,0.12 " +
+      "C0.06,0.08 0.08,0.06 0.08,0.02 Z",
+  },
+  {
+    // Tiket bioskop — lekukan di kiri & kanan tengah
+    id: "ticket",
+    label: "Tiket",
+    d:
+      "M0.02,0.08 L0.98,0.08 " +
+      "L0.98,0.42 C0.92,0.45 0.92,0.55 0.98,0.58 L0.98,0.92 " +
+      "L0.02,0.92 L0.02,0.58 C0.08,0.55 0.08,0.45 0.02,0.42 Z",
+  },
+  {
+    // Stub tiket (ujung bergerigi di kanan)
+    id: "ticket-stub",
+    label: "Stub Tiket",
+    d:
+      "M0.02,0.12 L0.78,0.12 " +
+      "L0.82,0.18 L0.78,0.24 L0.82,0.30 L0.78,0.36 L0.82,0.42 L0.78,0.48 " +
+      "L0.82,0.54 L0.78,0.60 L0.82,0.66 L0.78,0.72 L0.82,0.78 L0.78,0.84 " +
+      "L0.82,0.88 L0.02,0.88 Z",
+  },
+  {
+    id: "bookmark",
+    label: "Bookmark",
+    d: "M0.12,0.02 L0.88,0.02 L0.88,0.98 L0.5,0.78 L0.12,0.98 Z",
+  },
+  {
+    id: "tag",
+    label: "Tag",
+    d:
+      "M0.08,0.18 L0.62,0.02 L0.98,0.5 L0.62,0.98 L0.08,0.82 " +
+      "C0.02,0.78 0.02,0.22 0.08,0.18 Z",
+  },
+  {
+    // Perisai / badge
+    id: "shield",
+    label: "Perisai",
+    d: "M0.5,0.02 L0.92,0.14 L0.92,0.48 C0.92,0.72 0.74,0.9 0.5,0.98 C0.26,0.9 0.08,0.72 0.08,0.48 L0.08,0.14 Z",
+  },
+  {
+    // Banner / pita
+    id: "banner",
+    label: "Pita",
+    d:
+      "M0.02,0.22 L0.18,0.38 L0.18,0.22 L0.82,0.22 L0.82,0.38 L0.98,0.22 " +
+      "L0.98,0.78 L0.82,0.62 L0.82,0.78 L0.18,0.78 L0.18,0.62 L0.02,0.78 Z",
+  },
+  {
+    // Awan
+    id: "cloud",
+    label: "Awan",
+    d:
+      "M0.28,0.72 C0.1,0.72 0.04,0.58 0.1,0.46 C0.06,0.34 0.16,0.24 0.28,0.28 " +
+      "C0.34,0.14 0.52,0.1 0.62,0.22 C0.72,0.14 0.88,0.18 0.9,0.34 " +
+      "C1.02,0.36 1.04,0.56 0.92,0.64 C0.94,0.76 0.8,0.82 0.7,0.76 " +
+      "C0.62,0.84 0.4,0.84 0.32,0.74 C0.3,0.74 0.28,0.72 0.28,0.72 Z",
+  },
+  {
+    // Gelembung bicara
+    id: "speech",
+    label: "Balon Chat",
+    d:
+      "M0.12,0.08 C0.04,0.08 0.02,0.16 0.02,0.24 L0.02,0.55 C0.02,0.66 0.08,0.72 0.18,0.72 " +
+      "L0.32,0.72 L0.22,0.92 L0.48,0.72 L0.82,0.72 C0.92,0.72 0.98,0.66 0.98,0.55 " +
+      "L0.98,0.24 C0.98,0.16 0.94,0.08 0.86,0.08 Z",
+  },
+  {
+    // Bulan sabit
+    id: "moon",
+    label: "Bulan",
+    d:
+      "M0.62,0.08 C0.38,0.1 0.18,0.3 0.18,0.55 C0.18,0.8 0.38,0.98 0.62,0.98 " +
+      "C0.42,0.92 0.3,0.74 0.3,0.53 C0.3,0.32 0.44,0.14 0.62,0.08 Z",
+  },
+  {
+    // Daun
+    id: "leaf",
+    label: "Daun",
+    d:
+      "M0.5,0.02 C0.78,0.12 0.98,0.38 0.92,0.62 C0.86,0.86 0.62,0.98 0.5,0.98 " +
+      "C0.38,0.98 0.14,0.86 0.08,0.62 C0.02,0.38 0.22,0.12 0.5,0.02 Z " +
+      "M0.5,0.18 L0.5,0.9",
+  },
+  {
+    // Siluet polaroid: area foto + margin bawah lebih tebal
+    id: "polaroid",
+    label: "Polaroid",
+    d: "M0.06,0.02 L0.94,0.02 L0.94,0.98 L0.06,0.98 Z",
+  },
+  {
+    // Sudut terpotong (ticket corner cut)
+    id: "cut-corner",
+    label: "Sudut Potong",
+    d: "M0.14,0.02 L0.86,0.02 L0.98,0.14 L0.98,0.86 L0.86,0.98 L0.14,0.98 L0.02,0.86 L0.02,0.14 Z",
+  },
+  {
+    // Oval landscape
+    id: "oval",
+    label: "Oval",
+    d: "M0.5,0.06 C0.78,0.06 0.98,0.26 0.98,0.5 C0.98,0.74 0.78,0.94 0.5,0.94 C0.22,0.94 0.02,0.74 0.02,0.5 C0.02,0.26 0.22,0.06 0.5,0.06 Z",
+  },
+  {
+    // Gelombang / washi edge di bawah
+    id: "wavy-bottom",
+    label: "Ombak Bawah",
+    d:
+      "M0.02,0.02 L0.98,0.02 L0.98,0.78 " +
+      "C0.9,0.86 0.82,0.72 0.74,0.8 C0.66,0.88 0.58,0.72 0.5,0.8 " +
+      "C0.42,0.88 0.34,0.72 0.26,0.8 C0.18,0.88 0.1,0.72 0.02,0.8 Z",
+  },
+  {
+    // Siluet roda gigi solid (tanpa lubang tengah — aman untuk clip-path)
+    id: "gear",
+    label: "Roda Gigi",
+    d:
+      "M0.42,0.02 L0.58,0.02 L0.62,0.12 L0.74,0.08 L0.82,0.18 L0.74,0.28 L0.86,0.32 L0.86,0.48 " +
+      "L0.74,0.52 L0.82,0.64 L0.72,0.74 L0.62,0.68 L0.58,0.82 L0.42,0.82 L0.38,0.7 L0.26,0.74 " +
+      "L0.16,0.64 L0.26,0.54 L0.14,0.48 L0.14,0.32 L0.26,0.28 L0.18,0.18 L0.28,0.1 L0.38,0.14 Z",
+  },
+  {
+    // Pita/rosette
+    id: "rosette",
+    label: "Roset",
+    d:
+      "M0.5,0.08 L0.58,0.28 L0.8,0.22 L0.7,0.42 L0.92,0.5 L0.7,0.58 L0.8,0.78 L0.58,0.72 " +
+      "L0.5,0.92 L0.42,0.72 L0.2,0.78 L0.3,0.58 L0.08,0.5 L0.3,0.42 L0.2,0.22 L0.42,0.28 Z",
+  },
+  {
+    // Hexagon rounded-ish soft (capsule ticket)
+    id: "capsule",
+    label: "Kapsul",
+    d:
+      "M0.28,0.08 L0.72,0.08 C0.88,0.08 0.98,0.22 0.98,0.5 C0.98,0.78 0.88,0.92 0.72,0.92 " +
+      "L0.28,0.92 C0.12,0.92 0.02,0.78 0.02,0.5 C0.02,0.22 0.12,0.08 0.28,0.08 Z",
+  },
+  {
+    // Diamond rounded (soft)
+    id: "soft-diamond",
+    label: "Wajik Halus",
+    d:
+      "M0.5,0.02 C0.58,0.12 0.78,0.28 0.92,0.4 C0.98,0.46 0.98,0.54 0.92,0.6 " +
+      "C0.78,0.72 0.58,0.88 0.5,0.98 C0.42,0.88 0.22,0.72 0.08,0.6 C0.02,0.54 0.02,0.46 0.08,0.4 " +
+      "C0.22,0.28 0.42,0.12 0.5,0.02 Z",
   },
 ];
 
 const CLIP_DEFS_CONTAINER_ID = "editor-image-clip-defs";
 
 /**
- * Suntikkan sekali <svg><defs><clipPath id="editor-image-clip-{id}" ...>
- * untuk semua bentuk (kecuali "none") ke document.body — aman dipanggil
- * berkali-kali (no-op kalau sudah ada). Elemen ini disembunyikan lewat
- * width/height 0 + position absolute, TAPI TIDAK pakai display:none /
- * visibility:hidden, karena beberapa browser (terutama Safari/iOS) tidak
- * menghormati referensi clip-path ke <clipPath> yang berada di subtree
- * display:none.
+ * Suntikkan sekali <svg><defs><clipPath ...> untuk semua bentuk (kecuali "none").
  */
 export function ensureClipDefsInjected() {
   if (document.getElementById(CLIP_DEFS_CONTAINER_ID)) return;
@@ -130,7 +225,7 @@ export function ensureClipDefsInjected() {
   document.body.appendChild(svg);
 }
 
-function clipPathId(shapeId) {
+export function clipPathId(shapeId) {
   return `editor-image-clip-${shapeId}`;
 }
 

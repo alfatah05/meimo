@@ -138,6 +138,10 @@ export function renderBlock(block, meta = {}) {
     if (block.wrap && align !== "center") el.classList.add("editor-block--image-wrap");
     el.setAttribute("contenteditable", "false");
     el.style.setProperty("--img-w", `${block.imageWidth || 320}px`);
+    el.style.setProperty("--img-ox", `${block.imageOffsetX || 0}px`);
+    el.style.setProperty("--img-oy", `${block.imageOffsetY || 0}px`);
+    el.style.setProperty("--img-scale", String(block.imageScale != null ? block.imageScale : 1));
+    el.style.setProperty("--img-rotate", `${block.imageRotate || 0}deg`);
     el.style.setProperty("--img-h", `${block.imageHeight || 200}px`);
     el.style.setProperty("--img-radius", `${block.borderRadius ?? 12}px`);
     // Crop bentuk SVG (bintang/love/dll, lihat image-clip-shapes.js) — kalau

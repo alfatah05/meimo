@@ -8,6 +8,7 @@
 
 import { createEl, openPanel, closeAllPanels } from "../utils/dom.js";
 import { setLink } from "../editor/commands.js";
+import { t } from "../i18n/i18n.js";
 
 /** Kasih scheme default (https://) kalau user cuma ngetik "contoh.com". */
 function normalizeUrl(raw) {
@@ -34,7 +35,7 @@ export function initLinkPicker(button, editor) {
       className: "toolbar-panel__link-input",
       attrs: {
         type: "url",
-        placeholder: "https://contoh.com",
+        placeholder: t("link.placeholder"),
         inputmode: "url",
         autocapitalize: "off",
         autocorrect: "off",
@@ -44,19 +45,19 @@ export function initLinkPicker(button, editor) {
 
     const hint = createEl("p", {
       className: "toolbar-panel__link-hint",
-      text: "Terapkan ke teks yang sedang diseleksi.",
+      text: t("link.hint"),
     });
 
     const actions = createEl("div", { className: "toolbar-panel__link-actions" });
     const removeBtn = createEl("button", {
       className: "toolbar-panel__link-remove",
       attrs: { type: "button" },
-      text: "Hapus Link",
+      text: t("link.remove"),
     });
     const applyBtn = createEl("button", {
       className: "toolbar-panel__link-apply",
       attrs: { type: "button" },
-      text: "Terapkan",
+      text: t("link.apply"),
     });
 
     function apply() {

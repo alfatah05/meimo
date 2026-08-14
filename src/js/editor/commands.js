@@ -25,6 +25,7 @@ import {
   createRun,
   createImageBlock,
   isVoidBlockType,
+  isListItemType,
   createSceneMeta,
   findSceneRangeById,
   musicKeyForScene,
@@ -501,8 +502,18 @@ export function insertDivider(state, bodyEl, selectionApi) {
   const block = state.getBlock(index);
   const offset = sel.collapsed ? sel.startOffset : blockTextLength(block);
 
-  const [left, right] = splitBlockAt(block, offset);
+  const [left, splitRight] = splitBlockAt(block, offset);
   const divider = createBlock({ type: "divider", sceneId: block.sceneId || null });
+
+  // BUGFIX: splitBlockAt() melanjutkan tipe list-item (bullet/nomor/checklist)
+  // ke block baru — itu perilaku yang benar untuk Enter biasa di tengah
+  // list, tapi TIDAK masuk akal untuk divider: divider adalah garis pemisah
+  // visual, jadi baris setelahnya seharusnya "keluar" dari list, bukan malah
+  // jadi item list kosong baru. Paksa jadi paragraph biasa kalau splitRight
+  // masih membawa tipe list-item.
+  const right = isListItemType(splitRight.type)
+    ? { ...splitRight, type: "paragraph", checked: undefined, level: null }
+    : splitRight;
 
   state.replaceBlocks(index, index, [left, divider, right]);
 

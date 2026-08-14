@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Fitur AI — Meimo</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1E1E1E">
+<script>(function(){try{var t=localStorage.getItem("notes-app-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/src/css/variables.css">
+<link rel="stylesheet" href="/src/css/themes.css">
+<link rel="stylesheet" href="/src/css/view-transitions.css">
+<link rel="stylesheet" href="/src/css/base.css">
+<link rel="stylesheet" href="/src/css/typography.css">
+<link rel="stylesheet" href="/src/css/layout.css">
+<link rel="stylesheet" href="/src/css/notes-list.css">
+<link rel="stylesheet" href="/src/css/components.css">
+<link rel="stylesheet" href="/src/css/settings.css">
+<link rel="stylesheet" href="/src/css/animations.css">
+<link rel="stylesheet" href="/src/css/responsive.css">
+</head>
+<body>
+
+<div class="page">
+
+  <header class="home-header">
+    <div style="display:flex; align-items:center; gap: var(--space-sm);">
+      <a href="/settings" class="note-back-btn" aria-label="Back to Settings" data-i18n-aria="nav.backToSettings">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+      </a>
+      <div class="home-greeting" data-i18n="ai.title">AI Features</div>
+    </div>
+  </header>
+
+  <main class="home-content">
+    <section class="section">
+      <div class="settings-ai-card">
+        <p class="settings-ai-intro">
+          Hubungkan kunci API Gemini Anda sendiri untuk menggunakan fitur AI.
+          Kunci Anda tetap berada di perangkat ini dan tidak diunggah ke server Meimo.
+        </p>
+        <div class="settings-field">
+          <label class="settings-field__label" for="settingsAiApiKey" data-i18n="ai.apiKey">Gemini API key</label>
+          <div class="settings-field__row">
+            <input id="settingsAiApiKey" class="settings-input" type="password" autocomplete="off" spellcheck="false" placeholder="Paste Google AI Studio API key…" data-i18n-placeholder="ai.placeholder" />
+            <button type="button" class="settings-ghost-btn" id="settingsAiToggleKey" aria-pressed="false" data-i18n="ai.show">Show</button>
+          </div>
+        </div>
+        <div class="settings-field">
+          <label class="settings-field__label" for="settingsAiModel" data-i18n="ai.model">AI model</label>
+          <select id="settingsAiModel" class="settings-input"></select>
+          <p class="settings-field__hint" data-i18n="ai.modelHint">Flash Lite is faster; Flash 3.6 is stronger for long text.</p>
+        </div>
+        <div class="settings-field settings-field--actions">
+          <button type="button" class="settings-primary-btn" id="settingsAiSaveBtn" data-i18n="cardStyle.save">Save</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section settings-ai-tutorial">
+      <div class="section-header">
+        <span class="section-title" data-i18n="ai.howTitle">How to create an API key</span>
+      </div>
+      <ol class="ai-tutorial-list">
+                <li class="ai-tutorial-step">
+          <figure class="ai-tutorial-step__figure">
+            <figcaption class="ai-tutorial-step__label"><span class="ai-tutorial-step__num">1</span> <span data-i18n="ai.how1">Open Google AI Studio</span></figcaption>
+            <img class="ai-tutorial-step__img" src="/assets/images/image1.png" alt="Open Google AI Studio" data-i18n-attr="alt:ai.how1" width="512" height="512" loading="lazy" />
+          </figure>
+        </li>
+                <li class="ai-tutorial-step">
+          <figure class="ai-tutorial-step__figure">
+            <figcaption class="ai-tutorial-step__label"><span class="ai-tutorial-step__num">2</span> <span data-i18n="ai.how2">Open the sidebar</span></figcaption>
+            <img class="ai-tutorial-step__img" src="/assets/images/image2.png" alt="Open the sidebar" data-i18n-attr="alt:ai.how2" width="512" height="512" loading="lazy" />
+          </figure>
+        </li>
+                <li class="ai-tutorial-step">
+          <figure class="ai-tutorial-step__figure">
+            <figcaption class="ai-tutorial-step__label"><span class="ai-tutorial-step__num">3</span> <span data-i18n="ai.how3">Open the API key menu</span></figcaption>
+            <img class="ai-tutorial-step__img" src="/assets/images/image3.png" alt="Open the API key menu" data-i18n-attr="alt:ai.how3" width="512" height="512" loading="lazy" />
+          </figure>
+        </li>
+                <li class="ai-tutorial-step">
+          <figure class="ai-tutorial-step__figure">
+            <figcaption class="ai-tutorial-step__label"><span class="ai-tutorial-step__num">4</span> <span data-i18n="ai.how4">Click Create API key</span></figcaption>
+            <img class="ai-tutorial-step__img" src="/assets/images/image4.png" alt="Click Create API key" data-i18n-attr="alt:ai.how4" width="512" height="512" loading="lazy" />
+          </figure>
+        </li>
+                <li class="ai-tutorial-step">
+          <figure class="ai-tutorial-step__figure">
+            <figcaption class="ai-tutorial-step__label"><span class="ai-tutorial-step__num">5</span> <span data-i18n="ai.how5">Click Create key</span></figcaption>
+            <img class="ai-tutorial-step__img" src="/assets/images/image5.png" alt="Click Create key" data-i18n-attr="alt:ai.how5" width="512" height="512" loading="lazy" />
+          </figure>
+        </li>
+                <li class="ai-tutorial-step">
+          <figure class="ai-tutorial-step__figure">
+            <figcaption class="ai-tutorial-step__label"><span class="ai-tutorial-step__num">6</span> <span data-i18n="ai.how6">Copy the API key</span></figcaption>
+            <img class="ai-tutorial-step__img" src="/assets/images/image6.png" alt="Copy the API key" data-i18n-attr="alt:ai.how6" width="512" height="512" loading="lazy" />
+          </figure>
+        </li>
+                <li class="ai-tutorial-step">
+          <figure class="ai-tutorial-step__figure">
+            <figcaption class="ai-tutorial-step__label"><span class="ai-tutorial-step__num">7</span> <span data-i18n="ai.how7">Paste the API key into Meimo</span></figcaption>
+            <img class="ai-tutorial-step__img" src="/assets/images/image7.png" alt="Paste the API key into Meimo" data-i18n-attr="alt:ai.how7" width="512" height="512" loading="lazy" />
+          </figure>
+        </li>
+      </ol>
+      <p class="settings-field__hint ai-tutorial-hint">
+        <span data-i18n="ai.howFooter.before">Open</span>
+        <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">aistudio.google.com/apikey</a>
+        <span data-i18n="ai.howFooter.after">to create a key, then paste it in the field above.</span>
+      </p>
+    </section>
+
+  </main>
+
+</div>
+
+<script type="module" src="/src/js/settings/ai-features.js"></script>
+<script type="module" src="/src/js/pwa/sw-register.js"></script>
+<script type="module" src="/src/js/utils/native-feel.js"></script>
+</body>
+</html>

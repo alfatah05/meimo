@@ -1,18 +1,21 @@
 /**
  * notes-repository.js
- * Repository layer — CRUD note & asset gambar.
+ * Repository layer — SATU-SATUNYA tempat operasi CRUD mentah ke IndexedDB
+ * untuk data note & asset gambar dijalankan (lewat helper di db.js).
  *
- * Backend: Capacitor Filesystem → Directory.Data (private app folder).
- * Project ini khusus native; tidak memakai IndexedDB.
+ * Repository sengaja "bodoh": tidak tahu aturan bisnis (pin/archive/trash,
+ * hitung wordCount, default metadata, dsb) — itu tugas Document Service.
+ * Repository hanya menyimpan & mengambil apa yang diberikan padanya.
  *
  * Arsitektur:
- *   Editor -> Document Service -> Repository (file ini) -> Filesystem
+ *   Editor -> Document Service -> Repository (file ini) -> IndexedDB (db.js)
  *
- * Modul lain DILARANG mengimpor file ini secara langsung —
- * semua akses lewat document-service.js.
+ * Modul lain (editor, toolbar, notes list, dst) DILARANG mengimpor file ini
+ * secara langsung — semua akses lewat document-service.js.
  */
 
-import * as fs from "./fs-backend.js";
+import { withStore, requestToPromise } from "./db.js";
+import { STORES } from "./schema.js";
 
 /* ------------------------------------------------------------------ */
 /* Notes                                                               */
@@ -20,49 +23,67 @@ import * as fs from "./fs-backend.js";
 
 /** Simpan (buat baru atau timpa) satu dokumen note. */
 export async function putNote(note) {
-  return fs.fsPutNote(note);
+  await withStore(STORES.NOTES, "readwrite", (store) => requestToPromise(store.put(note)));
+  return note;
 }
 
 /** Ambil satu dokumen note berdasarkan id. `undefined` bila tidak ada. */
 export async function getNoteById(id) {
-  return fs.fsGetNoteById(id);
+  return withStore(STORES.NOTES, "readonly", (store) => requestToPromise(store.get(id)));
 }
 
 /** Ambil seluruh dokumen note. */
 export async function getAllNotes() {
-  return fs.fsGetAllNotes();
+  return withStore(STORES.NOTES, "readonly", (store) => requestToPromise(store.getAll()));
 }
 
 /** Hapus satu note secara permanen (hard delete). */
 export async function deleteNote(id) {
-  return fs.fsDeleteNote(id);
+  await withStore(STORES.NOTES, "readwrite", (store) => requestToPromise(store.delete(id)));
 }
 
 /* ------------------------------------------------------------------ */
-/* Assets (gambar / audio)                                             */
+/* Assets (gambar) — lihat DOCUMENT_MODEL.md §6.3                      */
 /* ------------------------------------------------------------------ */
 
-/** Simpan (buat baru atau timpa) satu asset. */
+/** Simpan (buat baru atau timpa) satu asset gambar. */
 export async function putAsset(asset) {
-  return fs.fsPutAsset(asset);
+  await withStore(STORES.ASSETS, "readwrite", (store) => requestToPromise(store.put(asset)));
+  return asset;
 }
 
-/** Ambil satu asset berdasarkan id. `undefined` bila tidak ada. */
+/** Ambil satu asset gambar berdasarkan id. `undefined` bila tidak ada. */
 export async function getAssetById(id) {
-  return fs.fsGetAssetById(id);
+  return withStore(STORES.ASSETS, "readonly", (store) => requestToPromise(store.get(id)));
 }
 
-/** Ambil semua asset milik satu note. */
+/** Ambil semua asset milik satu note (mis. untuk preload gambar). */
 export async function getAssetsByNoteId(noteId) {
-  return fs.fsGetAssetsByNoteId(noteId);
+  return withStore(STORES.ASSETS, "readonly", (store) =>
+    requestToPromise(store.index("noteId").getAll(noteId))
+  );
 }
 
-/** Hapus satu asset. */
+/** Hapus satu asset gambar. */
 export async function deleteAsset(id) {
-  return fs.fsDeleteAsset(id);
+  await withStore(STORES.ASSETS, "readwrite", (store) => requestToPromise(store.delete(id)));
 }
 
-/** Hapus semua asset milik satu note. */
+/** Hapus semua asset milik satu note (dipakai saat note dihapus permanen). */
 export async function deleteAssetsByNoteId(noteId) {
-  return fs.fsDeleteAssetsByNoteId(noteId);
+  await withStore(STORES.ASSETS, "readwrite", (store) => {
+    return new Promise((resolve, reject) => {
+      const request = store.index("noteId").openCursor(IDBKeyRange.only(noteId));
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (cursor) {
+          cursor.delete();
+          cursor.continue();
+        } else {
+          resolve();
+        }
+      };
+      request.onerror = () => reject(request.error);
+    });
+  });
 }

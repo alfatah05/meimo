@@ -1,19 +1,10 @@
 /* ==========================================================================
    image-sheet.css
-   Bottom sheet kustomisasi gambar (align / wrap text / upload / crop bentuk
-   SVG / slider lebar-tinggi-border-radius) — dibuka dari
-   toolbar/image-sheet.js saat tombol "Sisipkan Gambar" ditekan, atau saat
-   block gambar yang sudah ada diketuk. Styling block gambar itu sendiri (di
-   area catatan) ada di editor.css, bukan di sini — file ini KHUSUS untuk
-   panel bottom sheet-nya.
+   Bottom sheet kustomisasi gambar — layout compact 210px (grid).
+   Scene/music sheet juga reuse class .image-sheet; tinggi fixed 210px
+   HANYA untuk .image-sheet--compact (sheet gambar).
    ========================================================================== */
 
-/* Overlay TIDAK menggelapkan latar & TIDAK menangkap klik/scroll di luar
-   sheet (pointer-events: none) — konten catatan di belakangnya tetap bisa
-   di-scroll/dibaca selagi sheet terbuka. Hanya .image-sheet sendiri yang
-   mengaktifkan kembali pointer-events, dan itulah satu-satunya bagian yang
-   bisa diinteraksi. Menutup sheet murni lewat tombol "Batal" / "Terapkan",
-   bukan lagi lewat tap di luar area sheet. */
 .image-sheet-overlay {
   position: fixed;
   inset: 0;
@@ -29,51 +20,593 @@
   pointer-events: auto;
   width: 100%;
   max-width: 480px;
-  /* Berlaku untuk SEMUA bottom sheet di editor (image-sheet, scene-sheet,
-     music-sheet — ketiganya reuse class ".image-sheet" ini, lihat
-     scene-sheet.js & music-sheet.js), jadi cukup diubah di satu tempat. */
   max-height: 40vh;
   overflow-y: auto;
-  background-color: var(--color-bg);
+  background-color: var(--color-surface);
   border-top: 1px solid var(--color-border);
   border-radius: 0;
   padding: var(--space-sm) var(--space-md) calc(var(--space-sm) + env(safe-area-inset-bottom, 0px));
   box-shadow: 0 -2px 10px rgba(var(--shadow-color), 0.08);
   transform: translateY(100%);
   transition: transform var(--duration-base) var(--ease-standard);
-  /* Scrollbar kustom (bukan scrollbar default OS/browser yang biasanya
-     lebih tebal & kurang senada) — SENGAJA tetap ditampilkan (bukan
-     scrollbar-width: none seperti .color-picker-bar/.scene-sheet__color-strip
-     yang scroll HORIZONTAL) karena sheet ini scroll VERTIKAL dan bisa lebih
-     panjang dari layar (banyak section), jadi user perlu isyarat visual
-     ada konten lanjutan di bawah — bukan cuma gesture scroll tanpa
-     indikator sama sekali. Tipis (4px) & warna senada border supaya tidak
-     mendominasi, bukan lebar seperti scrollbar bawaan browser. */
   scrollbar-width: thin;
   scrollbar-color: var(--color-border) transparent;
 }
 
-.image-sheet::-webkit-scrollbar {
-  width: 4px;
-}
-
-.image-sheet::-webkit-scrollbar-track {
-  background: transparent;
-}
-
+.image-sheet::-webkit-scrollbar { width: 4px; }
+.image-sheet::-webkit-scrollbar-track { background: transparent; }
 .image-sheet::-webkit-scrollbar-thumb {
   background-color: var(--color-border);
   border-radius: var(--radius-full);
-}
-
-.image-sheet::-webkit-scrollbar-thumb:hover {
-  background-color: var(--color-text-secondary);
 }
 
 .image-sheet-overlay.is-open .image-sheet {
   transform: translateY(0);
 }
 
+/* ---- Compact image sheet: fixed 210px grid ---- */
+.image-sheet.image-sheet--compact {
+  height: calc(205px + env(safe-area-inset-bottom, 0px));
+  max-height: none;
+  overflow: hidden;
+  padding: 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-sizing: border-box;
+}
+
+.image-sheet__panel {
+  display: none;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.image-sheet__panel.is-active {
+  display: flex;
+}
+
+/* Main panel: left column + right rail */
+.image-sheet__panel--main {
+  flex-direction: row;
+  gap: 5px;
+  padding: 15px 20px;
+  box-sizing: border-box;
+}
+
+.image-sheet__main-left {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.image-sheet__main-right {
+  flex: 0 0 40px;
+  width: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+/* Align bar: 3 position buttons + dividers */
+.image-sheet__align-bar {
+  height: 40px;
+  flex: 0 0 40px;
+  display: flex;
+  align-items: center;
+  border: none;
+  border-radius: 5px;
+  background-color: color-mix(in srgb, color-mix(in srgb, var(--color-text-primary) 14%, var(--color-surface)) 38%, var(--color-surface));
+  overflow: hidden;
+}
+
+.image-sheet__align-btn {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  padding: 0;
+  min-width: 0;
+}
+
+.image-sheet__align-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.image-sheet__align-btn.is-active {
+  color: var(--color-accent);
+  background-color: transparent;
+}
+
+.image-sheet__align-divider {
+  flex: 0 0 1px;
+  width: 1px;
+  height: 25px;
+  background-color: var(--color-border);
+  align-self: center;
+}
+
+/* Row of 3 big action buttons (dimension / crop / upload) */
+.image-sheet__big-row {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  gap: 5px;
+}
+
+.image-sheet__big-btn {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: none;
+  border-radius: 5px;
+  background-color: color-mix(in srgb, color-mix(in srgb, var(--color-text-primary) 14%, var(--color-surface)) 38%, var(--color-surface));
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: var(--weight-medium);
+  padding: 4px;
+}
+
+.image-sheet__big-btn svg {
+  width: 22px;
+  height: 22px;
+}
+
+.image-sheet__big-btn span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  line-height: 1.1;
+}
+
+.image-sheet__big-btn.is-busy {
+  opacity: 0.75;
+  pointer-events: none;
+}
+
+.image-sheet__big-btn--upload {
+  color: var(--color-accent);
+}
+
+/* Batal / Terapkan */
+.image-sheet__actions {
+  height: 40px;
+  flex: 0 0 40px;
+  display: flex;
+  gap: 5px;
+  margin: 0;
+}
+
+.image-sheet__btn {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  min-height: 40px;
+  padding: 0 var(--space-sm);
+  border-radius: 5px;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-sheet__btn--ghost {
+  background-color: color-mix(in srgb, color-mix(in srgb, var(--color-text-primary) 14%, var(--color-surface)) 38%, var(--color-surface));
+  color: var(--color-text-secondary);
+  border: none;
+}
+
+.image-sheet__btn--primary {
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent);
+  border: none;
+}
+
+.image-sheet__btn--primary:disabled {
+  opacity: 0.5;
+}
+
+/* Right rail icon toggles / delete: 40x40 */
+.image-sheet__icon-btn {
+  width: 40px;
+  height: 40px;
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 5px;
+  background-color: color-mix(in srgb, color-mix(in srgb, var(--color-text-primary) 14%, var(--color-surface)) 38%, var(--color-surface));
+  color: var(--color-text-secondary);
+  padding: 0;
+}
+
+.image-sheet__icon-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.image-sheet__icon-btn.is-on {
+  border-color: var(--color-accent);
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.image-sheet__icon-btn.is-disabled {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.image-sheet__icon-btn--danger {
+  color: var(--color-danger, #e11);
+}
+
+.image-sheet__icon-btn--danger.is-armed {
+  border: none;
+  background-color: rgba(220, 38, 38, 0.18);
+  color: var(--color-danger, #e11);
+}
+
+/* Sub-panels: rail kiri nempel tepi (tanpa padding sheet) + body kanan */
+.image-sheet__panel--sub {
+  flex-direction: row;
+  gap: 0;
+  align-items: stretch;
+}
+
+.image-sheet__sub-rail {
+  flex: 0 0 56px;
+  width: 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 12px 0 10px;
+  box-sizing: border-box;
+  background-color: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+}
+
+/* Rail icons: tanpa background/border (seperti referensi) */
+.image-sheet__back-btn,
+.image-sheet__rail-icon-btn {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-text-secondary);
+  padding: 0;
+}
+
+.image-sheet__back-btn {
+  color: var(--color-text-primary);
+}
+
+.image-sheet__back-btn svg,
+.image-sheet__rail-icon-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.image-sheet__rail-icon-btn.is-active {
+  color: var(--color-accent);
+  background: transparent;
+  border: none;
+}
+
+.image-sheet__sub-body {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 15px 12px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+/* Crop body: horizontal scroll, no vertical */
+.image-sheet__sub-body--crop {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 15px 12px;
+}
+
+/* Ruler scrollers — pointer DI LUAR track (tidak ikut geser) */
+.image-sheet__rulers {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 0 0 auto;
+  min-height: min-content;
+  justify-content: flex-start;
+  padding-bottom: 4px;
+}
+
+.image-sheet__ruler-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  flex: 0 0 40px;
+}
+
+.image-sheet__ruler-row.is-disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.image-sheet__ruler-label {
+  flex: 0 0 80px;
+  width: 80px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-primary);
+  text-align: center;
+  border-radius: 5px;
+  background-color: color-mix(in srgb, color-mix(in srgb, var(--color-text-primary) 14%, var(--color-surface)) 38%, var(--color-surface));
+  border: none;
+  box-sizing: border-box;
+  padding: 0 4px;
+}
+
+.image-sheet__ruler-value {
+  flex: 0 0 70px;
+  width: 70px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+  text-align: center;
+  border-radius: 5px;
+  background-color: color-mix(in srgb, color-mix(in srgb, var(--color-text-primary) 14%, var(--color-surface)) 38%, var(--color-surface));
+  border: none;
+  box-sizing: border-box;
+  padding: 0 4px;
+}
+
+/* Wrapper: pointer absolute di sini, viewport cuma isi garis */
+.image-sheet__ruler-wrap {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  position: relative;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 12%, #000 88%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 12%, #000 88%, transparent 100%);
+}
+
+.image-sheet__ruler-viewport {
+  width: 100%;
+  height: 40px;
+  overflow: hidden; /* tidak pakai scroll native */
+  border: none;
+  background: transparent;
+  touch-action: pan-y; /* drag horizontal kita handle sendiri */
+  cursor: ew-resize;
+}
+
+.image-sheet__ruler-track {
+  display: block;
+  position: relative;
+  height: 40px;
+  will-change: transform;
+}
+
+.image-sheet__ruler-tick {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  height: 40px;
+  background-color: var(--color-text-secondary);
+  opacity: 0.4;
+  pointer-events: none;
+  margin-left: 0;
+  transform: translateX(-50%);
+}
+.image-sheet__ruler-tick.is-major {
+  opacity: 0.75;
+  height: 40px;
+  width: 1.5px;
+}
+.image-sheet__ruler-track--virtual {
+  width: 100% !important;
+  transform: none !important;
+  will-change: auto;
+}
+
+/* Pointer di luar track — sibling viewport, tidak ikut transform */
+.image-sheet__ruler-pointer {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 1px;
+  height: 40px;
+  margin-left: 0;
+  transform: translateX(-50%);
+  background-color: var(--color-accent);
+  pointer-events: none;
+  z-index: 3;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.image-sheet__slider-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.image-sheet__slider-row.is-disabled {
+  opacity: 0.45;
+}
+
+.image-sheet__slider-row.is-disabled .image-sheet__slider {
+  pointer-events: none;
+}
+
+.image-sheet__slider-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.image-sheet__label {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.image-sheet__value {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.image-sheet__slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-border);
+  outline: none;
+}
+
+.image-sheet__slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: var(--color-accent);
+  border: 2px solid var(--color-bg);
+  box-shadow: 0 1px 3px rgba(var(--shadow-color), 0.25);
+  cursor: pointer;
+}
+
+.image-sheet__slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: var(--color-accent);
+  border: 2px solid var(--color-bg);
+  box-shadow: 0 1px 3px rgba(var(--shadow-color), 0.25);
+  cursor: pointer;
+}
+
+/* Crop shapes grid in sub-panel */
+/* 4 baris, kolom mengalir ke kanan (1-4 kolom1, 5-8 kolom2, ...) */
+.image-sheet__shape-grid {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-rows: repeat(4, 40px);
+  grid-auto-flow: column;
+  grid-auto-columns: 40px;
+  gap: 8px;
+  align-content: start;
+  height: calc(4 * 40px + 3 * 8px);
+  width: max-content;
+  min-width: min-content;
+  overflow: visible;
+}
+
+.image-sheet__shape-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 0;
+  border-radius: 5px;
+  border: none;
+  background-color: color-mix(in srgb, color-mix(in srgb, var(--color-text-primary) 14%, var(--color-surface)) 38%, var(--color-surface));
+  color: var(--color-text-secondary);
+  font-size: 0;
+}
+
+.image-sheet__shape-btn svg {
+  width: 22px;
+  height: 22px;
+}
+
+.image-sheet__shape-btn span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.image-sheet__shape-btn.is-active {
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.image-sheet__spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  opacity: 0.85;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.image-sheet__error {
+  position: absolute;
+  left: 10px;
+  right: 50px;
+  bottom: calc(52px + env(safe-area-inset-bottom, 0px));
+  font-size: 10px;
+  color: var(--color-danger);
+  text-align: left;
+  pointer-events: none;
+  line-height: 1.2;
+  max-height: 2.4em;
+  overflow: hidden;
+}
+
+.image-sheet.image-sheet--compact {
+  position: relative;
+}
+
+/* Legacy helpers kept for scene/music sheets that still use older structure */
 .image-sheet__title {
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
@@ -97,68 +630,6 @@
   pointer-events: none;
 }
 
-.image-sheet__label {
-  font-size: var(--text-xs);
-  font-weight: var(--weight-medium);
-  color: var(--color-text-secondary);
-  margin-bottom: var(--space-xs);
-}
-
-.image-sheet__row .image-sheet__label {
-  margin-bottom: 0;
-}
-
-/* ---- Label + hint dalam satu baris toggle (mis. "Latar Transparan") ---- */
-.image-sheet__label-col {
-  flex: 1;
-  min-width: 0;
-  margin-right: var(--space-md);
-}
-
-.image-sheet__label-col .image-sheet__label {
-  margin-bottom: var(--space-xs);
-}
-
-.image-sheet__hint {
-  font-size: var(--text-xs);
-  color: var(--color-text-tertiary, var(--color-text-secondary));
-  line-height: var(--leading-snug);
-}
-
-/* ---- Align (kiri / tengah / kanan) ---- */
-.image-sheet__align-group {
-  display: flex;
-  gap: var(--space-sm);
-}
-
-.image-sheet__align-btn {
-  flex: 1;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-xs);
-  padding: var(--space-xs);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  background-color: var(--color-surface);
-  color: var(--color-text-secondary);
-  font-size: var(--text-xs);
-  min-height: 36px;
-}
-
-.image-sheet__align-btn svg {
-  width: 15px;
-  height: 15px;
-}
-
-.image-sheet__align-btn.is-active {
-  border-color: var(--color-accent);
-  background-color: var(--color-accent-soft);
-  color: var(--color-accent);
-}
-
-/* ---- Toggle "Wrap Text" ---- */
 .image-sheet__toggle {
   position: relative;
   width: 44px;
@@ -189,7 +660,6 @@
   transform: translateX(18px);
 }
 
-/* ---- Upload gambar ---- */
 .image-sheet__upload-btn {
   width: 100%;
   display: flex;
@@ -199,197 +669,115 @@
   padding: var(--space-xs) var(--space-md);
   border-radius: var(--radius-sm);
   border: 1px dashed var(--color-border);
-  background-color: var(--color-surface);
+  background-color: color-mix(in srgb, color-mix(in srgb, var(--color-text-primary) 14%, var(--color-surface)) 38%, var(--color-surface));
   color: var(--color-accent);
   font-size: var(--text-xs);
   font-weight: var(--weight-medium);
   min-height: 38px;
 }
 
-.image-sheet__upload-btn svg {
-  width: 16px;
-  height: 16px;
-}
-
-.image-sheet__upload-btn.is-busy {
-  opacity: 0.75;
-  pointer-events: none;
-}
-
-/* Spinner kecil dipakai tombol "Unggah Gambar" selagi gambar yang baru
-   dipilih sedang dikonversi ke WebP (lihat image-sheet.js, konversinya
-   murni JS/canvas via image-service.js convertToWebp() — jalan offline). */
-.image-sheet__spinner {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 2px solid currentColor;
-  border-top-color: transparent;
-  opacity: 0.85;
-  animation: spin 0.7s linear infinite;
-  flex-shrink: 0;
-}
-
-/* ---- Crop bentuk SVG (bintang / love / dll) ----
-   Strip scroll horizontal persis di bawah tombol "Unggah Gambar" — tiap
-   tombol menampilkan ikon SVG kecil (viewBox 0 0 1 1, sama persis dengan
-   path yang dipakai clip-path sungguhannya, lihat image-clip-shapes.js)
-   supaya bentuk yang dilihat di sini dijamin identik dengan hasil crop-nya
-   di dokumen. */
 .image-sheet__shape-scroll {
   display: flex;
   gap: var(--space-sm);
   overflow-x: auto;
   padding-bottom: var(--space-xs);
   -webkit-overflow-scrolling: touch;
-  scroll-snap-type: x proximity;
 }
 
-.image-sheet__shape-scroll::-webkit-scrollbar {
-  height: 4px;
-}
 
-.image-sheet__shape-btn {
-  flex: 0 0 auto;
-  display: flex;
+  .image-sheet__dim-pane {
+  display: none;
   flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+}
+.image-sheet__dim-pane.is-active { display: flex; }
+.image-sheet__dim-pane--rotate {
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  width: 64px;
-  padding: var(--space-xs) 4px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  background-color: var(--color-surface);
-  color: var(--color-text-secondary);
-  font-size: 10px;
-  scroll-snap-align: start;
-}
-
-.image-sheet__shape-btn svg {
-  width: 26px;
-  height: 26px;
-}
-
-.image-sheet__shape-btn span {
-  white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
 }
 
-.image-sheet__shape-btn.is-active {
-  border-color: var(--color-accent);
-  background-color: var(--color-accent-soft);
+.image-sheet__rail-icon-btn {
+  color: var(--color-text-primary);
+  opacity: 0.55;
+  transition: color 0.15s ease, opacity 0.15s ease;
+}
+.image-sheet__rail-icon-btn.is-active {
   color: var(--color-accent);
+  opacity: 1;
+  background: transparent;
+  border: none;
 }
 
-/* ---- Slider lebar / tinggi / border-radius ---- */
-.image-sheet__sliders {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-  /* Jarak ekstra ke tombol Batal/Terapkan di bawahnya — sebelumnya cuma
-     margin-bottom bawaan .image-sheet__section (--space-sm) yang bikin
-     slider Border Radius (paling bawah) kelihatan nempel ke tombol. */
-  margin-bottom: var(--space-lg);
+/* Dial: ring full size, knob layer = same box (left/top 0), dot orbit di rim atas */
+.image-sheet__rotate-dial {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  flex: 0 0 120px;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  margin: 0 auto;
 }
-
-.image-sheet__slider-row {
-  display: flex;
-  flex-direction: column;
+.image-sheet__rotate-dial:active { cursor: grabbing; }
+.image-sheet__rotate-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-sizing: border-box;
+  border: 3px solid color-mix(in srgb, var(--color-border) 80%, var(--color-text-primary));
+  background:
+    conic-gradient(from 0deg, color-mix(in srgb, var(--color-accent) 35%, transparent), transparent 40%, transparent),
+    var(--color-surface);
 }
-
-/* Slider Border Radius dipudarkan & dikunci selama crop bentuk SVG aktif
-   (lihat toolbar/image-sheet.js updateRadiusDisabledState) — radius kotak
-   tidak lagi relevan begitu bentuknya dipotong clip-path. */
-.image-sheet__slider-row.is-disabled {
-  opacity: 0.45;
-}
-
-.image-sheet__slider-row.is-disabled .image-sheet__slider {
+.image-sheet__rotate-knob {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  border-radius: 50%;
+  transform-origin: 50% 50%;
   pointer-events: none;
+  will-change: transform;
 }
-
-.image-sheet__slider-label-row {
+.image-sheet__rotate-knob::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 12px;
+  height: 12px;
+  /* pusat dot di rim lingkaran: top 0 + half height, lalu geser ke atas setengah border */
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-surface);
+  box-sizing: border-box;
+}
+.image-sheet__rotate-chip {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+  min-width: 52px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 999px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--space-xs);
-}
-
-.image-sheet__value {
-  font-size: var(--text-xs);
-  color: var(--color-text-secondary);
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
-}
-
-.image-sheet__slider {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 4px;
-  border-radius: var(--radius-full);
-  background-color: var(--color-border);
-  outline: none;
-}
-
-.image-sheet__slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background-color: var(--color-accent);
-  border: 2px solid var(--color-bg);
-  box-shadow: 0 1px 3px rgba(var(--shadow-color), 0.25);
-  cursor: pointer;
-}
-
-.image-sheet__slider::-moz-range-thumb {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background-color: var(--color-accent);
-  border: 2px solid var(--color-bg);
-  box-shadow: 0 1px 3px rgba(var(--shadow-color), 0.25);
-  cursor: pointer;
-}
-
-/* ---- Aksi: Batal / Terapkan ---- */
-.image-sheet__actions {
-  display: flex;
-  gap: var(--space-sm);
-  margin-bottom: 0;
-}
-
-.image-sheet__btn {
-  flex: 1;
-  padding: var(--space-xs) var(--space-md);
-  border-radius: var(--radius-sm);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
-  min-height: 40px;
-}
-
-.image-sheet__btn--ghost {
-  background-color: var(--color-surface);
-  color: var(--color-text-secondary);
-}
-
-.image-sheet__btn--primary {
-  background-color: var(--color-accent);
-  color: #FFFFFF;
-}
-
-.image-sheet__btn--primary:disabled {
-  opacity: 0.5;
-}
-
-.image-sheet__error {
-  margin-top: var(--space-sm);
-  font-size: var(--text-xs);
-  color: var(--color-danger);
-  text-align: center;
-  min-height: 1em;
+  color: var(--color-text-primary);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  pointer-events: none;
+  box-sizing: border-box;
 }

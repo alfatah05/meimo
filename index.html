@@ -1,78 +1,39 @@
 <!DOCTYPE html>
-<html lang="id" data-theme="light">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
-<!-- Opt-in Cross-Document View Transition SEDINI mungkin di <head>
-     (bukan cuma di view-transitions.css). Chrome/WebView sering melewati
-     animasi navigasi MAJU kalau @view-transition belum terbaca saat
-     dokumen baru di-parse; back/bfcache tetap jalan karena stylesheet
-     sudah di memori. Lihat Chromium issue 348683476. -->
 <style>
-@view-transition { navigation: auto; }
+@view-transition {
+  navigation: auto;
+}
 </style>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content, minimum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Catatan — Home</title>
 <meta name="description" content="Meimo — aplikasi catatan pribadi offline-first dengan editor kaya format.">
 
-<!-- ============ PWA: Manifest, Theme Color, App Icon, Splash Screen ============ -->
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#1E1E1E">
 <script>
-  // Terapkan tema tersimpan SEBELUM stylesheet dirender, supaya tidak ada
-  // kedip ke tema default — sekalian sinkronkan warna status bar
-  // (meta theme-color) dengan warna background tema tersebut. Peta warna
-  // di bawah HARUS sama dengan `swatch` di THEMES (lihat
-  // src/js/themes/theme-manager.js) & --color-bg per tema di
-  // src/css/themes.css.
   (function () {
     var THEME_COLORS = { light: "#FFFFFF", dark: "#17181C", sepia: "#F4ECD8", paper: "#FBFAF5", oled: "#000000" };
-    var t = null;
     try {
-      t = localStorage.getItem("notes-app-theme");
+      var t = localStorage.getItem("notes-app-theme");
       if (t) document.documentElement.setAttribute("data-theme", t);
       var meta = document.querySelector('meta[name="theme-color"]');
       if (meta) meta.setAttribute("content", THEME_COLORS[t] || THEME_COLORS.light);
+      var lang = localStorage.getItem("notes-app-lang");
+      if (lang === "id" || lang === "ja" || lang === "en") {
+        document.documentElement.setAttribute("lang", lang);
+      } else {
+        document.documentElement.setAttribute("lang", "en");
+      }
     } catch (e) {}
-    // System bars native sedini mungkin (sebelum module native-bridge jalan).
-    // Plugin Capacitor kadang belum inject di frame pertama cold start —
-    // poll singkat sampai siap, supaya warna bar langsung cocok tema
-    // (bukan nunggu refresh).
-    function applyNativeBars() {
-      try {
-        var Cap = window.Capacitor;
-        if (!Cap || !Cap.isNativePlatform || !Cap.isNativePlatform()) return false;
-        var id = document.documentElement.getAttribute("data-theme") || "light";
-        var color = THEME_COLORS[id] || THEME_COLORS.light;
-        var dark = id === "dark" || id === "oled";
-        var SB = Cap.Plugins && Cap.Plugins.StatusBar;
-        if (SB) {
-          if (SB.setOverlaysWebView) SB.setOverlaysWebView({ overlay: true });
-          if (SB.setBackgroundColor) SB.setBackgroundColor({ color: color });
-          if (SB.setStyle) SB.setStyle({ style: dark ? "DARK" : "LIGHT" });
-        }
-        var NB = Cap.Plugins && Cap.Plugins.NavigationBar;
-        if (NB && NB.setNavigationBarColor) {
-          NB.setNavigationBarColor({ color: color, darkButtons: !dark });
-        } else if (NB && NB.setColor) {
-          NB.setColor({ color: color });
-        }
-        return !!(SB || NB);
-      } catch (e) { return false; }
-    }
-    if (!applyNativeBars()) {
-      var n = 0;
-      var timer = setInterval(function () {
-        n++;
-        if (applyNativeBars() || n >= 60) clearInterval(timer);
-      }, 50);
-    }
   })();
 </script>
 <link rel="icon" href="/assets/icons/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="192x192" href="/assets/icons/icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="/assets/icons/icon-512.png">
 <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
-<!-- iOS memakai gambar ini sebagai splash screen saat app dibuka dari Home Screen. -->
 <link rel="apple-touch-startup-image" href="/assets/splash/splash-screen.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -83,34 +44,100 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/src/css/variables.css">
 <link rel="stylesheet" href="/src/css/themes.css">
+<link rel="stylesheet" href="/src/css/view-transitions.css">
 <link rel="stylesheet" href="/src/css/base.css">
 <link rel="stylesheet" href="/src/css/typography.css">
 <link rel="stylesheet" href="/src/css/layout.css">
 <link rel="stylesheet" href="/src/css/notes-list.css">
 <link rel="stylesheet" href="/src/css/toolbar.css">
+<link rel="stylesheet" href="/src/css/editor.css">
+<link rel="stylesheet" href="/src/css/image-sheet.css">
+<link rel="stylesheet" href="/src/css/scene.css">
+<link rel="stylesheet" href="/src/css/scene-sheet.css">
+<link rel="stylesheet" href="/src/css/music.css">
+<link rel="stylesheet" href="/src/css/outline.css">
+<link rel="stylesheet" href="/src/css/ai-sheet.css">
+<link rel="stylesheet" href="/src/css/voice-record-sheet.css">
+<link rel="stylesheet" href="/src/css/block-selection-bar.css">
+<link rel="stylesheet" href="/src/css/block-select-mode.css">
+<link rel="stylesheet" href="/src/css/backup-import.css">
+<link rel="stylesheet" href="/src/css/font-manager.css">
 <link rel="stylesheet" href="/src/css/animations.css">
 <link rel="stylesheet" href="/src/css/skeleton.css">
-<link rel="stylesheet" href="/src/css/view-transitions.css">
 <link rel="stylesheet" href="/src/css/responsive.css">
+<link rel="stylesheet" href="/src/css/card-style.css">
+<link rel="stylesheet" href="/src/css/settings.css">
 <link rel="stylesheet" href="/src/css/components.css">
-</head>
-<body>
 
+<style id="spa-view-style">
+  .spa-view { min-height: 100%; }
+  .spa-view[hidden] { display: none !important; }
+
+  /* Sembunyikan chrome editor di semua view selain editor */
+  body:not(.spa-editor-active) .outline-fab,
+  body:not(.spa-editor-active) .outline-overlay,
+  body:not(.spa-editor-active) .ai-fab,
+  body:not(.spa-editor-active) .ai-sheet-overlay,
+  body:not(.spa-editor-active) .scroll-bottom-fab,
+  body:not(.spa-editor-active) .block-selection-bar,
+  body:not(.spa-editor-active) .image-sheet-overlay,
+  body:not(.spa-editor-active) .scene-sheet-overlay,
+  body:not(.spa-editor-active) .music-sheet-overlay,
+  body:not(.spa-editor-active) .voice-record-overlay,
+  body:not(.spa-editor-active) .block-select-overlay,
+  body:not(.spa-editor-active) .block-select-handle {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+</style>
+
+</head>
+<body class="spa-home-active">
+<script>
+(function () {
+  try {
+    var path = location.pathname.replace(/\/+$/, "") || "/";
+    var map = {
+      "/editor": "editor",
+      "/card-style": "card-style",
+      "/cadangkan": "cadangkan",
+      "/trash": "trash",
+      "/font-manager": "font-manager",
+      "/arsip": "arsip"
+    };
+    var initial = "home";
+    if (path.indexOf("/editor") === 0) initial = "editor";
+    else if (path.indexOf("/card-style") === 0) initial = "card-style";
+    else if (path.indexOf("/fitur-ai") === 0) initial = "fitur-ai";
+    else if (path.indexOf("/settings") === 0) initial = "settings";
+    else if (map[path]) initial = map[path];
+    window.__MEIMO_SPA_INITIAL__ = initial;
+    if (initial !== "home") {
+      document.body.classList.remove("spa-home-active");
+      document.body.classList.add("spa-" + initial + "-active");
+    }
+  } catch (e) {}
+})();
+</script>
+
+<!-- ========== SPA VIEW: HOME ========== -->
+<div id="view-home" class="spa-view" data-view="home">
 <div class="page">
 
   <!-- ============ HOME HEADER (Search) ============ -->
   <header class="home-header">
     <div class="home-greeting-row">
-      <div class="home-greeting">Catatan Saya</div>
+      <div class="home-greeting" data-i18n="home.title">My Notes</div>
       <div class="home-header-actions">
-        <a href="/arsip" class="home-about-btn" aria-label="Buka Arsip">
+        <a href="/arsip" class="home-about-btn" aria-label="Open Archive" data-i18n-aria="nav.archive">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="21 8 21 21 3 21 3 8"></polyline>
             <rect x="1" y="3" width="22" height="5"></rect>
             <line x1="10" y1="12" x2="14" y2="12"></line>
           </svg>
         </a>
-        <a href="/about" class="home-about-btn" aria-label="Tentang aplikasi">
+        <a href="/about" class="home-about-btn" aria-label="About the app" data-i18n-aria="nav.about">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="9"></circle>
             <line x1="12" y1="11" x2="12" y2="16.5"></line>
@@ -131,8 +158,8 @@
         type="text"
         inputmode="search"
         autocomplete="off"
-        placeholder="Cari judul atau isi catatan…"
-        aria-label="Cari catatan berdasarkan judul atau isi"
+        placeholder="Search title or note content…" data-i18n-placeholder="home.search.placeholder"
+        aria-label="Search notes by title or content" data-i18n-aria="home.search.aria"
       >
       <button
         type="button"
@@ -142,7 +169,7 @@
         aria-expanded="false"
         aria-label="Urutkan catatan"
       >
-        <span id="sortLabel" class="search-bar__sort-label">Terakhir diubah</span>
+        <span id="sortLabel" class="search-bar__sort-label" data-i18n="home.sort.updatedAt">Last updated</span>
         <svg class="search-bar__sort-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="6 9 12 15 18 9"></polyline>
         </svg>
@@ -180,7 +207,7 @@
     <!-- Pinned — disembunyikan (hidden) bila tidak ada note pinned -->
     <section id="pinnedSection" class="section anim-fade-in" hidden>
       <div class="section-header">
-        <span class="section-title">Pinned</span>
+        <span class="section-title" data-i18n="home.pinned">Pinned</span>
       </div>
       <div id="pinnedStrip" class="pinned-strip"></div>
     </section>
@@ -188,7 +215,7 @@
     <!-- Recent / Semua Notes / Hasil Pencarian -->
     <section id="recentSection" class="section" hidden>
       <div class="section-header">
-        <span id="recentSectionTitle" class="section-title">Terbaru</span>
+        <span id="recentSectionTitle" class="section-title" data-i18n="home.recent">Recent</span>
       </div>
       <div id="notesGrid" class="notes-grid"></div>
     </section>
@@ -203,7 +230,7 @@
         <line x1="30" y1="50" x2="46" y2="50"></line>
         <path d="M58 58l10 10-4 4-10-10 4-4z" fill="currentColor" stroke="none" opacity="0.5"></path>
       </svg>
-      <div id="emptyStateTitle" class="empty-state__title">Belum ada catatan</div>
+      <div id="emptyStateTitle" class="empty-state__title" data-i18n="home.empty.title">No notes yet</div>
       <p id="emptyStateDesc" class="empty-state__desc">Semua catatanmu akan muncul di sini. Ketuk tombol tambah di kanan bawah untuk mulai menulis yang pertama.</p>
     </div>
 
@@ -211,15 +238,15 @@
 
   <!-- ============ FLOATING MENU (tombol "+") ============
        Dikelola oleh src/components/floating-button.js. Tombol utama
-       membuka 4 aksi cepat: 3 fitur baru (Cadangkan Catatan, Sampah,
-       Ganti Tema) plus Catatan Baru yang sudah ada sebelumnya. -->
+       membuka aksi cepat: Catatan Baru, Rekam Suara, Pengaturan
+       (menu lain dipindah ke halaman Pengaturan). -->
   <div class="fab-menu" data-fab-menu>
     <div class="fab-menu__backdrop" data-fab-backdrop hidden></div>
 
     <div class="fab-menu__actions" data-fab-actions hidden>
-      <div class="fab-action-item">
-        <span class="fab-action__label" aria-hidden="true">Cadangkan &amp; Impor</span>
-        <a href="/cadangkan" class="fab-action" data-fab-action="backup" aria-label="Buka halaman Cadangkan &amp; Impor">
+      <div class="fab-action-item" hidden>
+        <span class="fab-action__label" aria-hidden="true" data-i18n="home.install">Install app</span>
+        <button type="button" class="fab-action" data-fab-action="install" aria-label="Instal Meimo ke perangkat">
           <span class="fab-action__icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 3v12"></path>
@@ -227,65 +254,37 @@
               <path d="M4 19h16"></path>
             </svg>
           </span>
-        </a>
-      </div>
-
-      <div class="fab-action-item">
-        <span class="fab-action__label" aria-hidden="true">Sampah</span>
-        <a href="/trash" class="fab-action" data-fab-action="trash" aria-label="Buka Sampah">
-          <span class="fab-action__icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="3 6 5 6 21 6"></polyline>
-              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
-              <path d="M10 11v6"></path>
-              <path d="M14 11v6"></path>
-              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
-            </svg>
-          </span>
-        </a>
-      </div>
-
-      <div class="fab-action-item">
-        <span class="fab-action__label" aria-hidden="true">Ganti Tema</span>
-        <button type="button" class="fab-action" data-fab-action="theme" aria-label="Ganti tema tampilan">
-          <span class="fab-action__icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="9"></circle>
-              <path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor" stroke="none" opacity="0.5"></path>
-            </svg>
-          </span>
-        </button>
-      </div>
-
-      <div class="fab-action-item" hidden>
-        <span class="fab-action__label" aria-hidden="true">Instal Aplikasi</span>
-        <button type="button" class="fab-action" data-fab-action="install" aria-label="Instal Meimo ke perangkat">
-          <span class="fab-action__icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="5" y="2" width="14" height="20" rx="2"></rect>
-              <path d="M12 8v6"></path>
-              <path d="M9 11l3 3 3-3"></path>
-              <line x1="10" y1="19" x2="14" y2="19"></line>
-            </svg>
-          </span>
         </button>
       </div>
 
       <div class="fab-action-item">
-        <span class="fab-action__label" aria-hidden="true">Font Library</span>
-        <a href="/font-manager" class="fab-action" data-fab-action="font-library" aria-label="Buka Font Library">
+        <span class="fab-action__label" aria-hidden="true" data-i18n="home.fab.settings">Settings</span>
+        <a href="/settings" class="fab-action" data-fab-action="settings" aria-label="Buka Pengaturan">
           <span class="fab-action__icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="4 7 4 4 20 4 20 7"></polyline>
-              <line x1="9" y1="20" x2="15" y2="20"></line>
-              <line x1="12" y1="4" x2="12" y2="20"></line>
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
             </svg>
           </span>
         </a>
       </div>
 
       <div class="fab-action-item">
-        <span class="fab-action__label" aria-hidden="true">Catatan Baru</span>
+        <span class="fab-action__label" aria-hidden="true" data-i18n="home.fab.voice">Voice record</span>
+        <a href="/editor?voice=1" class="fab-action" data-fab-action="voice-record" aria-label="Rekam percakapan &amp; tulis ke catatan">
+          <span class="fab-action__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"></path>
+              <path d="M19 10v1a7 7 0 0 1-14 0v-1"></path>
+              <line x1="12" y1="19" x2="12" y2="22"></line>
+              <line x1="8" y1="22" x2="16" y2="22"></line>
+            </svg>
+          </span>
+        </a>
+      </div>
+
+      <div class="fab-action-item">
+        <span class="fab-action__label" aria-hidden="true" data-i18n="home.fab.newNote">New note</span>
         <a href="/editor" class="fab-action fab-action--primary" data-fab-action="new-note" aria-label="Buat catatan baru">
           <span class="fab-action__icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -317,15 +316,949 @@
 
 </div>
 
-<script type="module" src="/src/js/notes/notes-list.js"></script>
-<script type="module" src="/src/components/floating-button.js"></script>
+
+
 
 <!-- ============ PWA: Service Worker (mode offline) ============ -->
-<script type="module" src="/src/js/pwa/sw-register.js"></script>
-<script type="module" src="/src/js/pwa/native-bridge.js"></script>
-<script type="module" src="/src/js/utils/view-transition-nav.js"></script>
-<script type="module" src="/src/js/pwa/install-prompt.js"></script>
-<script type="module" src="/src/js/utils/native-feel.js"></script>
+</div>
 
+<!-- ========== SPA VIEW: EDITOR ========== -->
+<div id="view-editor" class="spa-view" data-view="editor" hidden aria-hidden="true">
+<div class="note-page">
+
+  <!-- Topbar: back button + toolbar 9-menu jadi SATU baris grid di ATAS.
+       Posisi (top/left/right) dikelola oleh viewport-pin.js supaya selalu
+       mengikuti visual viewport (misal saat browser mobile menggeser
+       halaman untuk menampilkan field yang fokus). topbar-autohide.js
+       menggeser baris ini keluar viewport saat user sedang scroll, dan
+       memunculkannya lagi setelah scroll berhenti ~2 detik — KECUALI kalau
+       child bar (baris kedua, lihat di bawah) sedang terbuka, lihat
+       isChildGroupOpen() di src/js/utils/dom.js. -->
+  <div class="note-topbar">
+    <!-- ============ BARIS 1: TOPBAR — 9 menu, grid rata (1fr masing2),
+         icon-only, TIDAK bisa discroll kesamping. ============ -->
+    <div class="note-topbar-row">
+      <a href="/library" class="note-back-btn" aria-label="Back" data-i18n-aria="nav.back">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+      </a>
+
+      <!-- Undo / Redo: masing-masing slot grid sendiri, sama lebar dengan
+           tombol lain di baris ini (lihat .note-topbar-row di layout.css) -->
+      <button type="button" id="btnUndo" class="toolbar-btn" title="Undo" aria-label="Undo">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-2"/></svg>
+      </button>
+      <button type="button" id="btnRedo" class="toolbar-btn" title="Redo" aria-label="Redo">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h2"/></svg>
+      </button>
+
+      <!-- Text: Heading, Font, Font Size, Bold, Italic, Underline, Strikethrough -->
+      <button type="button" id="btnGroupText" class="toolbar-btn toolbar-btn--group toolbar-btn--group-text" title="Text" aria-haspopup="true" aria-expanded="false">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="12" y1="4" x2="12" y2="20"/><line x1="9" y1="20" x2="15" y2="20"/></svg>
+      </button>
+
+      <!-- Style: Font Color, Highlight, Align, Line Height, Letter Spacing -->
+      <button type="button" id="btnGroupStyle" class="toolbar-btn toolbar-btn--group" title="Style" aria-haspopup="true" aria-expanded="false">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 9 9c0-1.1-.5-2-2-2h-2.2c-1 0-1.8-.8-1.8-1.8 0-.5.2-.9.5-1.3.4-.4.6-.9.6-1.4C16.1 4.4 14.5 3 12 3z"/><circle cx="7.5" cy="10.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="9.5" cy="6.8" r="1.3" fill="currentColor" stroke="none"/><circle cx="14.2" cy="6.8" r="1.3" fill="currentColor" stroke="none"/></svg>
+      </button>
+
+      <!-- Lists: Numbered List, Bullet List, Checklist -->
+      <button type="button" id="btnGroupList" class="toolbar-btn toolbar-btn--group" title="List" aria-haspopup="true" aria-expanded="false">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="4" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="4" cy="18" r="1.4" fill="currentColor" stroke="none"/></svg>
+      </button>
+
+      <!-- Blocks: Quote, Divider -->
+      <button type="button" id="btnGroupBlock" class="toolbar-btn toolbar-btn--group" title="Block" aria-haspopup="true" aria-expanded="false">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4" width="17" height="6.5" rx="1.4"/><rect x="3.5" y="13.5" width="17" height="6.5" rx="1.4"/></svg>
+      </button>
+
+      <!-- Insert: Hyperlink, Image, Scene, Music -->
+      <button type="button" id="btnGroupInsert" class="toolbar-btn toolbar-btn--group" title="Insert" aria-haspopup="true" aria-expanded="false">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+
+      <!-- Hapus Format -->
+      <button type="button" id="btnClearFormat" class="toolbar-btn" title="Hapus Format" aria-label="Hapus Format">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l16 16"/><path d="M17 4H9L5 12l4 8h8"/></svg>
+      </button>
+
+      <!-- Read Only -->
+      <button type="button" id="btnReadOnly" class="toolbar-btn" title="Read Only" aria-label="Read Only" aria-pressed="false">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
+
+    <!-- ============ BARIS 2: CHILD BAR — muncul di bawah topbar saat salah
+         satu menu kelompok (Text/Style/List/Block/Insert) di atas dipencet.
+         TIDAK ikut hilang saat page discroll (lihat isChildGroupOpen() di
+         dom.js & topbar-autohide.js) dan TIDAK tertutup karena tap di luar
+         — cuma hilang kalau menu kelompoknya dipencet lagi (toggle) atau
+         tombol Escape. Hanya SATU .toolbar-child-group yang tampil pada
+         satu waktu; isinya icon-only, lebar tiap tombol = lebar child bar
+         dibagi jumlah menu di kelompok itu (flex rata, lihat toolbar.css).
+         ============ -->
+    <div class="toolbar-child-bar" id="toolbarChildBar" hidden>
+
+      <!-- --- Text --- -->
+      <div class="toolbar-child-group" id="childGroupText" hidden>
+        <button type="button" id="btnHeading" class="toolbar-btn toolbar-btn--heading toolbar-btn--has-dropdown" title="Heading" aria-haspopup="true" aria-expanded="false">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4v16"/><path d="M18 4v16"/><path d="M6 12h12"/></svg>
+        </button>
+        <button type="button" id="btnFontFamily" class="toolbar-btn toolbar-btn--fontfamily toolbar-btn--has-dropdown" title="Font" aria-haspopup="true" aria-expanded="false">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 18.5L6.5 5.5l4 13"/><path d="M4 14h5"/><circle cx="16.5" cy="14.5" r="3.3"/><path d="M19.8 9v9.5"/></svg>
+        </button>
+        <button type="button" id="btnFontSize" class="toolbar-btn toolbar-btn--fontsize-icon toolbar-btn--has-dropdown" title="Font Size" aria-haspopup="true" aria-expanded="false">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 18L7 5.5l4.5 12.5"/><path d="M4.1 13.5h5.8"/><polyline points="16 10 18.7 7.3 21.4 10"/><polyline points="16 14 18.7 16.7 21.4 14"/></svg>
+        </button>
+        <button type="button" id="btnBold" class="toolbar-btn toolbar-btn--bold" title="Bold" aria-label="Bold" aria-pressed="false">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8a4 4 0 0 1 0 8H6z"/><path d="M6 12h9a4 4 0 0 1 0 8H6z"/></svg>
+        </button>
+        <button type="button" id="btnItalic" class="toolbar-btn toolbar-btn--italic" title="Italic" aria-label="Italic" aria-pressed="false">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>
+        </button>
+        <button type="button" id="btnUnderline" class="toolbar-btn toolbar-btn--underline" title="Underline" aria-label="Underline" aria-pressed="false">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v7a6 6 0 0 0 12 0V3"/><line x1="4" y1="21" x2="20" y2="21"/></svg>
+        </button>
+        <button type="button" id="btnStrike" class="toolbar-btn toolbar-btn--strike" title="Strikethrough" aria-label="Strikethrough" aria-pressed="false">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4H9a3 3 0 0 0-2.83 4"/><path d="M14 12a4 4 0 0 1 0 8H6"/><line x1="4" y1="12" x2="20" y2="12"/></svg>
+        </button>
+        <button type="button" id="btnKeepStyleText" class="toolbar-btn toolbar-btn--keep-style" title="Set as Current Style" aria-label="Set as Current Style" aria-pressed="false">
+          <svg class="icon-unlocked" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+          <svg class="icon-locked" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </button>
+      </div>
+
+      <!-- --- Style --- -->
+      <div class="toolbar-child-group" id="childGroupStyle" hidden>
+        <button type="button" id="btnTextColor" class="toolbar-swatch toolbar-btn--has-dropdown" title="Warna Teks" aria-label="Warna Teks" aria-haspopup="true" aria-expanded="false">
+          <span class="toolbar-swatch__glyph">A</span>
+        </button>
+        <button type="button" id="btnHighlight" class="toolbar-swatch toolbar-swatch--highlight toolbar-btn--has-dropdown" title="Highlight" aria-label="Highlight" aria-haspopup="true" aria-expanded="false">
+          <span class="toolbar-swatch__glyph">A</span>
+        </button>
+        <button type="button" id="btnAlign" class="toolbar-btn toolbar-btn--has-dropdown" title="Perataan Teks" aria-haspopup="true" aria-expanded="false">
+          <span class="toolbar-dropdown__align-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="18" y2="18"/></svg>
+          </span>
+        </button>
+        <button type="button" id="btnLineHeight" class="toolbar-btn toolbar-btn--has-dropdown" title="Line Height" aria-haspopup="true" aria-expanded="false">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="6"/><line x1="6" y1="12" x2="18" y2="12"/><line x1="6" y1="18" x2="18" y2="18"/></svg>
+        </button>
+        <button type="button" id="btnLetterSpacing" class="toolbar-btn toolbar-btn--has-dropdown" title="Letter Spacing" aria-haspopup="true" aria-expanded="false">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="12" x2="20" y2="12"/><polyline points="8 8 4 12 8 16"/><polyline points="16 8 20 12 16 16"/></svg>
+        </button>
+        <button type="button" id="btnKeepStyleStyle" class="toolbar-btn toolbar-btn--keep-style" title="Set as Current Style" aria-label="Set as Current Style" aria-pressed="false">
+          <svg class="icon-unlocked" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+          <svg class="icon-locked" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </button>
+      </div>
+
+      <!-- --- Lists --- -->
+      <div class="toolbar-child-group" id="childGroupList" hidden>
+        <button type="button" id="btnOrderedList" class="toolbar-btn" title="Ordered List" aria-label="Ordered List">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="20" y2="6"/><line x1="10" y1="12" x2="20" y2="12"/><line x1="10" y1="18" x2="20" y2="18"/><text x="3" y="8" font-size="7" stroke="none" fill="currentColor">1</text><text x="3" y="14" font-size="7" stroke="none" fill="currentColor">2</text><text x="3" y="20" font-size="7" stroke="none" fill="currentColor">3</text></svg>
+        </button>
+        <button type="button" id="btnUnorderedList" class="toolbar-btn" title="Unordered List" aria-label="Unordered List">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="20" y2="6"/><line x1="10" y1="12" x2="20" y2="12"/><line x1="10" y1="18" x2="20" y2="18"/><circle cx="4.5" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.4" fill="currentColor" stroke="none"/></svg>
+        </button>
+        <button type="button" id="btnChecklist" class="toolbar-btn" title="Checklist" aria-label="Checklist">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="6" height="6" rx="1.5"/><polyline points="4.5 7 5.5 8 7.5 5.5"/><line x1="12" y1="7" x2="20" y2="7"/><rect x="3" y="14" width="6" height="6" rx="1.5"/><line x1="12" y1="17" x2="20" y2="17"/></svg>
+        </button>
+      </div>
+
+      <!-- --- Blocks --- -->
+      <div class="toolbar-child-group" id="childGroupBlock" hidden>
+        <button type="button" id="btnQuote" class="toolbar-btn" title="Quote" aria-label="Quote" aria-pressed="false">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M7 7c-2.5 0-4.5 2-4.5 4.5S4.5 16 7 16c.3 0 .6 0 .8-.1C7.3 17.6 6 18.8 4.3 19.3l.7 1.6C8 20 10 17.3 10 13.5V11c0-2.2-1.3-4-3-4zm10 0c-2.5 0-4.5 2-4.5 4.5S14.5 16 17 16c.3 0 .6 0 .8-.1-.5 1.7-1.8 2.9-3.5 3.4l.7 1.6c3-.9 5-3.6 5-7.4V11c0-2.2-1.3-4-3-4z"/></svg>
+        </button>
+        <button type="button" id="btnDivider" class="toolbar-btn" title="Divider" aria-label="Divider">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="12" x2="20" y2="12"/></svg>
+        </button>
+      </div>
+
+      <!-- --- Insert --- -->
+      <div class="toolbar-child-group" id="childGroupInsert" hidden>
+        <button type="button" id="btnLink" class="toolbar-btn toolbar-btn--has-dropdown" title="Hyperlink" aria-label="Hyperlink">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/></svg>
+        </button>
+        <button type="button" id="btnInsertImage" class="toolbar-btn" title="Sisipkan Gambar" aria-label="Sisipkan Gambar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5.5-5.5L7 19"/></svg>
+        </button>
+        <button type="button" id="btnInsertScene" class="toolbar-btn" title="Sisipkan Scene" aria-label="Sisipkan Scene">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8c1.5-2 3-2 4.5 0s3 2 4.5 0 3-2 4.5 0 3 2 4.5 0"/><rect x="3" y="11" width="18" height="8" rx="1.5"/></svg>
+        </button>
+        <button type="button" id="btnInsertMusic" class="toolbar-btn" title="Insert Music" aria-label="Insert Music">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ============ BARIS 3: BAR COLOR PICKER ============
+         Ditampilkan/diisi oleh color-picker.js (Warna Teks) atau
+         highlight-picker.js (Highlight) lewat openColorBar() di
+         src/js/utils/dom.js — bukan floating panel, tapi baris penuh
+         di bawah child bar, satu baris yang bisa digeser horizontal
+         persis seperti .toolbar-child-bar. Kosong & hidden saat tidak
+         ada picker yang aktif. Baris ini HILANG saat page discroll
+         (lihat topbar-autohide.js), beda dengan child bar di atas. -->
+    <div class="color-picker-bar" id="colorPickerBar" hidden></div>
+
+    <!-- ============ BARIS 4: FONT FAMILY BAR ============
+         Diisi oleh font-family-dropdown.js lewat openFontFamilyBar() di
+         src/js/utils/dom.js — pola sama dengan color-picker-bar di atas
+         (full-width, menempel jadi bagian topbar, BUKAN floating panel),
+         tapi isinya daftar VERTIKAL (bisa panjang) jadi discroll vertikal
+         dengan max-height 35vh (lihat .font-family-bar, toolbar.css) biar
+         tidak menutupi seluruh area catatan di layar pendek. Kosong &
+         hidden saat tidak ada dropdown Font Family yang aktif — sama
+         seperti color-picker-bar, baris ini HILANG saat page discroll. -->
+    <div class="font-family-bar" id="fontFamilyBar" hidden></div>
+  </div>
+
+  <!-- ============ AREA MENULIS ============ -->
+  <!-- contenteditable dipakai sebagai MEDIA RENDER saja. Sumber data
+       sesungguhnya adalah model dokumen JSON yang dikelola di
+       src/js/editor/editor-state.js — lihat src/js/app.js. -->
+  <div class="note-scroll-area">
+    <div class="note-content is-loading">
+
+      <!-- ============ SKELETON LOADING ============
+           Tampil sejak awal (lewat class .is-loading di .note-content)
+           selagi src/js/app.js memuat font kustom & dokumen note dari
+           Document Service. app.js melepas class .is-loading begitu
+           editor siap dirender, yang menyembunyikan blok ini lagi dan
+           menampilkan #editorTitle/#editorBody sungguhan. Bentuknya
+           sengaja meniru layout judul + paragraf isi, BUKAN skeleton
+           generik seperti di index.html. -->
+      <div class="editor-skeleton skeleton-overlay" aria-hidden="true">
+        <div class="skeleton-bar editor-skeleton__title"></div>
+        <div class="editor-skeleton__body">
+          <div class="skeleton-bar editor-skeleton__line editor-skeleton__line--w1"></div>
+          <div class="skeleton-bar editor-skeleton__line editor-skeleton__line--w2"></div>
+          <div class="skeleton-bar editor-skeleton__line editor-skeleton__line--w1"></div>
+          <div class="skeleton-bar editor-skeleton__line editor-skeleton__line--w3"></div>
+        </div>
+      </div>
+
+      <div
+        id="editorTitle"
+        class="note-title-field"
+        contenteditable="true"
+        data-placeholder="Note title"
+        data-i18n-attr="data-placeholder:editor.title.placeholder,aria-label:editor.title.aria"
+        role="textbox"
+        aria-multiline="false"
+        aria-label="Note title"
+      ></div>
+      <div
+        id="editorBody"
+        class="note-body-field"
+        contenteditable="true"
+        data-placeholder="Start writing here…"
+        data-i18n-attr="data-placeholder:editor.body.placeholder,aria-label:editor.body.aria"
+        role="textbox"
+        aria-multiline="true"
+        aria-label="Note content"
+      ></div>
+    </div>
+  </div>
+
+</div>
+
+
+
+
+
+<!-- ============ PWA: Service Worker (mode offline) ============ -->
+<!-- Hanya urusan registrasi SW & capture event install, tidak menyentuh
+     mesin editor / app.js sama sekali. -->
+</div>
+
+<!-- ========== SPA VIEW: CADANGKAN ========== -->
+<div id="view-cadangkan" class="spa-view" data-view="cadangkan" hidden aria-hidden="true">
+<div class="page">
+
+  <!-- ============ HEADER (Cadangkan & Impor) ============ -->
+  <header class="home-header">
+    <div style="display:flex; align-items:center; gap: var(--space-sm);">
+      <a href="/library" class="note-back-btn" aria-label="Back" data-i18n-aria="nav.back">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+      </a>
+      <div class="home-greeting" data-i18n="backup.title">Backup &amp; Import</div>
+    </div>
+  </header>
+
+  <!-- ============ CONTENT ============ -->
+  <main class="home-content">
+
+    <!-- Dua aksi utama: Cadangkan (SEMUA catatan, tiap note jadi .meimo
+         LENGKAP dengan asset, dibungkus satu file .zip — lihat
+         backup-service.js) & Impor (SATU file .meimo, DENGAN asset — lihat
+         meimo-import.js). Beda cakupan (semua vs satu note), sengaja
+         dipisah jadi 2 tombol, bukan digabung jadi satu alur. -->
+    <section class="section">
+      <div class="backup-actions">
+        <button type="button" id="btnBackupAll" class="backup-action-btn">
+          <span class="backup-action-btn__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg>
+          </span>
+          <span class="backup-action-btn__text">
+            <span class="backup-action-btn__title" data-i18n="backup.exportAll">Back up all notes</span>
+            <span class="backup-action-btn__desc" data-i18n="backup.exportAll.desc">Download a .zip of all notes and assets.</span>
+          </span>
+        </button>
+
+        <button type="button" id="btnImportMeimo" class="backup-action-btn">
+          <span class="backup-action-btn__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V9"/><path d="M7 14l5-5 5 5"/><path d="M4 5h16"/></svg>
+          </span>
+          <span class="backup-action-btn__text">
+            <span class="backup-action-btn__title" data-i18n="backup.importMeimo">Import note (.meimo)</span>
+            <span class="backup-action-btn__desc" data-i18n="backup.importMeimo.desc">Import one .meimo file as a new note, including images/music</span>
+          </span>
+        </button>
+        <input type="file" id="importFileInput" accept=".meimo" hidden>
+
+        <!-- Impor SEKALIGUS semua .meimo di dalam satu file .zip cadangan
+             (hasil tombol "Cadangkan Semua Catatan" di atas) — beda dari
+             tombol "Impor Catatan (.meimo)" yang cuma satu file/satu note.
+             Wiring & validasi isinya ada di backup-import.js, lewat
+             backup-service/backup-restore.js. -->
+        <button type="button" id="btnImportBackupZip" class="backup-action-btn">
+          <span class="backup-action-btn__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M12 9v6"/><path d="M9.5 12.5L12 15l2.5-2.5"/></svg>
+          </span>
+          <span class="backup-action-btn__text">
+            <span class="backup-action-btn__title" data-i18n="backup.importZip">Import backup (.zip)</span>
+            <span class="backup-action-btn__desc" data-i18n="backup.importZip.desc">Restore notes from a Meimo backup zip.</span>
+          </span>
+        </button>
+        <input type="file" id="importBackupZipInput" accept=".zip" hidden>
+      </div>
+    </section>
+
+  </main>
+
+</div>
+
+
+
+<!-- ============ PWA: Service Worker (mode offline) ============ -->
+</div>
+
+<!-- ========== SPA VIEW: TRASH ========== -->
+<div id="view-trash" class="spa-view" data-view="trash" hidden aria-hidden="true">
+<div class="page">
+
+  <!-- ============ HEADER (Sampah) ============ -->
+  <header class="home-header">
+    <div style="display:flex; align-items:center; gap: var(--space-sm);">
+      <a href="/library" class="note-back-btn" aria-label="Back" data-i18n-aria="nav.back">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+      </a>
+      <div class="home-greeting" data-i18n="trash.title">Trash</div>
+    </div>
+  </header>
+
+  <!-- ============ CONTENT ============ -->
+  <!-- Dirender oleh src/js/notes/trash.js dari data asli di IndexedDB lewat
+       Document Service — catatan di sini adalah soft-delete (metadata.trashed),
+       belum dihapus permanen sampai user menekan "Hapus Permanen". -->
+  <main class="home-content">
+
+    <div id="trashSectionSkeleton" class="list-skeleton skeleton-overlay" aria-hidden="true">
+      <div class="skeleton-bar list-skeleton__row"></div>
+      <div class="skeleton-bar list-skeleton__row"></div>
+      <div class="skeleton-bar list-skeleton__row"></div>
+    </div>
+
+    <section id="trashSection" class="section" hidden>
+      <div class="section-header">
+        <span class="section-title" data-i18n="trash.section">Deleted notes</span>
+      </div>
+      <div id="trashGrid" class="notes-grid"></div>
+    </section>
+
+    <div id="trashEmptyState" class="empty-state anim-fade-in" hidden>
+      <svg class="empty-state__illustration" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="24 30 30 30 72 30"></polyline>
+        <path d="M64 30l-3 40a6 6 0 0 1-6 6H41a6 6 0 0 1-6-6l-3-40"></path>
+        <line x1="40" y1="42" x2="40" y2="62"></line>
+        <line x1="56" y1="42" x2="56" y2="62"></line>
+      </svg>
+      <div class="empty-state__title" data-i18n="trash.empty.title">Trash is empty</div>
+      <p class="empty-state__desc" data-i18n="trash.empty.desc">Notes you delete will appear here before permanent removal.</p>
+    </div>
+
+  </main>
+
+</div>
+
+
+
+<!-- ============ PWA: Service Worker (mode offline) ============ -->
+</div>
+
+<!-- ========== SPA VIEW: FONT-MANAGER ========== -->
+<div id="view-font-manager" class="spa-view" data-view="font-manager" hidden aria-hidden="true">
+<div class="page">
+
+  <!-- ============ HEADER (Kelola Font) ============ -->
+  <header class="home-header">
+    <div style="display:flex; align-items:center; gap: var(--space-sm);">
+      <a href="/library" class="note-back-btn" aria-label="Back" data-i18n-aria="nav.back">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+      </a>
+      <div class="home-greeting" data-i18n="fonts.title">Font Library</div>
+    </div>
+  </header>
+
+  <!-- ============ CONTENT ============ -->
+  <!-- Dirender oleh src/js/fonts/font-manager.js. Font bawaan (Inter,
+       Georgia) selalu tampil & tidak bisa dihapus. Font Font Library
+       (assets/fonts/library/manifest.json) tampil dengan tombol Unduh;
+       setelah diunduh, berkasnya tersimpan di IndexedDB dan bisa dipakai
+       lewat dropdown Font Family di editor. -->
+  <main class="home-content">
+
+    <section class="section">
+      <div class="section-header">
+        <span class="section-title" data-i18n="fonts.builtin">Built-in fonts</span>
+      </div>
+      <p class="font-manager-hint" data-i18n="fonts.builtin.desc">Always available in the editor, no download needed.</p>
+      <div id="builtinFontList" class="font-manager-list"></div>
+    </section>
+
+    <!-- BUGFIX: sebelumnya elemen ini dipasang DI DALAM <section> di bawah
+         (jadi DOM-parent langsungnya .section, bukan .home-content) —
+         `.skeleton-overlay` punya `padding: inherit`, dan `inherit`
+         menyalin nilai padding milik PARENT DI DOM, bukan milik containing
+         block posisinya. `.section` sendiri tidak set padding apa pun
+         (default 0px), jadi overlay ini kepadding 0 alih-alih ikut padding
+         kiri/kanan `.home-content` (var(--space-md)) seperti skeleton
+         sejenis di trash.html/cadangkan.html (yang anak LANGSUNG dari
+         .home-content) — akibatnya baris skeleton nempel ke tepi
+         layar/lebih lebar dari .font-item asli. Sekarang dipindah jadi
+         anak langsung .home-content (sibling dari <section> di bawah,
+         sama seperti pola #exportListSkeleton di cadangkan.html), supaya
+         padding-nya ikut benar. Posisi visualnya tidak berubah (tetap
+         overlay penuh .home-content lewat position:absolute), cuma
+         perhitungan padding-nya yang dibetulkan. -->
+    <div id="libraryFontListSkeleton" class="list-skeleton skeleton-overlay" aria-hidden="true">
+      <div class="skeleton-bar list-skeleton__row"></div>
+      <div class="skeleton-bar list-skeleton__row"></div>
+      <div class="skeleton-bar list-skeleton__row"></div>
+    </div>
+
+    <section class="section">
+      <div class="section-header">
+        <span class="section-title">Font Library</span>
+      </div>
+      <p class="font-manager-hint" data-i18n="fonts.library.desc">Download extra fonts for the editor. Once downloaded, fonts stay on this device offline.</p>
+      <div id="libraryFontList" class="font-manager-list" hidden></div>
+      <div id="libraryFontPagination" class="font-manager-pagination" hidden></div>
+    </section>
+
+    <div id="libraryEmptyState" class="empty-state anim-fade-in" hidden>
+      <svg class="empty-state__illustration" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M30 20h24l12 12v44a4 4 0 0 1-4 4H30a4 4 0 0 1-4-4V24a4 4 0 0 1 4-4z"></path>
+        <polyline points="54 20 54 32 66 32"></polyline>
+        <line x1="34" y1="48" x2="62" y2="48"></line>
+        <line x1="34" y1="58" x2="62" y2="58"></line>
+        <line x1="34" y1="68" x2="50" y2="68"></line>
+      </svg>
+      <div class="empty-state__title" data-i18n="fonts.library.empty">Font Library is empty</div>
+      <p class="empty-state__desc" data-i18n="fonts.library.empty.desc">No extra fonts available to download yet.</p>
+    </div>
+
+    <!-- ============ FONT KUSTOM (UNGGAH) ============
+         Berbeda dari Font Library (yang isinya dikurasi lewat manifest.json
+         di repo) — section ini untuk font milik user sendiri (.ttf/.otf/
+         .woff/.woff2) yang diunggah langsung dari perangkat. Logic ada di
+         installCustomFont() (src/js/services/font-service.js), dirender
+         font-manager.js. -->
+    <section class="section">
+      <div class="section-header">
+        <span class="section-title" data-i18n="fonts.custom">Custom fonts (upload)</span>
+      </div>
+      <p class="font-manager-hint" data-i18n="fonts.custom.hint">Upload your own font files (.ttf, .otf, .woff, .woff2) from this device to use in the editor.</p>
+
+      <button type="button" id="btnUploadFont" class="font-manager-upload-btn">
+        <span class="font-manager-upload-btn__icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V9"/><path d="M7 14l5-5 5 5"/><path d="M4 5h16"/></svg>
+        </span>
+        <span class="font-manager-upload-btn__text">
+          <span class="font-manager-upload-btn__title" data-i18n="fonts.upload">Upload font</span>
+          <span class="font-manager-upload-btn__desc" data-i18n="fonts.upload.hint">Choose one or more .ttf/.otf/.woff/.woff2 files</span>
+        </span>
+      </button>
+      <input type="file" id="uploadFontInput" accept=".ttf,.otf,.woff,.woff2" multiple hidden>
+
+      <div id="uploadedFontList" class="font-manager-list" hidden></div>
+      <div id="uploadedFontPagination" class="font-manager-pagination" hidden></div>
+      <p id="uploadedFontEmpty" class="font-manager-hint" data-i18n="fonts.upload.empty">No fonts uploaded yet.</p>
+    </section>
+
+  </main>
+
+</div>
+
+
+
+<!-- ============ PWA: Service Worker (mode offline) ============ -->
+</div>
+
+<!-- ========== SPA VIEW: ARSIP ========== -->
+<div id="view-arsip" class="spa-view" data-view="arsip" hidden aria-hidden="true">
+<div class="page">
+
+  <!-- ============ HEADER (Arsip) ============ -->
+  <header class="home-header">
+    <div style="display:flex; align-items:center; gap: var(--space-sm);">
+      <a href="/library" class="note-back-btn" aria-label="Back" data-i18n-aria="nav.back">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+      </a>
+      <div class="home-greeting" data-i18n="archive.title">Archive</div>
+    </div>
+  </header>
+
+  <!-- ============ CONTENT ============ -->
+  <!-- Dirender oleh src/js/notes/arsip.js dari data asli di IndexedDB lewat
+       Document Service — catatan di sini adalah soft-state (metadata.archived),
+       masih bisa dibuka & diedit seperti biasa, cuma disembunyikan dari grid
+       Home (lihat notes-list.js). -->
+  <main class="home-content">
+
+    <div id="arsipSectionSkeleton" class="list-skeleton skeleton-overlay" aria-hidden="true">
+      <div class="skeleton-bar list-skeleton__row"></div>
+      <div class="skeleton-bar list-skeleton__row"></div>
+      <div class="skeleton-bar list-skeleton__row"></div>
+    </div>
+
+    <section id="arsipSection" class="section" hidden>
+      <div class="section-header">
+        <span class="section-title" data-i18n="archive.section">Archived notes</span>
+      </div>
+      <div id="arsipGrid" class="notes-grid"></div>
+    </section>
+
+    <div id="arsipEmptyState" class="empty-state anim-fade-in" hidden>
+      <svg class="empty-state__illustration" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="16" y="20" width="64" height="18" rx="3"></rect>
+        <path d="M22 38v30a4 4 0 0 0 4 4h44a4 4 0 0 0 4-4V38"></path>
+        <line x1="40" y1="50" x2="56" y2="50"></line>
+      </svg>
+      <div class="empty-state__title" data-i18n="archive.empty.title">Archive is empty</div>
+      <p class="empty-state__desc" data-i18n="archive.empty.desc">Archived notes will appear here.</p>
+    </div>
+
+  </main>
+
+</div>
+
+
+
+<!-- ============ PWA: Service Worker (mode offline) ============ -->
+</div>
+
+
+
+<!-- ========== SPA VIEW: CARD-STYLE ========== -->
+<div id="view-card-style" class="spa-view" data-view="card-style" hidden aria-hidden="true">
+<div class="page">
+
+  <!-- ============ HEADER ============ -->
+  <header class="home-header">
+    <div style="display:flex; align-items:center; gap: var(--space-sm);">
+      <a href="/library" class="note-back-btn" aria-label="Back" data-i18n-aria="nav.back">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+      </a>
+      <div class="home-greeting" data-i18n="cardStyle.title">Card customization</div>
+    </div>
+  </header>
+
+  <!-- ============ CONTENT ============ -->
+  <!-- Dirender & dikelola oleh src/js/notes/card-style.js. Pratinjau kartu
+       (#cardPreviewSlot) memakai fungsi render kartu yang sama dengan Notes
+       List (createNoteCard di notes/note-card.js) supaya hasilnya identik
+       persis dengan tampilan di Home. -->
+  <main class="home-content card-style-page">
+
+    <!-- Skeleton loading: boot() di card-style.js nunggu loadNote() +
+         ensureInstalledFontsLoaded()/getAvailableFonts() (IndexedDB) dulu
+         sebelum apa pun dirender, jadi tanpa ini halaman kelihatan
+         kosong/kedip putih sesaat. Bentuknya sengaja disamakan section per
+         section dengan layout ASLI di bawah (Pratinjau, Font Judul, Bentuk
+         Edge, Warna Latar, Gambar Latar) — beda dari skeleton grid kartu
+         (Home) atau skeleton baris list generik (Font Library/Cadangkan/
+         Sampah). Ditampilkan by default sejak first paint (tanpa nunggu
+         JS), disembunyikan begitu render pertama selesai (lihat boot()
+         di card-style.js). -->
+    <div id="cardStyleSkeleton" class="card-style-skeleton skeleton-overlay" aria-hidden="true">
+      <div class="skeleton-bar card-style-skeleton__bar card-style-skeleton__bar--tall"></div>
+      <div class="skeleton-bar card-style-skeleton__bar"></div>
+      <div class="skeleton-bar card-style-skeleton__bar"></div>
+    </div>
+
+    <section class="section">
+      <div class="section-header">
+        <span class="section-title" data-i18n="cardStyle.preview">Preview</span>
+      </div>
+      <div id="cardPreviewSlot" class="card-style-preview"></div>
+    </section>
+
+    <section class="section">
+      <div class="section-header">
+        <span class="section-title" data-i18n="cardStyle.titleFont">Title font</span>
+      </div>
+      <button type="button" id="fontSelect" class="card-style-select card-style-select--custom" aria-haspopup="listbox" aria-expanded="false">
+        <span id="fontSelectLabel" class="card-style-select__label">Default</span>
+        <svg class="card-style-select__chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </button>
+    </section>
+
+    <section class="section">
+      <div class="section-header">
+        <span class="section-title" data-i18n="cardStyle.edge">Edge shape</span>
+      </div>
+      <div id="edgeShapeList" class="card-style-shape-scroll"></div>
+    </section>
+
+    <section class="section">
+      <div class="section-header">
+        <span class="section-title" data-i18n="cardStyle.background">Background</span>
+      </div>
+      <div class="card-style-bg-card">
+        <div class="card-style-bg-tabs" role="tablist" aria-label="Background type">
+          <button type="button" class="card-style-bg-tab is-active" role="tab" id="bgTabNone" data-tab="none" aria-selected="true" data-i18n="cardStyle.bgTab.none">None</button>
+          <button type="button" class="card-style-bg-tab" role="tab" id="bgTabColor" data-tab="color" aria-selected="false" data-i18n="cardStyle.bgTab.color">Color</button>
+          <button type="button" class="card-style-bg-tab" role="tab" id="bgTabImage" data-tab="image" aria-selected="false" data-i18n="cardStyle.bgTab.image">Image</button>
+        </div>
+
+        <!-- Panel None: kosong, tinggi tetap -->
+        <div class="card-style-bg-panel is-active" id="bgPanelNone" data-panel="none" role="tabpanel">
+          <div class="card-style-bg-panel__empty" aria-hidden="true"></div>
+        </div>
+
+        <!-- Panel Color: opacity + custom + presets -->
+        <div class="card-style-bg-panel" id="bgPanelColor" data-panel="color" role="tabpanel" hidden>
+          <div class="card-style-bg-opacity" id="bgColorOpacityRow">
+            <span class="card-style-bg-opacity__icon" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18" fill="currentColor" stroke="none" opacity="0.35"/></svg>
+            </span>
+            <input type="range" id="bgColorOpacity" min="0" max="1" step="0.01" value="1" aria-label="Color opacity">
+            <span class="card-style-bg-opacity__value" id="bgColorOpacityValue">100%</span>
+            <label class="card-style-bg-custom" title="Custom color" data-i18n-attr="title:cardStyle.customColor">
+              <input type="color" id="bgColorCustom" value="#4A55C7" aria-label="Custom color">
+            </label>
+          </div>
+          <div id="bgColorList" class="card-style-bg-presets"></div>
+        </div>
+
+        <!-- Panel Image: opacity + upload/remove chips -->
+        <div class="card-style-bg-panel" id="bgPanelImage" data-panel="image" role="tabpanel" hidden>
+          <div class="card-style-bg-opacity" id="bgImageOpacityRow">
+            <span class="card-style-bg-opacity__icon" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18" fill="currentColor" stroke="none" opacity="0.35"/></svg>
+            </span>
+            <input type="range" id="bgImageOpacity" min="0" max="1" step="0.01" value="1" aria-label="Image opacity">
+            <span class="card-style-bg-opacity__value" id="bgImageOpacityValue">100%</span>
+          </div>
+          <div class="card-style-bg-image-actions">
+            <input type="file" id="bgImageInput" accept="image/*" hidden>
+            <button type="button" id="bgImageUploadBtn" class="card-style-bg-chip card-style-bg-chip--primary">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <span data-i18n="cardStyle.uploadImage">Upload image</span>
+            </button>
+            <button type="button" id="bgImageRemoveBtn" class="card-style-bg-chip card-style-bg-chip--danger" hidden>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              <span data-i18n="cardStyle.removeImage">Remove image</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+<section class="section">
+      <div class="card-style-toggle-row">
+        <div class="card-style-toggle-row__text">
+          <span class="section-title" data-i18n="cardStyle.hideSnippet">Hide note content</span>
+          <span class="card-style-toggle-row__hint" data-i18n="cardStyle.hideSnippetHint">Show title only on the card</span>
+        </div>
+        <button type="button" id="hideSnippetToggle" class="card-style-toggle" role="switch" aria-checked="false" aria-label="Hide note content">
+          <span class="card-style-toggle__knob" aria-hidden="true"></span>
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============ ACTION BAR ============ -->
+  <div class="card-style-actionbar">
+    <button type="button" id="resetBtn" class="modal-btn modal-btn--ghost" data-i18n="cardStyle.reset">Reset</button>
+    <button type="button" id="saveBtn" class="modal-btn modal-btn--primary" data-i18n="cardStyle.save">Save</button>
+  </div>
+
+</div>
+
+
+
+<!-- ============ PWA: Service Worker (mode offline) ============ -->
+</div>
+
+
+<!-- ========== SPA VIEW: SETTINGS ========== -->
+<div id="view-settings" class="spa-view" data-view="settings" hidden aria-hidden="true">
+
+<div class="page">
+
+  <header class="home-header">
+    <div style="display:flex; align-items:center; gap: var(--space-sm);">
+      <a href="/library" class="note-back-btn" aria-label="Back" data-i18n-aria="nav.back">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+      </a>
+      <div class="home-greeting" data-i18n="settings.title">Settings</div>
+    </div>
+  </header>
+
+  <main class="home-content">
+
+    <section class="section">
+      <div class="section-header">
+        <span class="section-title" data-i18n="settings.section.general">General</span>
+      </div>
+      <div class="backup-actions">
+        <a href="/font-manager" class="backup-action-btn">
+          <span class="backup-action-btn__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="4 7 4 4 20 4 20 7"></polyline>
+              <line x1="9" y1="20" x2="15" y2="20"></line>
+              <line x1="12" y1="4" x2="12" y2="20"></line>
+            </svg>
+          </span>
+          <span class="backup-action-btn__text">
+            <span class="backup-action-btn__title" data-i18n="settings.fontLibrary.title">Font Library</span>
+            <span class="backup-action-btn__desc" data-i18n="settings.fontLibrary.desc">Download &amp; manage fonts for the editor</span>
+          </span>
+        </a>
+
+        <button type="button" class="backup-action-btn" id="settingsThemeBtn">
+          <span class="backup-action-btn__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+          </span>
+          <span class="backup-action-btn__text">
+            <span class="backup-action-btn__title" data-i18n="settings.theme.title">Choose Theme</span>
+            <span class="backup-action-btn__desc" data-i18n="settings.theme.desc">Light, Dark, Sepia, Paper, OLED</span>
+          </span>
+        </button>
+
+        <button type="button" class="backup-action-btn" id="settingsLanguageBtn">
+          <span class="backup-action-btn__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="2" y1="12" x2="22" y2="12"></line>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+            </svg>
+          </span>
+          <span class="backup-action-btn__text">
+            <span class="backup-action-btn__title" data-i18n="settings.language.title">Language</span>
+            <span class="backup-action-btn__desc" data-i18n="settings.language.desc">English, Indonesian, Japanese</span>
+          </span>
+        </button>
+
+
+        <a href="/trash" class="backup-action-btn">
+          <span class="backup-action-btn__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+              <path d="M10 11v6"></path>
+              <path d="M14 11v6"></path>
+              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+            </svg>
+          </span>
+          <span class="backup-action-btn__text">
+            <span class="backup-action-btn__title" data-i18n="settings.trash.title">Trash</span>
+            <span class="backup-action-btn__desc" data-i18n="settings.trash.desc">Restore or permanently delete notes</span>
+          </span>
+        </a>
+
+        <a href="/cadangkan" class="backup-action-btn">
+          <span class="backup-action-btn__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3v12"></path>
+              <path d="M7 10l5 5 5-5"></path>
+              <path d="M4 19h16"></path>
+            </svg>
+          </span>
+          <span class="backup-action-btn__text">
+            <span class="backup-action-btn__title" data-i18n="settings.backup.title">Backup &amp; Import</span>
+            <span class="backup-action-btn__desc" data-i18n="settings.backup.desc">Export/import notes (.zip / .meimo)</span>
+          </span>
+        </a>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-header">
+        <span class="section-title">AI</span>
+      </div>
+      <div class="backup-actions">
+        <a href="/fitur-ai" class="backup-action-btn">
+          <span class="backup-action-btn__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"></path>
+              <path d="M19 14l.75 2.25L22 17l-2.25.75L19 20l-.75-2.25L16 17l2.25-.75L19 14z"></path>
+              <path d="M5 15l.5 1.5L7 17l-1.5.5L5 19l-.5-1.5L3 17l1.5-.5L5 15z"></path>
+            </svg>
+          </span>
+          <span class="backup-action-btn__text">
+            <span class="backup-action-btn__title" data-i18n="settings.ai.title">AI Features</span>
+            <span class="backup-action-btn__desc" data-i18n="settings.ai.desc">Gemini API key &amp; model</span>
+          </span>
+        </a>
+      </div>
+    </section>
+
+  </main>
+
+</div>
+
+</div>
+
+<!-- ========== SPA VIEW: FITUR AI ========== -->
+<div id="view-fitur-ai" class="spa-view" data-view="fitur-ai" hidden aria-hidden="true">
+
+<div class="page">
+
+  <header class="home-header">
+    <div style="display:flex; align-items:center; gap: var(--space-sm);">
+      <a href="/settings" class="note-back-btn" aria-label="Back to Settings" data-i18n-aria="nav.backToSettings">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+      </a>
+      <div class="home-greeting" data-i18n="ai.title">AI Features</div>
+    </div>
+  </header>
+
+  <main class="home-content">
+    <section class="section">
+      <div class="settings-ai-card">
+        <p class="settings-ai-intro">
+          Hubungkan kunci API Gemini Anda sendiri untuk menggunakan fitur AI.
+          Kunci Anda tetap berada di perangkat ini dan tidak diunggah ke server Meimo.
+        </p>
+        <div class="settings-field">
+          <label class="settings-field__label" for="settingsAiApiKey" data-i18n="ai.apiKey">Gemini API key</label>
+          <div class="settings-field__row">
+            <input id="settingsAiApiKey" class="settings-input" type="password" autocomplete="off" spellcheck="false" placeholder="Paste Google AI Studio API key…" data-i18n-placeholder="ai.placeholder" />
+            <button type="button" class="settings-ghost-btn" id="settingsAiToggleKey" aria-pressed="false" data-i18n="ai.show">Show</button>
+          </div>
+        </div>
+        <div class="settings-field">
+          <label class="settings-field__label" for="settingsAiModel" data-i18n="ai.model">AI model</label>
+          <select id="settingsAiModel" class="settings-input"></select>
+          <p class="settings-field__hint" data-i18n="ai.modelHint">Flash Lite is faster; Flash 3.6 is stronger for long text.</p>
+        </div>
+        <div class="settings-field settings-field--actions">
+          <button type="button" class="settings-primary-btn" id="settingsAiSaveBtn" data-i18n="cardStyle.save">Save</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section settings-ai-tutorial">
+      <div class="section-header">
+        <span class="section-title" data-i18n="ai.howTitle">How to create an API key</span>
+      </div>
+      <ol class="ai-tutorial-list">
+                <li class="ai-tutorial-step">
+          <figure class="ai-tutorial-step__figure">
+            <figcaption class="ai-tutorial-step__label"><span class="ai-tutorial-step__num">1</span> <span data-i18n="ai.how1">Open Google AI Studio</span></figcaption>
+            <img class="ai-tutorial-step__img" src="/assets/images/image1.png" alt="Open Google AI Studio" data-i18n-attr="alt:ai.how1" width="512" height="512" loading="lazy" />
+          </figure>
+        </li>
+                <li class="ai-tutorial-step">
+          <figure class="ai-tutorial-step__figure">
+            <figcaption class="ai-tutorial-step__label"><span class="ai-tutorial-step__num">2</span> <span data-i18n="ai.how2">Open the sidebar</span></figcaption>
+            <img class="ai-tutorial-step__img" src="/assets/images/image2.png" alt="Open the sidebar" data-i18n-attr="alt:ai.how2" width="512" height="512" loading="lazy" />
+          </figure>
+        </li>
+                <li class="ai-tutorial-step">
+          <figure class="ai-tutorial-step__figure">
+            <figcaption class="ai-tutorial-step__label"><span class="ai-tutorial-step__num">3</span> <span data-i18n="ai.how3">Open the API key menu</span></figcaption>
+            <img class="ai-tutorial-step__img" src="/assets/images/image3.png" alt="Open the API key menu" data-i18n-attr="alt:ai.how3" width="512" height="512" loading="lazy" />
+          </figure>
+        </li>
+                <li class="ai-tutorial-step">
+          <figure class="ai-tutorial-step__figure">
+            <figcaption class="ai-tutorial-step__label"><span class="ai-tutorial-step__num">4</span> <span data-i18n="ai.how4">Click Create API key</span></figcaption>
+            <img class="ai-tutorial-step__img" src="/assets/images/image4.png" alt="Click Create API key" data-i18n-attr="alt:ai.how4" width="512" height="512" loading="lazy" />
+          </figure>
+        </li>
+                <li class="ai-tutorial-step">
+          <figure class="ai-tutorial-step__figure">
+            <figcaption class="ai-tutorial-step__label"><span class="ai-tutorial-step__num">5</span> <span data-i18n="ai.how5">Click Create key</span></figcaption>
+            <img class="ai-tutorial-step__img" src="/assets/images/image5.png" alt="Click Create key" data-i18n-attr="alt:ai.how5" width="512" height="512" loading="lazy" />
+          </figure>
+        </li>
+                <li class="ai-tutorial-step">
+          <figure class="ai-tutorial-step__figure">
+            <figcaption class="ai-tutorial-step__label"><span class="ai-tutorial-step__num">6</span> <span data-i18n="ai.how6">Copy the API key</span></figcaption>
+            <img class="ai-tutorial-step__img" src="/assets/images/image6.png" alt="Copy the API key" data-i18n-attr="alt:ai.how6" width="512" height="512" loading="lazy" />
+          </figure>
+        </li>
+                <li class="ai-tutorial-step">
+          <figure class="ai-tutorial-step__figure">
+            <figcaption class="ai-tutorial-step__label"><span class="ai-tutorial-step__num">7</span> <span data-i18n="ai.how7">Paste the API key into Meimo</span></figcaption>
+            <img class="ai-tutorial-step__img" src="/assets/images/image7.png" alt="Paste the API key into Meimo" data-i18n-attr="alt:ai.how7" width="512" height="512" loading="lazy" />
+          </figure>
+        </li>
+      </ol>
+      <p class="settings-field__hint ai-tutorial-hint">
+        <span data-i18n="ai.howFooter.before">Open</span>
+        <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">aistudio.google.com/apikey</a>
+        <span data-i18n="ai.howFooter.after">to create a key, then paste it in the field above.</span>
+      </p>
+    </section>
+
+  </main>
+
+</div>
+
+</div>
+
+<script type="module" src="/src/js/spa-app.js"></script>
 </body>
 </html>

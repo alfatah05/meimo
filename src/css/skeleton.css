@@ -220,91 +220,27 @@
    kosong/kedip putih sesaat. Disembunyikan begitu renderPreview() dkk.
    pertama kali selesai (lihat boot() di card-style.js). */
 
+/* Skeleton card-style disederhanakan: 3 bar full-width.
+   Bar atas ~4× tinggi 2 bar di bawah (lebih ringan, tidak meniru
+   layout penuh preview/shapes/colors yang sebelumnya berat). */
 .card-style-skeleton {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xl);
+  gap: var(--space-md);
+  padding-top: var(--space-md);
 }
 
-.card-style-skeleton__label {
-  width: 110px;
-  height: 12px;
-  margin-bottom: var(--space-sm);
-}
-
-/* Meniru .card-style-preview (grid kolom responsif, lihat card-style.css)
-   supaya bentuk skeleton pratinjau ikut sama akuratnya dengan kartu asli
-   yang menggantikannya. */
-.card-style-skeleton__preview {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  padding: var(--space-md) 0;
-}
-
-@media (min-width: 640px) {
-  .card-style-skeleton__preview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-
-@media (min-width: 1024px) {
-  .card-style-skeleton__preview { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
-
-.card-style-skeleton__preview-card {
+.card-style-skeleton__bar {
   width: 100%;
-  aspect-ratio: 1 / 1;
-  border-radius: var(--radius-lg);
-}
-
-/* Dropdown "Font Judul" (.card-style-select--custom). */
-.card-style-skeleton__select {
-  width: 100%;
-  height: var(--touch-target-min);
+  height: 14px;
   border-radius: var(--radius-sm);
 }
 
-/* Strip "Bentuk Edge" (.card-style-shape-scroll / .card-style-shape-item,
-   width 72px tiap item). */
-.card-style-skeleton__shapes {
-  display: flex;
-  gap: var(--space-sm);
-  overflow: hidden;
+.card-style-skeleton__bar--tall {
+  height: 56px; /* 14px × 4 */
+  border-radius: var(--radius-md);
 }
 
-.card-style-skeleton__shape {
-  flex: 0 0 auto;
-  width: 72px;
-  height: 66px;
-  border-radius: var(--radius-sm);
-}
-
-/* Strip "Warna Latar" (.card-style-color-swatch, bulat 36px). */
-.card-style-skeleton__colors {
-  display: flex;
-  gap: var(--space-sm);
-  overflow: hidden;
-}
-
-.card-style-skeleton__color {
-  flex: 0 0 auto;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-full);
-}
-
-/* Tombol "Unggah Gambar" (.card-style-btn). */
-.card-style-skeleton__upload-btn {
-  width: 168px;
-  height: var(--touch-target-min);
-  border-radius: var(--radius-sm);
-}
-
-.card-style-skeleton__shape:nth-child(1),
-.card-style-skeleton__color:nth-child(1) { animation-delay: 0ms; }
-.card-style-skeleton__shape:nth-child(2),
-.card-style-skeleton__color:nth-child(2) { animation-delay: 30ms; }
-.card-style-skeleton__shape:nth-child(3),
-.card-style-skeleton__color:nth-child(3) { animation-delay: 60ms; }
-.card-style-skeleton__shape:nth-child(4),
-.card-style-skeleton__color:nth-child(4) { animation-delay: 90ms; }
-.card-style-skeleton__shape:nth-child(5),
-.card-style-skeleton__color:nth-child(5) { animation-delay: 120ms; }
+.card-style-skeleton__bar:nth-child(1) { animation-delay: 0ms; }
+.card-style-skeleton__bar:nth-child(2) { animation-delay: 60ms; }
+.card-style-skeleton__bar:nth-child(3) { animation-delay: 120ms; }

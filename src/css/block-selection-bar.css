@@ -18,9 +18,7 @@
   position: fixed;
   left: 0;
   right: 0;
-  /* --keyboard-inset di-set viewport-pin.js saat IME terbuka (dari plugin
-     Capacitor Keyboard + visualViewport). Default 0 = nempel tepi bawah. */
-  bottom: var(--keyboard-inset, 0px);
+  bottom: 0;
   z-index: var(--z-modal);
   display: flex;
   align-items: center;
@@ -50,14 +48,6 @@
   transform: translateY(0);
   pointer-events: auto;
 }
-
-/* Saat keyboard terbuka, safe-area-inset-bottom sering masih non-zero
-   (atau nav bar sudah ketutup keyboard) — padding ekstra cuma bikin gap
-   kosong di antara bar dan keyboard. Rapikan ke padding vertikal dasar. */
-body.is-keyboard-open .block-selection-bar {
-  padding-bottom: 5px;
-}
-
 
 .block-selection-bar__actions {
   flex: 1 1 auto;

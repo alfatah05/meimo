@@ -23,6 +23,7 @@ import {
 import { createEl, clearChildren } from "../utils/dom.js";
 import { showToast } from "../../components/toast.js";
 import { confirmDialog } from "../../components/modal.js";
+import { t, initI18n } from "../i18n/i18n.js";
 
 const PAGE_SIZE = 10;
 
@@ -52,7 +53,7 @@ function renderPagination(container, currentPage, totalItems, onChange) {
 
   const prevBtn = createEl("button", {
     className: "font-manager-pagination__btn",
-    text: "‹ Sebelumnya",
+    text: t("fonts.prev"),
     attrs: { type: "button" },
   });
   prevBtn.disabled = currentPage <= 1;
@@ -60,12 +61,12 @@ function renderPagination(container, currentPage, totalItems, onChange) {
 
   const label = createEl("span", {
     className: "font-manager-pagination__label",
-    text: `Halaman ${currentPage} dari ${totalPages}`,
+    text: t("fonts.page", { current: currentPage, total: totalPages }),
   });
 
   const nextBtn = createEl("button", {
     className: "font-manager-pagination__btn",
-    text: "Berikutnya ›",
+    text: t("fonts.next"),
     attrs: { type: "button" },
   });
   nextBtn.disabled = currentPage >= totalPages;
@@ -93,7 +94,7 @@ function createBuiltinItem(font) {
     })
   );
 
-  const badge = createEl("span", { className: "font-item__badge", text: "Bawaan" });
+  const badge = createEl("span", { className: "font-item__badge", text: t("fonts.builtinBadge") });
 
   item.append(info, badge);
   return item;
@@ -105,7 +106,7 @@ function createLibraryItem(font, { installed, onChange }) {
   const info = createEl("div", { className: "font-item__info" });
   const nameEl = createEl("div", { className: "font-item__name", text: font.name });
   info.appendChild(nameEl);
-  const metaText = font.category ? font.category : "Font tambahan";
+  const metaText = font.category ? font.category : t("fonts.extra");
   info.appendChild(createEl("div", { className: "font-item__meta", text: metaText }));
 
   // Nama font selalu ditampilkan pakai typeface aslinya, baik sudah
@@ -121,42 +122,42 @@ function createLibraryItem(font, { installed, onChange }) {
   const actions = createEl("div", { className: "font-item__actions" });
 
   if (installed) {
-    actions.appendChild(createEl("span", { className: "font-item__badge font-item__badge--installed", text: "Terpasang" }));
+    actions.appendChild(createEl("span", { className: "font-item__badge font-item__badge--installed", text: t("fonts.installed") }));
     const removeBtn = createEl("button", {
       className: "font-item__btn font-item__btn--danger",
-      text: "Hapus",
+      text: t("fonts.delete"),
       attrs: { type: "button" },
     });
     removeBtn.addEventListener("click", async () => {
       const confirmed = await confirmDialog({
-        title: "Hapus font?",
+        title: t("fonts.deleteTitle"),
         message: `"${font.name}" akan dihapus dari perangkat ini. Teks yang sudah memakai font ini tidak berubah, tapi tampilannya kembali ke font bawaan sampai diunduh lagi.`,
-        confirmLabel: "Hapus",
+        confirmLabel: t("fonts.delete"),
       });
       if (!confirmed) return;
       await removeFont(font.id);
-      showToast(`Font "${font.name}" dihapus.`);
+      showToast(t("fonts.deleted", { name: font.name }));
       onChange();
     });
     actions.appendChild(removeBtn);
   } else {
     const downloadBtn = createEl("button", {
       className: "font-item__btn font-item__btn--primary",
-      text: "Unduh",
+      text: t("fonts.download"),
       attrs: { type: "button" },
     });
     downloadBtn.addEventListener("click", async () => {
       downloadBtn.disabled = true;
-      downloadBtn.textContent = "Mengunduh…";
+      downloadBtn.textContent = t("fonts.downloading");
       try {
         await installFont(font);
-        showToast(`Font "${font.name}" siap dipakai di editor.`);
+        showToast(t("fonts.ready", { name: font.name }));
         onChange();
       } catch (err) {
         console.error("Gagal mengunduh font:", err);
-        showToast(`Gagal mengunduh font "${font.name}".`, { tone: "danger" });
+        showToast(t("fonts.downloadFail", { name: font.name }), { tone: "danger" });
         downloadBtn.disabled = false;
-        downloadBtn.textContent = "Unduh";
+        downloadBtn.textContent = t("fonts.download");
       }
     });
     actions.appendChild(downloadBtn);
@@ -183,23 +184,23 @@ function createUploadedItem(font, { onChange }) {
       attrs: { style: `font-family:"${font.family}"` },
     })
   );
-  info.appendChild(createEl("div", { className: "font-item__meta", text: "Aa Bb Cc — diunggah" }));
+  info.appendChild(createEl("div", { className: "font-item__meta", text: t("fonts.uploadedMeta") }));
 
   const actions = createEl("div", { className: "font-item__actions" });
   const removeBtn = createEl("button", {
     className: "font-item__btn font-item__btn--danger",
-    text: "Hapus",
+    text: t("fonts.delete"),
     attrs: { type: "button" },
   });
   removeBtn.addEventListener("click", async () => {
     const confirmed = await confirmDialog({
-      title: "Hapus font?",
-      message: `"${font.name}" akan dihapus dari perangkat ini. Teks yang sudah memakai font ini tidak berubah, tapi tampilannya kembali ke font bawaan sampai diunggah lagi.`,
-      confirmLabel: "Hapus",
+      title: t("fonts.deleteTitle"),
+      message: t("fonts.deleteConfirm", { name: font.name }),
+      confirmLabel: t("fonts.delete"),
     });
     if (!confirmed) return;
     await removeFont(font.id);
-    showToast(`Font "${font.name}" dihapus.`);
+    showToast(t("fonts.deleted", { name: font.name }));
     onChange();
   });
   actions.appendChild(removeBtn);
@@ -209,6 +210,7 @@ function createUploadedItem(font, { onChange }) {
 }
 
 async function boot() {
+  initI18n();
   const builtinList = document.getElementById("builtinFontList");
   const libraryList = document.getElementById("libraryFontList");
   const libraryListSkeleton = document.getElementById("libraryFontListSkeleton");
@@ -306,7 +308,7 @@ async function boot() {
       uploadBtn.disabled = true;
       const originalTitle = uploadBtn.querySelector(".font-manager-upload-btn__title")?.textContent;
       const titleEl = uploadBtn.querySelector(".font-manager-upload-btn__title");
-      if (titleEl) titleEl.textContent = "Mengunggah…";
+      if (titleEl) titleEl.textContent = t("fonts.uploading");
 
       let successCount = 0;
       for (const file of files) {
@@ -327,7 +329,7 @@ async function boot() {
       }
 
       uploadBtn.disabled = false;
-      if (titleEl) titleEl.textContent = originalTitle || "Unggah Font";
+      if (titleEl) titleEl.textContent = originalTitle || t("fonts.upload");
       uploadInput.value = "";
     });
   }
@@ -335,8 +337,16 @@ async function boot() {
   await load();
 }
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", boot);
-} else {
-  boot();
+/** Init untuk SPA / multi-page. */
+export async function initFontManager() {
+  initI18n();
+  return boot();
+}
+
+if (!window.__MEIMO_SPA__) {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
 }

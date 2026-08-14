@@ -21,6 +21,7 @@ import { createNoteCard } from "./note-card.js";
 import { sortNotes } from "./sorting.js";
 import { downloadNoteAsMeimo } from "./download-note.js";
 import { showToast } from "../../components/toast.js";
+import { t, initI18n } from "../i18n/i18n.js";
 
 function byUpdatedAtDesc(notes) {
   return sortNotes(notes, "updatedAt");
@@ -56,8 +57,8 @@ async function boot() {
     await documentService.moveToTrash(note.id);
     archivedNotes = archivedNotes.filter((n) => n.id !== note.id);
     render();
-    showToast(`"${note.title || "Catatan"}" dipindahkan ke Sampah.`, {
-      actionLabel: "Urungkan",
+    showToast(t("note.movedTrash", { title: note.title || t("note.untitled") }), {
+      actionLabel: t("note.undo"),
       onAction: async () => {
         await documentService.restoreFromTrash(note.id);
         await load();
@@ -70,8 +71,8 @@ async function boot() {
     await documentService.setArchived(note.id, false);
     archivedNotes = archivedNotes.filter((n) => n.id !== note.id);
     render();
-    showToast(`"${note.title || "Catatan"}" dikeluarkan dari Arsip.`, {
-      actionLabel: "Urungkan",
+    showToast(t("note.unarchived", { title: note.title || t("note.untitled") }), {
+      actionLabel: t("note.undo"),
       onAction: async () => {
         await documentService.setArchived(note.id, true);
         await load();
@@ -92,8 +93,17 @@ async function boot() {
   await load();
 }
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", boot);
-} else {
-  boot();
+/** Init untuk SPA / multi-page. */
+export async function initArsip() {
+  initI18n();
+  return boot();
+}
+
+if (!window.__MEIMO_SPA__) {
+  const start = () => { initI18n(); boot(); };
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", start);
+  } else {
+    start();
+  }
 }

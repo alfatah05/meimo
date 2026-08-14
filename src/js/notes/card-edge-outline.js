@@ -1,135 +1,179 @@
 /**
  * card-edge-outline.js
- * Menghasilkan `clip-path: polygon(...)` UTUH untuk SATU KARTU NOTE penuh
- * (bukan cuma satu bar tepi lepas seperti editor/scene-edges.js) — tepi
- * ATAS & BAWAH kartu dibentuk (scallop/robek/ombak/dst), kedua SISI
- * (kiri-kanan) selalu tetap lurus supaya kartu tetap terlihat rapi di
- * grid. Bahasa bentuknya sengaja disamakan dengan Edge Style "Scene" di
- * editor (lihat editor/scene-edges.js & EDGE_LABELS di toolbar/scene-sheet.js)
- * supaya konsisten satu aplikasi, tapi dihitung terpisah di sini karena di
- * sini yang dibentuk adalah GARIS KELILING SATU KARTU UTUH (loop tertutup
- * atas+bawah+kedua sisi sekaligus), bukan satu bar dekorasi lepas.
+ * Menghasilkan `clip-path: polygon(...)` untuk keliling satu kartu note.
+ * Tepi atas+bawah dibentuk; sisi kiri/kanan tetap lurus.
  *
- * Hasil clip-path-nya STATIS (dihitung sekali saat modul ini dimuat, lihat
- * CARD_EDGE_CLIP di bawah) — tidak perlu dihitung ulang saat resize, karena
- * titik-x pakai persen (%) yang otomatis ikut lebar kartu, dan titik-y tepi
- * pakai px tetap / `calc(100% - Npx)` yang otomatis ikut tinggi kartu.
- *
- * Semua kurva DETERMINISTIK (fungsi hash trigonometri semu-acak, seeded per
- * titik) — bukan Math.random — supaya bentuknya tidak "berkedip" beda tiap
- * kali daftar kartu dirender ulang.
+ * EDGE_BAND sengaja kecil (~8px) supaya bentuk tidak memotong judul/snippet.
  */
 
-// Tinggi band tepi (px) — seberapa dalam bentuk (scallop/robek/dst) masuk
-// dari tepi kartu ke arah tengah. Sengaja kecil supaya tidak memakan
-// banyak ruang judul/snippet kartu.
-const EDGE_BAND = 12;
-
-// Jumlah segmen sepanjang lebar kartu untuk kurva halus (wave/cloud/brush).
-const N = 40;
+// Kedalaman tepi (px) — jangan diperbesar; isi kartu harus aman.
+const EDGE_BAND = 8;
+const N = 48;
 
 function pseudoRandom(seed) {
   const x = Math.sin(seed * 12.9898) * 43758.5453;
-  return x - Math.floor(x); // [0, 1)
+  return x - Math.floor(x);
 }
 
-const clampBand = (y) => Math.max(0, Math.min(EDGE_BAND, y));
+const clampBand = (y, band = EDGE_BAND) => Math.max(0, Math.min(band, y));
 
 /**
- * Titik satu tepi (dipakai identik untuk atas & bawah, lalu di-mirror lewat
- * transformasi koordinat di buildCardOutlineClipPath). `y` bernilai 0 di
- * batas TERLUAR kartu (titik yang paling "menonjol keluar", mis. puncak
- * scallop) dan EDGE_BAND di batas dalam/rata (menyatu ke isi kartu).
- * @returns {{t: number, y: number}[]} t dalam rentang [0, 1] (posisi lebar)
+ * @param {string} style
+ * @param {number} [band]
+ * @returns {{t: number, y: number}[]}
  */
-function edgeCurvePoints(style) {
-  const mid = EDGE_BAND / 2;
+function edgeCurvePoints(style, band = EDGE_BAND) {
+  const mid = band / 2;
   const pts = [];
 
   switch (style) {
     case "stamp": {
-      // Perangko — deretan scallop kecil rapat, meniru lubang perforasi
-      // di tepi perangko pos.
-      const bumps = 14;
-      for (let i = 0; i <= N; i++) {
-        const t = i / N;
-        const local = (t * bumps) % 1;
-        const bump = Math.sin(local * Math.PI); // 0 di lembah, 1 di puncak
-        pts.push({ t, y: clampBand(EDGE_BAND - bump * EDGE_BAND * 0.95) });
-      }
-      break;
-    }
-    case "cloud": {
-      // Awan — scallop besar & jarang.
-      const bumps = 4.5;
+      const bumps = 16;
       for (let i = 0; i <= N; i++) {
         const t = i / N;
         const local = (t * bumps) % 1;
         const bump = Math.sin(local * Math.PI);
-        pts.push({ t, y: clampBand(EDGE_BAND - bump * EDGE_BAND) });
+        pts.push({ t, y: clampBand(band - bump * band * 0.9, band) });
+      }
+      break;
+    }
+    case "stamp-fine": {
+      const bumps = 22;
+      for (let i = 0; i <= N; i++) {
+        const t = i / N;
+        const local = (t * bumps) % 1;
+        const bump = Math.sin(local * Math.PI);
+        pts.push({ t, y: clampBand(band - bump * band * 0.75, band) });
+      }
+      break;
+    }
+    case "cloud": {
+      const bumps = 5;
+      for (let i = 0; i <= N; i++) {
+        const t = i / N;
+        const local = (t * bumps) % 1;
+        const bump = Math.sin(local * Math.PI);
+        pts.push({ t, y: clampBand(band - bump * band * 0.85, band) });
+      }
+      break;
+    }
+    case "scallop": {
+      const bumps = 8;
+      for (let i = 0; i <= N; i++) {
+        const t = i / N;
+        const local = (t * bumps) % 1;
+        const bump = Math.sin(local * Math.PI);
+        pts.push({ t, y: clampBand(band - bump * band * 0.8, band) });
       }
       break;
     }
     case "torn": {
-      // Sobekan kertas — garis patah-patah tak beraturan, deterministik
-      // lewat hash trigonometri semu-acak (bukan Math.random).
-      const segments = 22;
+      const segments = 24;
       for (let i = 0; i <= segments; i++) {
         const t = i / segments;
         const seed = i * 7.13 + (i % 2 === 0 ? 1.7 : 0);
-        const r = pseudoRandom(seed) * 2 - 1; // [-1, 1)
-        pts.push({ t, y: clampBand(mid + r * mid * 0.95) });
+        const r = pseudoRandom(seed) * 2 - 1;
+        pts.push({ t, y: clampBand(mid + r * mid * 0.85, band) });
+      }
+      break;
+    }
+    case "deckle": {
+      // Tepi kertas handmade — noise lebih halus dari torn.
+      const segments = 32;
+      for (let i = 0; i <= segments; i++) {
+        const t = i / segments;
+        const r1 = pseudoRandom(i * 3.17) * 2 - 1;
+        const r2 = pseudoRandom(i * 9.41 + 2) * 2 - 1;
+        pts.push({ t, y: clampBand(mid + r1 * mid * 0.55 + r2 * mid * 0.25, band) });
       }
       break;
     }
     case "wave": {
-      // Ombak — gelombang halus beraturan.
       for (let i = 0; i <= N; i++) {
         const t = i / N;
-        const y = mid + Math.sin(t * Math.PI * 2 * 2.5) * mid * 0.9;
-        pts.push({ t, y: clampBand(y) });
+        const y = mid + Math.sin(t * Math.PI * 2 * 2.5) * mid * 0.85;
+        pts.push({ t, y: clampBand(y, band) });
+      }
+      break;
+    }
+    case "ripple": {
+      for (let i = 0; i <= N; i++) {
+        const t = i / N;
+        const y =
+          mid +
+          Math.sin(t * Math.PI * 2 * 3.5) * mid * 0.55 +
+          Math.sin(t * Math.PI * 2 * 7) * mid * 0.2;
+        pts.push({ t, y: clampBand(y, band) });
+      }
+      break;
+    }
+    case "double-wave": {
+      for (let i = 0; i <= N; i++) {
+        const t = i / N;
+        const y = mid + Math.sin(t * Math.PI * 2 * 2) * mid * 0.7 + Math.sin(t * Math.PI * 2 * 4) * mid * 0.25;
+        pts.push({ t, y: clampBand(y, band) });
       }
       break;
     }
     case "zigzag": {
-      const teeth = 9;
+      const teeth = 10;
       for (let i = 0; i <= teeth * 2; i++) {
         const t = i / (teeth * 2);
         const high = i % 2 === 0;
-        pts.push({ t, y: clampBand(high ? 0 : EDGE_BAND * 0.75) });
+        pts.push({ t, y: clampBand(high ? band * 0.15 : band * 0.85, band) });
+      }
+      break;
+    }
+    case "pinked": {
+      // Tepi gunting zig-zag kecil (pinking shears).
+      const teeth = 18;
+      for (let i = 0; i <= teeth * 2; i++) {
+        const t = i / (teeth * 2);
+        const high = i % 2 === 0;
+        pts.push({ t, y: clampBand(high ? band * 0.2 : band * 0.75, band) });
+      }
+      break;
+    }
+    case "steps": {
+      const steps = 8;
+      for (let i = 0; i <= steps; i++) {
+        const t0 = i / steps;
+        const t1 = Math.min(1, (i + 0.45) / steps);
+        const high = i % 2 === 0;
+        const y = high ? band * 0.25 : band * 0.75;
+        pts.push({ t: t0, y: clampBand(y, band) });
+        if (t1 > t0) pts.push({ t: t1, y: clampBand(y, band) });
       }
       break;
     }
     case "brush": {
-      // Sapuan kuas — gelombang utama + noise frekuensi tinggi beramplitudo
-      // kecil, memberi kesan sapuan yang tidak rapi.
       for (let i = 0; i <= N; i++) {
         const t = i / N;
-        const main = Math.sin(t * Math.PI * 2 * 1.6) * EDGE_BAND * 0.35;
-        const noise = Math.sin(t * Math.PI * 2 * 9 + 1.3) * EDGE_BAND * 0.12;
-        pts.push({ t, y: clampBand(mid + main + noise) });
+        const main = Math.sin(t * Math.PI * 2 * 1.6) * band * 0.3;
+        const noise = Math.sin(t * Math.PI * 2 * 9 + 1.3) * band * 0.1;
+        pts.push({ t, y: clampBand(mid + main + noise, band) });
+      }
+      break;
+    }
+    case "notch": {
+      // Lekukan kecil di tengah tepi (tiket).
+      for (let i = 0; i <= N; i++) {
+        const t = i / N;
+        const d = Math.abs(t - 0.5);
+        const notch = d < 0.08 ? (1 - d / 0.08) * band * 0.85 : 0;
+        pts.push({ t, y: clampBand(band * 0.2 + notch, band) });
       }
       break;
     }
     default:
-      pts.push({ t: 0, y: EDGE_BAND }, { t: 1, y: EDGE_BAND });
+      pts.push({ t: 0, y: band }, { t: 1, y: band });
   }
 
   return pts;
 }
 
-/**
- * Bangun clip-path polygon UTUH satu kartu untuk sebuah preset bentuk tepi.
- * Urutan titik: tepi ATAS (kiri->kanan), lalu sisi kanan (implisit, garis
- * lurus dari titik terakhir atas ke titik pertama bawah), tepi BAWAH
- * (kanan->kiri, memakai kurva sama yang di-mirror lewat `calc(100% - y)`),
- * lalu sisi kiri (implisit, clip-path otomatis menutup loop dari titik
- * terakhir kembali ke titik pertama).
- * @param {string} style - salah satu key di edgeCurvePoints
- * @returns {string} nilai siap pakai untuk CSS `clip-path`
- */
-function buildCardOutlineClipPath(style) {
-  const curve = edgeCurvePoints(style);
+function buildCardOutlineClipPath(style, band = EDGE_BAND) {
+  const curve = edgeCurvePoints(style, band);
   const top = curve.map((p) => `${(p.t * 100).toFixed(2)}% ${p.y.toFixed(1)}px`);
   const bottom = [...curve]
     .reverse()
@@ -137,13 +181,20 @@ function buildCardOutlineClipPath(style) {
   return `polygon(${[...top, ...bottom].join(", ")})`;
 }
 
-/** Clip-path siap pakai per preset — dihitung sekali saat modul dimuat,
- * dipakai langsung sebagai `clipPath` di EDGE_SHAPES (card-style-presets.js). */
+/** Clip-path siap pakai per preset. */
 export const CARD_EDGE_CLIP = Object.freeze({
   stamp: buildCardOutlineClipPath("stamp"),
+  "stamp-fine": buildCardOutlineClipPath("stamp-fine"),
   cloud: buildCardOutlineClipPath("cloud"),
+  scallop: buildCardOutlineClipPath("scallop"),
   torn: buildCardOutlineClipPath("torn"),
+  deckle: buildCardOutlineClipPath("deckle"),
   wave: buildCardOutlineClipPath("wave"),
+  ripple: buildCardOutlineClipPath("ripple"),
+  "double-wave": buildCardOutlineClipPath("double-wave"),
   zigzag: buildCardOutlineClipPath("zigzag"),
+  pinked: buildCardOutlineClipPath("pinked"),
+  steps: buildCardOutlineClipPath("steps"),
   brush: buildCardOutlineClipPath("brush"),
+  notch: buildCardOutlineClipPath("notch"),
 });
